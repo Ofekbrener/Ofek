@@ -22,8 +22,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # Serve the game at both /Ofek/ and /Ofek/spaceship-game/ so every shared link works.
+      - name: Assemble site
+        run: |
+          mkdir _site
+          cp -r spaceship-game/. _site/
+          cp -r spaceship-game _site/spaceship-game
+          cp stage-simulator.html _site/ 2>/dev/null || true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: spaceship-game
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
