@@ -9,6 +9,7 @@ export class Input {
     this.raw = 0;           // un-smoothed target from finger / buttons
     this.holdTime = 0;      // how long a steer button / key has been held
     this.handling = 1;      // upgrade multiplier for button speed
+    this.raceMode = false;  // race: drag acts like a steering wheel (see raceSteer)
     this.dir = 0;           // -1 / 0 / 1 from buttons + keys
     this.steer = 0;         // normalised steering signal for audio
     this.dragId = null;
@@ -64,6 +65,7 @@ export class Input {
     const w = Math.max(1, window.innerWidth);
     const field = CONFIG.halfWidth * 2;
     this.lastX = e.clientX;
+    if (this.raceMode) return;
     const dx = (e.clientX - this.dragStartX) / w;
     this.raw = clamp(this.dragStartTarget + dx * field * CONFIG.dragSensitivity);
     // Re-anchor when pinned at an edge so reversing direction responds instantly.
@@ -94,6 +96,20 @@ export class Input {
     this.target = 0;
     this.raw = 0;
     this.holdTime = 0;
+  }
+
+  // Race steering in -1..1: buttons/keys give full lock; dragging works like a
+  // steering wheel (distance from where the finger went down = how hard you turn).
+  raceSteer() {
+    const left = this.keys.left || this.btn.left;
+    const right = this.keys.right || this.btn.right;
+    const dir = (right ? 1 : 0) - (left ? 1 : 0);
+    if (dir) return dir;
+    if (this.dragId !== null) {
+      const w = Math.max(1, window.innerWidth);
+      return Math.max(-1, Math.min(1, (this.lastX - this.dragStartX) / (w * 0.16)));
+    }
+    return 0;
   }
 
   update(realDt, shipX) {

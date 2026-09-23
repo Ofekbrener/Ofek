@@ -23,7 +23,7 @@ import { StarMapUI, starsHTML } from './starmap-ui.js';
 import { RaceSession } from './race/race.js';
 import { TRACK_HALF } from './race/track.js';
 import { RaceMenuUI, showResults, fmtTime } from './race/race-ui.js';
-import { LEAGUES, RACE_QUIPS, ordinal } from './race/leagues.js';
+import { LEAGUES, RACE_QUIPS, ordinal, CAREER, careerIndex } from './race/leagues.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -833,13 +833,27 @@ const rhCount = $('rh-count');
 const rhMsg = $('rh-msg');
 const rhMap = $('rh-map').getContext('2d');
 const boostBtn = $('rbtn-boost');
+const itemBtn = $('rbtn-item');
+const ITEM_ICON = { missile: '🥚', shield: '🛡️', mine: '💣' };
 let raceBoost = false;
+let raceItem = false;
+const raceFails = {};
 let mapT = 0;
 let msgTimer = null;
 input._bindButton($('rbtn-left'), 'left');
 input._bindButton($('rbtn-right'), 'right');
 boostBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); raceBoost = true; boostBtn.classList.add('active'); });
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) boostBtn.addEventListener(ev, () => boostBtn.classList.remove('active'));
+itemBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); raceItem = true; });
+$('rbtn-go').addEventListener('click', () => { audio.click(); $('rh-intro').classList.add('hidden'); race.begin(); });
+$('btn-race-pause').addEventListener('click', () => { if (state.mode !== 'race') return; race.paused = true; audio.click(); $('rh-pausebox').classList.remove('hidden'); });
+$('rbtn-resume').addEventListener('click', () => { race.paused = false; audio.click(); $('rh-pausebox').classList.add('hidden'); });
+$('rbtn-quit').addEventListener('click', () => { $('rh-pausebox').classList.add('hidden'); leaveRun(); raceMenu.render(); showScreen('race'); });
+
+function setItemButton(item) {
+  itemBtn.textContent = item ? ITEM_ICON[item] : '?';
+  itemBtn.classList.toggle('ready', !!item);
+}
 
 const raceMenu = new RaceMenuUI(prog, { audio, onRace: (lg, t) => startRace(lg, t) });
 
@@ -869,6 +883,7 @@ function leaveRun() {
   ship.reset();
   ship.setShielded(false);
   input.enabled = false;
+  input.raceMode = false;
   state.mode = 'menu';
 }
 
@@ -882,20 +897,42 @@ function startRace(league, track) {
   state.raceLeague = league;
   state.raceTrack = track;
   const g = GALAXIES[track.theme];
-  race.load(league, track, g, prog.raceStats, prog.skin);
+  const ci = careerIndex(track.id);
+  // Beginner assist: after 2 failed attempts at race 1, rivals ease off a little.
+  const assist = ci === 0 && (raceFails[track.id] || 0) >= 2;
+  race.load(league, track, g, prog.raceStats, prog.skin, { careerIndex: ci, tutorial: ci === 0, assist });
   input.reset();
   input.enabled = true;
+  input.raceMode = true;
   raceBoost = false;
+  raceItem = false;
   raceHud.classList.remove('hidden');
   rhCount.classList.add('hidden');
+  $('rh-pausebox').classList.add('hidden');
   $('rh-total').textContent = `/${race.racers.length}`;
+  // Only show the controls this race has unlocked.
+  const f = race.feat;
+  boostBtn.classList.toggle('hidden', !f.has('boost'));
+  $('rh-boost-wrap').classList.toggle('hidden', !f.has('boost'));
+  itemBtn.classList.toggle('hidden', !f.has('items'));
+  setItemButton(null);
+  // "NEW mechanic" card before the countdown.
+  const power = prog.shipPower !== undefined ? prog.shipPower : 1 + Object.values(prog.raceStats).reduce((a, b) => a + b, 0);
+  $('rh-intro-race').textContent = `RACE ${ci + 1} OF ${CAREER.length} · ${league.name.toUpperCase()}`;
+  $('rh-intro-name').textContent = track.name.toUpperCase();
+  $('rh-intro-icon').textContent = track.intro.icon;
+  $('rh-intro-title').textContent = track.intro.title;
+  $('rh-intro-text').textContent = track.intro.text + (assist ? ' (The hens are going easy on you this time.)' : '');
+  const pw = $('rh-intro-power');
+  pw.textContent = `⚡ Ship Power ${power} · Recommended ${track.power}` + (power < track.power ? ' — upgrade in the Garage!' : '');
+  pw.className = 'rh-intro-power ' + (power < track.power ? 'low' : 'ok');
+  $('rh-intro').classList.remove('hidden');
   audio.setGalaxy(g.music);
   audio.setLevel(3);
   audio.setBoss(false);
   audio.stopMusic(0.05);
   setTimeout(() => { if (state.mode === 'race') { audio.startMusic(); audio.muffleMusic(18000, 0.1); } }, 60);
   audio.startEngine();
-  raceMsg(track.name.toUpperCase(), 1800);
 }
 
 race.events = {
@@ -916,10 +953,26 @@ race.events = {
   onBoost() { audio.missileLaunch(); haptics.tap(); race.shake = 0.35; },
   onPad() { audio.giftOpen(); },
   onBump() { audio.splat(); haptics.bossHit(); race.shake = 0.45; },
-  onCrash(egg) { audio.missileHit(); haptics.shieldBreak(); race.shake = 1; raceMsg(egg ? 'SCRAMBLED!' : 'OUCH!', 800); },
+  onCrash(kind) { audio.missileHit(); haptics.shieldBreak(); race.shake = 1; raceMsg(kind === 'egg' ? 'SCRAMBLED!' : 'OUCH!', 800); },
+  onWall(hard) {
+    if (!hard) return;
+    audio.splat(); audio.missileHit(); haptics.bossHit(); race.shake = 0.8;
+    raceMsg('WALL! STEER INTO THE CORNER', 1000);
+  },
+  onHint(text) { raceMsg(text, 1700); audio.countdown(false); },
+  onItem(item) { setItemButton(item); if (item) { audio.giftOpen(); haptics.tap(); raceMsg(`GOT ${ITEM_ICON[item]} ${item.toUpperCase()}!`, 900); } },
+  onFire() { audio.missileLaunch(); haptics.tap(); },
+  onHitRival(r) { audio.cluck(0.8, 0.25); raceMsg(`EGGED ${r.name.toUpperCase()}! 🥚`, 1000); },
+  onIncoming() { raceMsg('⚠ INCOMING EGG!', 900); audio.cluck(1.4, 0.2); },
+  onShield() { audio.shieldUp(); },
+  onShieldBlock() { audio.shieldBreak(); haptics.shieldBreak(); raceMsg('SHIELD BLOCKED IT!', 900); },
+  onMine() { audio.countdown(false); },
+  onDriftTurbo(t) { audio.missileLaunch(); haptics.tap(); raceMsg(t > 1.4 ? 'ULTRA DRIFT TURBO!' : 'DRIFT TURBO!', 800); race.shake = 0.3; },
+  onHenDrop() { audio.cluck(0.45, 0.2); },
   onOvertake(r) { audio.cluck(1.25, 0.16); raceMsg(`PASSED ${r.name.toUpperCase()}!`, 900); },
   onFinish(results, place) {
     state.mode = 'raceDone';
+    if (place > 3) raceFails[state.raceTrack.id] = (raceFails[state.raceTrack.id] || 0) + 1;
     raceMsg(place === 1 ? '🏁 YOU WIN! 🏁' : `🏁 ${ordinal(place)} PLACE`, 2000);
     if (place <= 3) { audio.victory(); haptics.bossDefeated(); } else { audio.waveClear(); haptics.waveClear(); }
     setTimeout(() => finishRace(results, place), 2200);
@@ -967,16 +1020,19 @@ $('btn-race-garage').addEventListener('click', () => openHangar('race'));
 $('btn-rr-retry').addEventListener('click', () => { audio.click(); startRace(state.raceLeague, state.raceTrack); });
 $('btn-rr-next').addEventListener('click', () => { audio.click(); if (state.nextRace) startRace(state.nextRace.lg, state.nextRace.t); });
 $('btn-rr-menu').addEventListener('click', () => { leaveRun(); raceMenu.render(); showScreen('race'); });
-$('btn-race-pause').addEventListener('click', () => { leaveRun(); raceMenu.render(); showScreen('race'); });
 window.addEventListener('keydown', (e) => {
-  if (state.mode === 'race' && (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W')) { e.preventDefault(); raceBoost = true; }
+  if (state.mode !== 'race') return;
+  if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { e.preventDefault(); raceBoost = true; }
+  if (e.key === 'e' || e.key === 'E' || e.key === 'Shift') raceItem = true;
+  if (e.key === 'Enter' && race.waiting) $('rbtn-go').click();
 });
 
 function updateRace(realDt) {
-  const steerRaw = input.update(realDt, race.player ? race.player.x / TRACK_HALF * CONFIG.halfWidth : 0);
-  const steer = steerRaw / CONFIG.halfWidth;
-  race.update(realDt, state.mode === 'race' ? steer : 0, state.mode === 'race' && raceBoost);
+  const steer = state.mode === 'race' ? input.raceSteer() : 0;
+  const live = state.mode === 'race';
+  race.update(realDt, steer, live && raceBoost, live && raceItem);
   raceBoost = false;
+  raceItem = false;
   const h = race.hud;
   if (state.mode === 'race' || state.mode === 'raceDone') {
     $('rh-place').textContent = ordinal(h.place);
@@ -989,7 +1045,7 @@ function updateRace(realDt) {
     mapT -= realDt;
     if (mapT <= 0) { mapT = 0.05; race.drawMinimap(rhMap, 96); }
   }
-  audio.setEngine(Math.min(1, h.speed / 400), input.steer, 1);
+  audio.setEngine(Math.min(1, h.speed / 400), steer, 1);
   renderer.render(race.scene, race.camera);
 }
 
