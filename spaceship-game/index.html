@@ -74,12 +74,14 @@
           <div class="rank-row"><span id="start-rank">Cadet</span><span class="balance">🍗 <b id="start-crystals">0</b></span></div>
           <div class="xp-bar"><div id="start-xp-fill"></div></div>
         </div>
-        <button id="btn-start" class="primary-btn">🚀 LAUNCH</button>
-        <button id="btn-hangar" class="secondary-btn hangar-btn">🛠 HANGAR</button>
+        <button id="btn-start" class="primary-btn">🐔 DODGE JOURNEY</button>
+        <button id="btn-race" class="primary-btn race-btn">🏁 RACE LEAGUE</button>
+        <button id="btn-hangar" class="secondary-btn hangar-btn">🛠 HANGAR &amp; GARAGE</button>
         <div class="howto">
           <div><b>Drag</b> anywhere or hold <b>◀ ▶</b> to steer</div>
           <div><b>Skim hazards</b> for bonus · collect 🍗 for upgrades</div>
           <div>Beat bosses by grabbing <b>🌽 corn missiles</b></div>
+          <div><b>Race</b> chicken rivals to win 🏆 trophies that open new galaxies</div>
           <div class="desktop-only">Keyboard: <b>A / D</b> or <b>← →</b></div>
         </div>
         <div id="start-best" class="best"></div>
@@ -137,6 +139,8 @@
         <div class="scroll hangar-scroll">
           <div class="section-label">CHICKEN-PROOFING UPGRADES</div>
           <div id="upgrade-list" class="upgrade-list"></div>
+          <div class="section-label">🏁 RACE GARAGE</div>
+          <div id="race-upgrade-list" class="upgrade-list"></div>
           <div class="section-label">SHIP SKINS</div>
           <div id="skin-list" class="skin-list"></div>
         </div>
@@ -186,6 +190,63 @@
         <div class="btn-row">
           <button id="btn-victory-hangar" class="secondary-btn">🛠 HANGAR</button>
           <button id="btn-victory-map" class="secondary-btn">🗺 MAP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Race League menu -->
+    <div id="screen-race" class="screen hidden">
+      <div class="panel map-panel">
+        <div class="hangar-head">
+          <h2>RACE LEAGUE</h2>
+          <div class="balance big">🏆 <b id="race-trophies">0</b></div>
+        </div>
+        <div id="league-list" class="scroll map-scroll league-scroll"></div>
+        <div class="btn-row">
+          <button id="btn-race-garage" class="secondary-btn">🛠 GARAGE</button>
+          <button id="btn-race-back" class="secondary-btn">BACK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Race HUD -->
+    <div id="race-hud" class="hidden">
+      <div class="rh-top">
+        <div class="rh-place"><span id="rh-place">5th</span><small id="rh-total">/5</small></div>
+        <div class="rh-mid"><div id="rh-lap">LAP 1/2</div><div id="rh-time">0:00.00</div></div>
+        <canvas id="rh-map" width="96" height="96"></canvas>
+      </div>
+      <div id="rh-count" class="hidden">3</div>
+      <div id="rh-msg" class="hidden"></div>
+      <div class="rh-bottom">
+        <div class="rh-steer">
+          <button id="rbtn-left" class="steer-btn small" aria-label="Steer left">◀</button>
+          <button id="rbtn-right" class="steer-btn small" aria-label="Steer right">▶</button>
+        </div>
+        <div class="rh-speed"><b id="rh-speed">0</b><small>KM/H</small><div id="rh-draft" class="hidden">DRAFTING ⚡</div></div>
+        <div class="rh-boost">
+          <div class="boost-meter"><div id="rh-boost-fill"></div></div>
+          <button id="rbtn-boost" class="boost-btn">BOOST</button>
+        </div>
+      </div>
+      <button id="btn-race-pause" class="icon-btn race-pause" aria-label="Quit race">✕</button>
+    </div>
+
+    <!-- Race results -->
+    <div id="screen-race-results" class="screen hidden">
+      <div class="panel scroll">
+        <h2 id="rr-title" class="victory-title">WINNER!</h2>
+        <div id="rr-track" class="final-label">COOP LOOP</div>
+        <div id="rr-place" class="rr-place">🥇 1st</div>
+        <div id="rr-table" class="rr-table"></div>
+        <div class="payout">
+          <div class="payout-row total"><span>🍗 Prize</span><b id="rr-prize">0</b></div>
+          <div id="rr-note" class="unlock-note hidden"></div>
+        </div>
+        <button id="btn-rr-next" class="primary-btn">NEXT RACE ➜</button>
+        <div class="btn-row">
+          <button id="btn-rr-retry" class="secondary-btn">↻ RETRY</button>
+          <button id="btn-rr-menu" class="secondary-btn">🏁 LEAGUES</button>
         </div>
       </div>
     </div>

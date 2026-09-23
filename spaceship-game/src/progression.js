@@ -1,4 +1,5 @@
 import { store } from './storage.js';
+import { RACE_UPGRADES, LEAGUES, GALAXY_TROPHY_REQ } from './race/leagues.js';
 
 // Persistent meta-progression (Hangar upgrades, skins, pilot rank) and the
 // in-run power-up pool. Everything the game needs is exposed as a flat set of
@@ -55,7 +56,9 @@ const DEFAULT_SAVE = {
   v: 2, crystals: 0, upgrades: {}, skins: ['classic'], skin: 'classic', xp: 0,
   galaxy: { unlocked: 1, stars: [0, 0, 0, 0, 0] },
   endlessBest: { wave: 0, score: 0 },
+  race: { best: {} },
 };
+const ALL_UPGRADES = () => [...UPGRADES, ...RACE_UPGRADES];
 export const GALAXY_COUNT = 5;
 
 export class Progression {
@@ -74,13 +77,14 @@ export class Progression {
         stars: Array.from({ length: GALAXY_COUNT }, (_, i) => Math.max(0, Math.min(3, (g.stars && g.stars[i]) | 0))),
       };
       merged.endlessBest = { wave: 0, score: 0, ...(d.endlessBest || {}) };
+      merged.race = { best: { ...((d.race && d.race.best) || {}) } };
       if (!Array.isArray(merged.skins) || !merged.skins.includes('classic')) merged.skins = ['classic', ...(merged.skins || [])];
       if (!merged.skins.includes(merged.skin)) merged.skin = 'classic';
       merged.crystals = Math.max(0, merged.crystals | 0);
       merged.xp = Math.max(0, merged.xp | 0);
       return merged;
     } catch {
-      return { ...DEFAULT_SAVE, upgrades: {}, skins: ['classic'], galaxy: { unlocked: 1, stars: [0, 0, 0, 0, 0] }, endlessBest: { wave: 0, score: 0 } };
+      return { ...DEFAULT_SAVE, upgrades: {}, skins: ['classic'], galaxy: { unlocked: 1, stars: [0, 0, 0, 0, 0] }, endlessBest: { wave: 0, score: 0 }, race: { best: {} } };
     }
   }
 
@@ -91,14 +95,14 @@ export class Progression {
   get skin() { return SKINS.find((s) => s.id === this.data.skin) || SKINS[0]; }
 
   canBuy(id) {
-    const u = UPGRADES.find((x) => x.id === id);
+    const u = ALL_UPGRADES().find((x) => x.id === id);
     const l = this.level(id);
     return l < u.max && this.data.crystals >= upgradeCost(u, l);
   }
 
   buy(id) {
     if (!this.canBuy(id)) return false;
-    const u = UPGRADES.find((x) => x.id === id);
+    const u = ALL_UPGRADES().find((x) => x.id === id);
     this.data.crystals -= upgradeCost(u, this.level(id));
     this.data.upgrades[id] = this.level(id) + 1;
     this.save();
@@ -157,6 +161,34 @@ export class Progression {
     if (improved) this.save();
     return improved;
   }
+
+  // ---- race league ----
+  get raceStats() {
+    return { engine: this.level('engine'), accel: this.level('accel'), grip: this.level('grip'), tank: this.level('tank'), armor: this.level('armor') };
+  }
+  bestPlace(trackId) { return this.data.race.best[trackId] || 0; }
+  // A trophy = a podium finish (top 3) on a track.
+  get trophies() { return Object.values(this.data.race.best).filter((p) => p > 0 && p <= 3).length; }
+  leagueTrophies(leagueId) {
+    const lg = LEAGUES.find((l) => l.id === leagueId);
+    return lg ? lg.tracks.filter((t) => { const p = this.bestPlace(t.id); return p > 0 && p <= 3; }).length : 0;
+  }
+  // Returns {newBest, newTrophy}
+  recordRace(trackId, place) {
+    const prev = this.bestPlace(trackId);
+    const newBest = !prev || place < prev;
+    if (newBest) this.data.race.best[trackId] = place;
+    this.save();
+    return { newBest, newTrophy: place <= 3 && (!prev || prev > 3) };
+  }
+  leagueUnlocked(lg) {
+    const u = lg.unlock;
+    if (!u) return true;
+    return this.unlocked > u.galaxies && this.leagueTrophies(u.league) >= u.trophies;
+  }
+  // Galaxy i can be launched if its predecessor boss is beaten AND enough race trophies.
+  galaxyTrophyReq(i) { return GALAXY_TROPHY_REQ[i] || 0; }
+  galaxyOpen(i) { return i < this.unlocked && this.trophies >= this.galaxyTrophyReq(i); }
 
   // Combined modifiers for a run: permanent upgrades + picked power-ups.
   modifiers(picked = {}) {

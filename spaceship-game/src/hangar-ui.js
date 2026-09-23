@@ -1,4 +1,5 @@
 import { UPGRADES, SKINS, upgradeCost } from './progression.js';
+import { RACE_UPGRADES } from './race/leagues.js';
 
 const $ = (id) => document.getElementById(id);
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
@@ -11,6 +12,7 @@ export class HangarUI {
     this.haptics = haptics;
     this.onChange = onChange;
     this.upgradeList = $('upgrade-list');
+    this.raceList = $('race-upgrade-list');
     this.skinList = $('skin-list');
     this.balance = $('hangar-crystals');
   }
@@ -19,8 +21,15 @@ export class HangarUI {
     const p = this.prog;
     this.balance.textContent = p.crystals.toLocaleString();
 
-    this.upgradeList.textContent = '';
-    for (const u of UPGRADES) {
+    this._renderUpgrades(this.upgradeList, UPGRADES, flashId);
+    this._renderUpgrades(this.raceList, RACE_UPGRADES, flashId);
+    this._renderSkins(flashId);
+  }
+
+  _renderUpgrades(list, defs, flashId) {
+    const p = this.prog;
+    list.textContent = '';
+    for (const u of defs) {
       const lvl = p.level(u.id);
       const maxed = lvl >= u.max;
       const cost = maxed ? 0 : upgradeCost(u, lvl);
@@ -49,9 +58,12 @@ export class HangarUI {
         }
       });
       row.appendChild(btn);
-      this.upgradeList.appendChild(row);
+      list.appendChild(row);
     }
+  }
 
+  _renderSkins(flashId) {
+    const p = this.prog;
     this.skinList.textContent = '';
     for (const s of SKINS) {
       const owned = p.ownsSkin(s.id);

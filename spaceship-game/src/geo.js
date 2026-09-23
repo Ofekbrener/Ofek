@@ -101,3 +101,19 @@ export function friedEggGeometry() {
     { geo: tf(new THREE.SphereGeometry(0.28, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), { s: [1, 0.55, 1], p: [0.05, 0.01, 0.02] }), color: 0xffb81c },
   ]);
 }
+
+// Racing egg-pod: a rocket-powered egg with a hen peeking out of the cockpit. Faces -Z.
+export function eggPodGeometry(color) {
+  return mergeColored([
+    { geo: tf(new THREE.IcosahedronGeometry(0.6, 2), { s: [0.9, 0.62, 1.35], p: [0, 0, 0] }), color },
+    { geo: tf(new THREE.CylinderGeometry(0.22, 0.3, 0.4, 10), { r: [Math.PI / 2, 0, 0], p: [0, 0, 0.85] }), color: 0x2a3350 },
+    { geo: tf(new THREE.ConeGeometry(0.25, 0.5, 4), { r: [0, 0, -Math.PI / 2], s: [1, 1, 0.25], p: [0.62, -0.05, 0.4] }), color: 0x2a3350 },
+    { geo: tf(new THREE.ConeGeometry(0.25, 0.5, 4), { r: [0, 0, Math.PI / 2], s: [1, 1, 0.25], p: [-0.62, -0.05, 0.4] }), color: 0x2a3350 },
+    // hen head + beak + comb + goggles
+    { geo: tf(new THREE.IcosahedronGeometry(0.24, 1), { p: [0, 0.42, -0.1] }), color: 0xf7f3ea },
+    { geo: tf(new THREE.ConeGeometry(0.08, 0.2, 5), { r: [-Math.PI / 2, 0, 0], p: [0, 0.4, -0.38] }), color: 0xffa21f },
+    { geo: tf(new THREE.IcosahedronGeometry(0.08, 0), { p: [0, 0.68, -0.08] }), color: 0xe8262f },
+    { geo: tf(new THREE.IcosahedronGeometry(0.07, 0), { p: [0, 0.64, 0.06] }), color: 0xe8262f },
+    { geo: tf(new THREE.TorusGeometry(0.2, 0.04, 5, 14), { p: [0, 0.47, -0.16], s: [1, 0.45, 1] }), color: 0x222222 },
+  ]);
+}

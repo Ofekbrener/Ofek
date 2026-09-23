@@ -20,6 +20,10 @@ import { HangarUI, showCards } from './hangar-ui.js';
 import { GALAXIES, WAVES_PER_GALAXY, QUIPS, pick } from './galaxies.js';
 import { Journey } from './journey.js';
 import { StarMapUI, starsHTML } from './starmap-ui.js';
+import { RaceSession } from './race/race.js';
+import { TRACK_HALF } from './race/track.js';
+import { RaceMenuUI, showResults, fmtTime } from './race/race-ui.js';
+import { LEAGUES, RACE_QUIPS, ordinal } from './race/leagues.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -57,6 +61,7 @@ const audio = new AudioEngine();
 const input = new Input(canvas, $('btn-left'), $('btn-right'));
 const prog = new Progression();
 ship.setSkin(prog.skin);
+const race = new RaceSession(quality);
 
 // Expanding shockwave ring for score milestones.
 const ring = new THREE.Mesh(
@@ -73,6 +78,7 @@ let ringT = 1;
 
 function onResize() {
   resize();
+  race.setAspect(window.innerWidth / window.innerHeight);
   const h = renderer.domElement.height;
   particles.setViewportHeight(h * 1.2);
   env.setViewportHeight(h);
@@ -134,6 +140,8 @@ const screens = {
   cards: $('screen-cards'),
   map: $('screen-map'),
   victory: $('screen-victory'),
+  race: $('screen-race'),
+  raceResults: $('screen-race-results'),
 };
 function showScreen(name) {
   for (const [k, el] of Object.entries(screens)) el.classList.toggle('hidden', k !== name);
@@ -288,15 +296,7 @@ function toMenu() {
 function openMap() {
   audio.unlock();
   audio.click();
-  if (state.mode !== 'menu') {
-    audio.stopMusic();
-    audio.stopEngine();
-    hud.show(false);
-    stopWorld();
-    ship.reset();
-    ship.setShielded(false);
-    state.mode = 'menu';
-  }
+  if (state.mode !== 'menu') leaveRun();
   starMap.render();
   env.setTheme(GALAXIES[starMap.suggested]);
   lighting.setTheme(GALAXIES[starMap.suggested]);
@@ -309,12 +309,15 @@ function openHangar(from) {
   state.returnTo = from;
   hangarUI.render();
   showScreen('hangar');
+  const target = from === 'race' ? $('race-upgrade-list') : $('upgrade-list');
+  requestAnimationFrame(() => target.previousElementSibling.scrollIntoView({ block: 'start' }));
 }
 
 function closeHangar() {
   audio.click();
   updateMenuMeta();
   if (state.returnTo === 'map') starMap.render();
+  if (state.returnTo === 'race') raceMenu.render();
   showScreen(state.returnTo);
 }
 
@@ -483,6 +486,13 @@ function showVictoryScreen() {
   note.classList.toggle('hidden', !newUnlock);
   note.textContent = last ? '∞ ENDLESS MODE UNLOCKED!' : `🔓 ${GALAXIES[gi + 1].name} unlocked!`;
   $('btn-next-galaxy').classList.toggle('hidden', last);
+  const nextOpen = !last && prog.galaxyOpen(gi + 1);
+  state.nextAction = nextOpen ? 'warp' : 'race';
+  $('btn-next-galaxy').textContent = nextOpen ? 'NEXT GALAXY ➜' : `🏁 WIN ${prog.galaxyTrophyReq(gi + 1)} RACE TROPHIES TO CONTINUE`;
+  if (!last && !nextOpen) {
+    note.classList.remove('hidden');
+    note.textContent = `🏆 ${GALAXIES[gi + 1].name} needs ${prog.galaxyTrophyReq(gi + 1)} race trophies (you have ${prog.trophies})`;
+  }
   showScreen('victory');
   for (let i = 0; i < stars; i++) setTimeout(() => audio.starDing(i), 250 + i * 350);
   audio.muffleMusic(2500, 0.4);
@@ -658,7 +668,11 @@ $('btn-victory-hangar').addEventListener('click', () => openHangar('victory'));
 $('btn-hangar-back').addEventListener('click', closeHangar);
 $('btn-map-back').addEventListener('click', () => { audio.click(); updateMenuMeta(); showScreen('start'); });
 $('btn-victory-map').addEventListener('click', openMap);
-$('btn-next-galaxy').addEventListener('click', () => { audio.click(); startWarp(); });
+$('btn-next-galaxy').addEventListener('click', () => {
+  audio.click();
+  if (state.nextAction === 'race') openRaceMenu();
+  else startWarp();
+});
 
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
@@ -671,7 +685,8 @@ window.addEventListener('keydown', (e) => {
   if (visible('start')) { e.preventDefault(); openMap(); }
   else if (visible('map')) { e.preventDefault(); if (starMap.briefingOpen) $('btn-brief-go').click(); else starMap.openBriefing(starMap.suggested); }
   else if (visible('over')) { e.preventDefault(); retry(); }
-  else if (visible('victory') && !$('btn-next-galaxy').classList.contains('hidden')) { e.preventDefault(); startWarp(); }
+  else if (visible('victory') && !$('btn-next-galaxy').classList.contains('hidden')) { e.preventDefault(); $('btn-next-galaxy').click(); }
+  else if (visible('raceResults')) { e.preventDefault(); $('btn-rr-retry').click(); }
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -812,6 +827,172 @@ chickens.onEggLanded = () => {
   audio.splat();
 };
 
+// ---------------------------------------------------------------- race league
+const raceHud = $('race-hud');
+const rhCount = $('rh-count');
+const rhMsg = $('rh-msg');
+const rhMap = $('rh-map').getContext('2d');
+const boostBtn = $('rbtn-boost');
+let raceBoost = false;
+let mapT = 0;
+let msgTimer = null;
+input._bindButton($('rbtn-left'), 'left');
+input._bindButton($('rbtn-right'), 'right');
+boostBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); raceBoost = true; boostBtn.classList.add('active'); });
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) boostBtn.addEventListener(ev, () => boostBtn.classList.remove('active'));
+
+const raceMenu = new RaceMenuUI(prog, { audio, onRace: (lg, t) => startRace(lg, t) });
+
+function raceMsg(text, ms = 1200) {
+  rhMsg.textContent = text;
+  rhMsg.classList.remove('hidden');
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => rhMsg.classList.add('hidden'), ms);
+}
+
+function openRaceMenu() {
+  audio.unlock();
+  audio.click();
+  if (state.mode !== 'menu') leaveRun();
+  raceMenu.render();
+  showScreen('race');
+}
+
+// Stop whatever is running (dodge run or race) and return to menu state.
+function leaveRun() {
+  audio.stopMusic();
+  audio.stopEngine();
+  hud.show(false);
+  raceHud.classList.add('hidden');
+  if (race.running) race.dispose();
+  stopWorld();
+  ship.reset();
+  ship.setShielded(false);
+  input.enabled = false;
+  state.mode = 'menu';
+}
+
+function startRace(league, track) {
+  audio.unlock();
+  haptics.tap();
+  stopWorld();
+  hud.show(false);
+  showScreen(null);
+  state.mode = 'race';
+  state.raceLeague = league;
+  state.raceTrack = track;
+  const g = GALAXIES[track.theme];
+  race.load(league, track, g, prog.raceStats, prog.skin);
+  input.reset();
+  input.enabled = true;
+  raceBoost = false;
+  raceHud.classList.remove('hidden');
+  rhCount.classList.add('hidden');
+  $('rh-total').textContent = `/${race.racers.length}`;
+  audio.setGalaxy(g.music);
+  audio.setLevel(3);
+  audio.setBoss(false);
+  audio.stopMusic(0.05);
+  setTimeout(() => { if (state.mode === 'race') { audio.startMusic(); audio.muffleMusic(18000, 0.1); } }, 60);
+  audio.startEngine();
+  raceMsg(track.name.toUpperCase(), 1800);
+}
+
+race.events = {
+  onCountdown(n) {
+    rhCount.textContent = n;
+    rhCount.classList.remove('hidden');
+    audio.countdown(false);
+    haptics.tap();
+  },
+  onGo() {
+    rhCount.textContent = 'GO!';
+    setTimeout(() => rhCount.classList.add('hidden'), 600);
+    audio.countdown(true);
+    haptics.tap();
+  },
+  onLap(lap) { raceMsg(`LAP ${lap}`); audio.waveClear(); },
+  onFinalLap() { raceMsg('FINAL LAP!', 1500); audio.setBoss(true); haptics.waveClear(); },
+  onBoost() { audio.missileLaunch(); haptics.tap(); race.shake = 0.35; },
+  onPad() { audio.giftOpen(); },
+  onBump() { audio.splat(); haptics.bossHit(); race.shake = 0.45; },
+  onCrash(egg) { audio.missileHit(); haptics.shieldBreak(); race.shake = 1; raceMsg(egg ? 'SCRAMBLED!' : 'OUCH!', 800); },
+  onOvertake(r) { audio.cluck(1.25, 0.16); raceMsg(`PASSED ${r.name.toUpperCase()}!`, 900); },
+  onFinish(results, place) {
+    state.mode = 'raceDone';
+    raceMsg(place === 1 ? '🏁 YOU WIN! 🏁' : `🏁 ${ordinal(place)} PLACE`, 2000);
+    if (place <= 3) { audio.victory(); haptics.bossDefeated(); } else { audio.waveClear(); haptics.waveClear(); }
+    setTimeout(() => finishRace(results, place), 2200);
+  },
+};
+
+function finishRace(results, place) {
+  if (state.mode !== 'raceDone') return;
+  state.mode = 'raceResults';
+  raceHud.classList.add('hidden');
+  const lg = state.raceLeague;
+  const t = state.raceTrack;
+  const prize = lg.prize[place - 1] || 0;
+  const openBefore = GALAXIES.map((_, i) => prog.galaxyOpen(i));
+  const leaguesBefore = LEAGUES.map((l) => prog.leagueUnlocked(l));
+  const rec = prog.recordRace(t.id, place);
+  prog.bankRun(prize, prize * 4);
+  updateMenuMeta();
+
+  let note = '';
+  if (rec.newTrophy) note = `🏆 New trophy! You now have ${prog.trophies}.`;
+  const newGalaxy = GALAXIES.findIndex((g, i) => !openBefore[i] && prog.galaxyOpen(i));
+  if (newGalaxy >= 0) note += ` 🔓 ${GALAXIES[newGalaxy].name} is open in the Dodge journey!`;
+  const newLeague = LEAGUES.findIndex((l, i) => !leaguesBefore[i] && prog.leagueUnlocked(l));
+  if (newLeague >= 0) note += ` 🔓 ${LEAGUES[newLeague].name} unlocked!`;
+
+  // Next race: next track in this league, else first track of the next open league.
+  const ti = lg.tracks.indexOf(t);
+  let next = null;
+  if (ti < lg.tracks.length - 1) next = { lg, t: lg.tracks[ti + 1] };
+  else {
+    const li = LEAGUES.indexOf(lg);
+    if (li < LEAGUES.length - 1 && prog.leagueUnlocked(LEAGUES[li + 1])) next = { lg: LEAGUES[li + 1], t: LEAGUES[li + 1].tracks[0] };
+  }
+  state.nextRace = next;
+  const title = place === 1 ? pick(RACE_QUIPS.win) : place <= 3 ? pick(RACE_QUIPS.podium) : pick(RACE_QUIPS.lose);
+  showResults({ results, place, prize, newTrophy: note.trim(), title, trackName: t.name, nextLabel: next ? `NEXT: ${next.t.name} ➜` : null });
+  showScreen('raceResults');
+  audio.muffleMusic(2500, 0.4);
+}
+
+$('btn-race').addEventListener('click', openRaceMenu);
+$('btn-race-back').addEventListener('click', () => { audio.click(); updateMenuMeta(); showScreen('start'); });
+$('btn-race-garage').addEventListener('click', () => openHangar('race'));
+$('btn-rr-retry').addEventListener('click', () => { audio.click(); startRace(state.raceLeague, state.raceTrack); });
+$('btn-rr-next').addEventListener('click', () => { audio.click(); if (state.nextRace) startRace(state.nextRace.lg, state.nextRace.t); });
+$('btn-rr-menu').addEventListener('click', () => { leaveRun(); raceMenu.render(); showScreen('race'); });
+$('btn-race-pause').addEventListener('click', () => { leaveRun(); raceMenu.render(); showScreen('race'); });
+window.addEventListener('keydown', (e) => {
+  if (state.mode === 'race' && (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W')) { e.preventDefault(); raceBoost = true; }
+});
+
+function updateRace(realDt) {
+  const steerRaw = input.update(realDt, race.player ? race.player.x / TRACK_HALF * CONFIG.halfWidth : 0);
+  const steer = steerRaw / CONFIG.halfWidth;
+  race.update(realDt, state.mode === 'race' ? steer : 0, state.mode === 'race' && raceBoost);
+  raceBoost = false;
+  const h = race.hud;
+  if (state.mode === 'race' || state.mode === 'raceDone') {
+    $('rh-place').textContent = ordinal(h.place);
+    $('rh-lap').textContent = `LAP ${h.lap}/${h.laps}`;
+    $('rh-time').textContent = fmtTime(h.time);
+    $('rh-speed').textContent = h.speed;
+    $('rh-boost-fill').style.width = `${h.energy * 100}%`;
+    boostBtn.classList.toggle('empty', h.energy < 0.05);
+    $('rh-draft').classList.toggle('hidden', !h.drafting);
+    mapT -= realDt;
+    if (mapT <= 0) { mapT = 0.05; race.drawMinimap(rhMap, 96); }
+  }
+  audio.setEngine(Math.min(1, h.speed / 400), input.steer, 1);
+  renderer.render(race.scene, race.camera);
+}
+
 // ---------------------------------------------------------------- perf
 const perf = {
   frames: 0, acc: 0, fps: 60, sampleT: 0, sampleFrames: 0, checked: false,
@@ -914,6 +1095,11 @@ function frame(now) {
 
   if (state.mode === 'paused') {
     renderer.render(scene, camera);
+    return;
+  }
+  if (state.mode === 'race' || state.mode === 'raceDone' || state.mode === 'raceResults') {
+    updateRace(realDt);
+    if (DEBUG) debugEl.textContent = `fps ${perf.fps.toFixed(0)}  q:${quality}\ncalls ${renderer.info.render.calls}\n${state.mode} place ${race.playerPlace} v ${race.player.v.toFixed(1)}`;
     return;
   }
 
@@ -1089,6 +1275,8 @@ if (DEBUG) {
       if (journey.isBossWave) onBossIntro(); else onWaveStart();
     },
     unlockAll() { prog.data.galaxy.unlocked = 6; prog.save(); },
+    race,
+    startRace: (li, ti) => startRace(LEAGUES[li], LEAGUES[li].tracks[ti]),
   };
 }
 
