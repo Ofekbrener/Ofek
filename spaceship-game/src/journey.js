@@ -1,3 +1,4 @@
+import { ORB } from './pickups.js';
 import { GALAXIES, WAVES_PER_GALAXY, WAVE_DURATION, ENDLESS_BOSS_EVERY } from './galaxies.js';
 
 const DRAIN_TIME = 2.2;   // world-seconds after a wave's spawning stops before it's "cleared"
@@ -30,10 +31,12 @@ export class Journey {
 
   // Wave index inside the current galaxy (0..3, 4 = boss)
   get localWave() { return this.endless ? this.wave % ENDLESS_BOSS_EVERY : this.wave; }
-  get isBossWave() { return this.localWave >= WAVES_PER_GALAXY; }
+  // Normal waves before the boss (galaxy 1 is shorter to ease new pilots in).
+  get waveCount() { return this.endless ? WAVES_PER_GALAXY : (this.galaxy.waves || WAVES_PER_GALAXY); }
+  get isBossWave() { return this.localWave >= this.waveCount; }
 
   // Difficulty 0..1 across the galaxy's waves, plus endless loops.
-  get waveProgress() { return Math.min(1, this.localWave / (WAVES_PER_GALAXY - 1)); }
+  get waveProgress() { return Math.min(1, this.localWave / Math.max(1, this.waveCount - 1)); }
 
   get level() { return this.gIndex + this.localWave * 0.5 + this.loop * 3; }
 
@@ -106,6 +109,7 @@ export class Journey {
   _startPhase() {
     this.t = 0;
     this.spawnT = 0.6;
+    this.orbGiven = false;
     if (this.isBossWave) {
       this.phase = 'bossIntro';
       this.boss.start(this.galaxy.boss, this.level, this.galaxy.boss.color);
@@ -126,6 +130,11 @@ export class Journey {
         if (this.t > INTRO_TIME) { this._startPhase(); return this.phase === 'wave' ? 'waveStart' : null; }
         return null;
       case 'wave':
+        // Beginner galaxies drop one guaranteed shield orb mid-wave.
+        if (this.galaxy.orbPerWave && !this.endless && !this.orbGiven && this.t > WAVE_DURATION * 0.4) {
+          this.orbGiven = true;
+          this.pickups.spawnAt((Math.random() * 2 - 1) * 2.5, -110, ORB);
+        }
         this._direct(dt);
         if (this.t >= WAVE_DURATION) { this.phase = 'draining'; this.t = 0; }
         return null;

@@ -15,9 +15,10 @@ import { Input } from './input.js';
 import { AudioEngine } from './audio.js';
 import { haptics } from './haptics.js';
 import { store } from './storage.js';
-import { Progression, POWERUPS, drawCards, rankInfo } from './progression.js';
+import { Progression, POWERUPS, UPGRADES, drawCards, rankInfo, upgradeLevels } from './progression.js';
 import { HangarUI, showCards } from './hangar-ui.js';
-import { GALAXIES, WAVES_PER_GALAXY, QUIPS, pick } from './galaxies.js';
+import { ShipPreview } from './ship-preview.js';
+import { GALAXIES, QUIPS, pick } from './galaxies.js';
 import { Journey } from './journey.js';
 import { StarMapUI, starsHTML } from './starmap-ui.js';
 import { RaceSession } from './race/race.js';
@@ -62,6 +63,7 @@ const audio = new AudioEngine();
 const input = new Input(canvas, $('btn-left'), $('btn-right'));
 const prog = new Progression();
 ship.setSkin(prog.skin);
+ship.setUpgrades(upgradeLevels(prog));
 const race = new RaceSession(quality);
 
 // Expanding shockwave ring for score milestones.
@@ -145,8 +147,15 @@ const screens = {
   raceResults: $('screen-race-results'),
   welcome: $('screen-welcome'),
 };
+// Home screen turntable: your pod with every upgrade you own.
+const homePreview = new ShipPreview($('home-preview'));
 function showScreen(name) {
   for (const [k, el] of Object.entries(screens)) el.classList.toggle('hidden', k !== name);
+  if (name === 'start') {
+    homePreview.setSkin(prog.skin);
+    homePreview.setUpgrades(upgradeLevels(prog));
+    homePreview.start();
+  } else homePreview.stop();
 }
 
 function updateMenuMeta() {
@@ -157,7 +166,35 @@ function updateMenuMeta() {
   $('start-xp-fill').style.width = `${(r.into / r.need) * 100}%`;
   $('start-trophies').textContent = prog.trophies;
   $('start-power').textContent = prog.shipPower;
+  renderModeCards();
   renderNextStep();
+}
+
+// Home: progress summary on the Dodge and Race cards.
+function renderModeCards() {
+  const n = GALAXIES.length;
+  const open = prog.galaxyOpen(0);
+  let gi = Math.min(n - 1, prog.unlocked - 1);
+  while (gi > 0 && !prog.galaxyOpen(gi)) gi--;
+  $('btn-start').classList.toggle('locked', !open);
+  $('mc-dodge-name').textContent = open ? GALAXIES[gi].name : '🔒 Locked';
+  $('mc-dodge-meta').textContent = open ? `Galaxy ${gi + 1}/${n} · ★ ${prog.totalStars}` : 'Needs 🏆 1 from a race';
+  $('mc-dodge-fill').style.width = `${(Math.min(n, prog.unlocked - 1) / n) * 100}%`;
+  const next = prog.nextCareerRace;
+  const done = CAREER.filter((c) => { const b = prog.bestPlace(c.track.id); return b && b <= 3; }).length;
+  $('mc-race-name').textContent = next ? next.track.name : 'Career complete! 👑';
+  $('mc-race-meta').textContent = `${next ? `Race ${careerIndex(next.track.id) + 1}/${CAREER.length}` : `${CAREER.length}/${CAREER.length}`} · 🏆 ${prog.trophies}`;
+  $('mc-race-fill').style.width = `${(done / CAREER.length) * 100}%`;
+}
+
+// 🏠 from anywhere: stop what's running and show the Home hub.
+function goHome() {
+  audio.click();
+  handoff.hide();
+  $('rh-pausebox').classList.add('hidden');
+  if (state.mode !== 'menu') leaveRun();
+  updateMenuMeta();
+  showScreen('start');
 }
 
 // ---------------------------------------------------------------- FTUE
@@ -200,7 +237,7 @@ updateMenuMeta();
 const hangarUI = new HangarUI(prog, {
   audio,
   haptics,
-  onChange: () => { ship.setSkin(prog.skin); updateMenuMeta(); },
+  onChange: () => { ship.setSkin(prog.skin); ship.setUpgrades(upgradeLevels(prog)); updateMenuMeta(); },
   onBuy: (id) => onUpgradeBought(id),
 });
 const handoff = new Handoff(audio);
@@ -324,13 +361,15 @@ function startRun(which) {
   stopWorld();
   ship.reset();
   ship.setSkin(prog.skin);
+  ship.setUpgrades(upgradeLevels(prog));
   fx.reset();
   input.reset();
   input.enabled = true;
   hud.reset();
   hud.setPowers({}, POWERUPS);
   hud.show(true);
-  setShields(state.mods.startShields);
+  // Galaxy 1 hands new pilots two free shields.
+  setShields(state.mods.startShields + (which === 0 ? 2 : 0));
   showScreen(null);
   starMap.closeBriefing();
 
@@ -357,7 +396,7 @@ function enterGalaxy(fromMenu = false) {
   state.galaxyCrystals = 0;
   hud.setGalaxy(g.name);
   hud.setLevel(journey.endless ? `ENDLESS W${journey.wave + 1}` : 'GET READY');
-  hud.setProgress(0, 0, WAVES_PER_GALAXY);
+  hud.setProgress(0, 0, journey.waveCount);
   const num = journey.endless ? `∞ ENDLESS · LOOP ${journey.loop + 1}` : `GALAXY ${journey.gIndex + 1} OF ${GALAXIES.length}`;
   hud.galaxyCard(num, g.name, g.tagline);
   setTimeout(() => audio.cluck(1, 0.12), 900);
@@ -395,6 +434,7 @@ function openHangar(from, highlight = null) {
   hangarUI.highlightId = highlight;
   hangarUI.render();
   showScreen('hangar');
+  hangarUI.preview.start();
   const target = from === 'race' || highlight ? $('race-upgrade-list') : $('upgrade-list');
   requestAnimationFrame(() => {
     const glow = highlight && target.querySelector('.ftue-glow');
@@ -405,6 +445,7 @@ function openHangar(from, highlight = null) {
 
 function closeHangar() {
   audio.click();
+  hangarUI.preview.stop();
   updateMenuMeta();
   if (state.returnTo === 'map') starMap.render();
   if (state.returnTo === 'race') raceMenu.render();
@@ -432,7 +473,7 @@ function resumeGame() {
 // ---- waves ----
 function onWaveStart() {
   const lw = journey.localWave;
-  hud.setLevel(journey.endless ? `ENDLESS W${journey.wave + 1}` : `WAVE ${lw + 1}/${WAVES_PER_GALAXY}`);
+  hud.setLevel(journey.endless ? `ENDLESS W${journey.wave + 1}` : `WAVE ${lw + 1}/${journey.waveCount}`);
   hud.showBanner(`WAVE ${lw + 1}`, 1100);
   audio.setLevel(lw + 1);
 }
@@ -445,7 +486,7 @@ function onWaveClear() {
   hud.popup(pick(QUIPS.waveClear), 0.5, 'cyan');
   const cards = drawCards(state.picked);
   if (!cards.length) { advanceWave(); return; }
-  const title = lw + 1 >= WAVES_PER_GALAXY ? 'BOSS INCOMING! GEAR UP' : `WAVE ${lw + 1} CLEAR!`;
+  const title = lw + 1 >= journey.waveCount ? 'BOSS INCOMING! GEAR UP' : `WAVE ${lw + 1} CLEAR!`;
   setTimeout(() => openCards(title, cards), 500);
 }
 
@@ -492,7 +533,7 @@ function advanceWave() {
 function onBossIntro() {
   const b = journey.galaxy.boss;
   hud.setLevel('BOSS');
-  hud.setProgress(WAVES_PER_GALAXY, 0, WAVES_PER_GALAXY);
+  hud.setProgress(journey.waveCount, 0, journey.waveCount);
   hud.showBanner('⚠ WARNING ⚠', 1400);
   setTimeout(() => {
     if (!boss.active) return;
@@ -750,7 +791,7 @@ function retry() {
 $('btn-start').addEventListener('click', openMap);
 $('btn-restart').addEventListener('click', retry);
 $('btn-menu').addEventListener('click', openMap);
-$('btn-quit').addEventListener('click', () => { audio.resume(); toMenu(); });
+$('btn-quit').addEventListener('click', () => { audio.resume(); goHome(); });
 $('btn-resume').addEventListener('click', resumeGame);
 $('btn-pause').addEventListener('click', pauseGame);
 $('btn-hangar').addEventListener('click', () => openHangar('start'));
@@ -758,7 +799,9 @@ $('btn-over-hangar').addEventListener('click', () => openHangar('over'));
 $('btn-map-hangar').addEventListener('click', () => openHangar('map'));
 $('btn-victory-hangar').addEventListener('click', () => openHangar('victory'));
 $('btn-hangar-back').addEventListener('click', closeHangar);
-$('btn-map-back').addEventListener('click', () => { audio.click(); updateMenuMeta(); showScreen('start'); });
+$('btn-map-back').addEventListener('click', goHome);
+$('btn-over-home').addEventListener('click', goHome);
+$('btn-victory-home').addEventListener('click', goHome);
 $('btn-victory-map').addEventListener('click', openMap);
 $('btn-next-galaxy').addEventListener('click', () => {
   audio.click();
@@ -994,7 +1037,7 @@ function startRace(league, track) {
   const ci = careerIndex(track.id);
   // Beginner assist: after 2 failed attempts at race 1, rivals ease off a little.
   const assist = ci === 0 && (raceFails[track.id] || 0) >= 2;
-  race.load(league, track, g, prog.raceStats, prog.skin, { careerIndex: ci, tutorial: ci === 0, assist });
+  race.load(league, track, g, prog.raceStats, prog.skin, { careerIndex: ci, tutorial: ci === 0, assist, upgrades: upgradeLevels(prog) });
   input.reset();
   input.enabled = true;
   input.raceMode = true;
@@ -1157,7 +1200,9 @@ $('btn-welcome-go').addEventListener('click', () => {
 });
 // First launch: welcome + the core loop instead of the start menu.
 if (needsWelcome()) showScreen('welcome');
-$('btn-race-back').addEventListener('click', () => { audio.click(); updateMenuMeta(); showScreen('start'); });
+$('btn-race-back').addEventListener('click', goHome);
+$('btn-rr-home').addEventListener('click', goHome);
+$('rbtn-home').addEventListener('click', goHome);
 $('btn-race-garage').addEventListener('click', () => openHangar('race'));
 $('btn-rr-retry').addEventListener('click', () => { audio.click(); startRace(state.raceLeague, state.raceTrack); });
 $('btn-rr-next').addEventListener('click', () => { audio.click(); if (state.nextRace) startRace(state.nextRace.lg, state.nextRace.t); });
@@ -1170,6 +1215,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 function updateRace(realDt) {
+  if (!race.player) { renderer.render(scene, camera); return; }
   const steer = state.mode === 'race' ? input.raceSteer() : 0;
   const live = state.mode === 'race';
   race.update(realDt, steer, live && raceBoost, live && raceItem);
@@ -1270,7 +1316,7 @@ function updateRun(dt, realDt) {
   onScoreProgress();
   hud.setScore(state.score);
   if (boss.active) hud.setBossHp(boss.hpFrac);
-  hud.setProgress(Math.min(journey.localWave, WAVES_PER_GALAXY), journey.waveFrac, WAVES_PER_GALAXY);
+  hud.setProgress(Math.min(journey.localWave, journey.waveCount), journey.waveFrac, journey.waveCount);
 }
 
 // Background drift for menus / post-run screens.
@@ -1297,7 +1343,7 @@ function frame(now) {
   }
   if (state.mode === 'race' || state.mode === 'raceDone' || state.mode === 'raceResults') {
     updateRace(realDt);
-    if (DEBUG) debugEl.textContent = `fps ${perf.fps.toFixed(0)}  q:${quality}\ncalls ${renderer.info.render.calls}\n${state.mode} place ${race.playerPlace} v ${race.player.v.toFixed(1)}`;
+    if (DEBUG) debugEl.textContent = `fps ${perf.fps.toFixed(0)}  q:${quality}\ncalls ${renderer.info.render.calls}\n${state.mode} place ${race.playerPlace} v ${race.player ? race.player.v.toFixed(1) : '-'}`;
     return;
   }
 
@@ -1465,6 +1511,17 @@ if (DEBUG) {
   window.__game = {
     state, ship, obstacles, chickens, pickups, boss, journey, fx, input, prog,
     addCrystals(n) { prog.data.crystals += n; prog.save(); updateMenuMeta(); },
+    // Set upgrade levels directly, e.g. setUpgrades({engine: 5, shield: 3}); 'max' maxes everything.
+    setUpgrades(levels) {
+      for (const u of [...UPGRADES, ...RACE_UPGRADES]) {
+        if (levels === 'max') prog.data.upgrades[u.id] = u.max;
+        else if (levels && u.id in levels) prog.data.upgrades[u.id] = Math.min(u.max, levels[u.id] | 0);
+      }
+      prog.save();
+      ship.setUpgrades(upgradeLevels(prog));
+      hangarUI.render();
+      updateMenuMeta();
+    },
     // Jump straight into a galaxy/wave (wave 4 = boss).
     jumpTo(g, wave = 0) {
       startRun(g);

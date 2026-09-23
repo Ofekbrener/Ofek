@@ -1,95 +1,121 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
+import { mergeColored, tf } from './geo.js';
 
-// Procedural low-poly ship, pointing toward -Z.
+// Player egg-pod: a rocket-powered egg (like the chicken rivals') flown by a
+// human pilot in a helmet under a glass bubble. Points toward -Z.
+//
+// Draw calls: hull, accent band, glass dome (skin materials, recoloured by
+// setSkin), one merged vertex-coloured mesh for the pilot + details + every
+// upgrade part, one merged unlit mesh for glowing upgrade parts, one additive
+// flame mesh, one instanced mesh for the shield-emitter orbs, and the shield
+// bubble. The two merged upgrade meshes are only rebuilt when the upgrade
+// levels (or the skin) change.
+
+const EGG_R = 0.56;    // max radius
+const EGG_A = 0.85;    // half length (nose at z = -A, tail at z = +A)
+const FLAT = 0.75;     // vertical squash of the egg cross-section
+const MODEL_SCALE = 1.45;
+
+const DARK = 0x2a3350;
+const METAL = 0x8a93a8;
+const ARMOR = 0x5a6378;
+const SUIT = 0xff7a1a;
+const HELMET = 0xf4f6fb;
+
+const UPGRADE_IDS = ['engine', 'accel', 'grip', 'tank', 'armor', 'shield', 'magnet', 'thrusters', 'booster', 'focus', 'lucky'];
+
+// Egg profile radius for u in [-1 (tail), 1 (nose)]; slightly pointier nose.
+function eggR(u) {
+  return EGG_R * Math.sqrt(Math.max(0, 1 - u * u)) * (1 - 0.14 * u);
+}
+
+// Surface of revolution of the egg profile, already in model space.
+// u0..u1: slice along the axis; phi0/phiLen: slice around it (0 = top, PI/2 = +X).
+function eggShell(u0, u1, { phi0 = 0, phiLen = Math.PI * 2, scale = 1, segs = 16, steps = 12 } = {}) {
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const u = u0 + (u1 - u0) * (i / steps);
+    pts.push(new THREE.Vector2(Math.max(0.0005, eggR(u)) * scale, u * EGG_A * scale));
+  }
+  const g = new THREE.LatheGeometry(pts, segs, phi0, phiLen);
+  g.rotateX(-Math.PI / 2);   // lathe +Y (nose) -> -Z, lathe +Z (phi 0) -> +Y
+  g.scale(1, FLAT, 1);
+  return g;
+}
+
+// Point on the egg surface (model space) at axial u and angle phi, pushed out by `out`.
+function eggPoint(u, phi, out = 1) {
+  const r = eggR(u) * out;
+  return [Math.sin(phi) * r, Math.cos(phi) * r * FLAT, -u * EGG_A];
+}
+
+const cyl = (rt, rb, h, seg = 10) => new THREE.CylinderGeometry(rt, rb, h, seg);
+const ico = (r, d = 1) => new THREE.IcosahedronGeometry(r, d);
+
 export class Ship {
   constructor(scene) {
     this.group = new THREE.Group();
     this.model = new THREE.Group();
     this.group.add(this.model);
     scene.add(this.group);
+    this.pod = new THREE.Group();
+    this.pod.position.y = -0.12;
+    this.model.add(this.pod);
 
-    const hull = this.hullMat = new THREE.MeshStandardMaterial({ color: 0xd8e2f0, metalness: 0.55, roughness: 0.35, flatShading: true });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x2a3350, metalness: 0.6, roughness: 0.5, flatShading: true });
-    const accent = this.accentMat = new THREE.MeshStandardMaterial({ color: 0xff3ca8, emissive: 0xff3ca8, emissiveIntensity: 0.6, flatShading: true });
-    const glass = this.glassMat = new THREE.MeshStandardMaterial({ color: 0x3cf2ff, emissive: 0x1aa6c4, emissiveIntensity: 1.2, metalness: 0.2, roughness: 0.1 });
-    this.glowMat = new THREE.MeshBasicMaterial({ color: 0x9ff8ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+    // Skin materials (recoloured by setSkin).
+    this.hullMat = new THREE.MeshStandardMaterial({ color: 0xd8e2f0, metalness: 0.45, roughness: 0.35, flatShading: true });
+    this.accentMat = new THREE.MeshStandardMaterial({ color: 0xff3ca8, emissive: 0xff3ca8, emissiveIntensity: 0.6, flatShading: true });
+    this.glassMat = new THREE.MeshStandardMaterial({
+      color: 0x3cf2ff, emissive: 0x1aa6c4, emissiveIntensity: 0.5, metalness: 0.1, roughness: 0.05,
+      transparent: true, opacity: 0.38, depthWrite: false,
+    });
+    this.glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, color: 0x9ff8ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+    this.partsMat = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.35, roughness: 0.45, flatShading: true });
+    this.litMat = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
 
-    // Fuselage: a stretched octagonal cone.
-    const body = new THREE.Mesh(new THREE.ConeGeometry(0.42, 2.2, 8), hull);
-    body.rotation.x = -Math.PI / 2;
-    body.scale.set(1, 1, 0.55);
-    this.model.add(body);
+    // Egg hull
+    const hull = new THREE.Mesh(eggShell(-1, 1, { segs: 16, steps: 14 }), this.hullMat);
+    this.pod.add(hull);
+    // Accent band around the waist, just behind the cockpit.
+    this.band = new THREE.Mesh(eggShell(-0.6, -0.47, { scale: 1.03, segs: 16, steps: 2 }), this.accentMat);
+    this.pod.add(this.band);
 
-    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 0.5, 8), dark);
-    tail.rotation.x = Math.PI / 2;
-    tail.position.z = 1.3;
-    tail.scale.set(1, 1, 0.55);
-    this.model.add(tail);
+    // Glass bubble dome over the pilot.
+    const domeGeo = new THREE.SphereGeometry(0.34, 18, 9, 0, Math.PI * 2, 0, Math.PI / 2);
+    domeGeo.scale(0.95, 1.2, 1.3);
+    this.dome = new THREE.Mesh(domeGeo, this.glassMat);
+    this.dome.position.set(0, 0.3, -0.12);
+    this.dome.renderOrder = 2;
+    this.pod.add(this.dome);
 
-    // Cockpit
-    const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), glass);
-    cockpit.scale.set(0.9, 0.8, 2.0);
-    cockpit.position.set(0, 0.12, -0.15);
-    this.model.add(cockpit);
+    // Upgrade-driven meshes.
+    this.parts = new THREE.Mesh(new THREE.BufferGeometry(), this.partsMat);
+    this.lit = new THREE.Mesh(new THREE.BufferGeometry(), this.litMat);
+    this.flame = new THREE.Mesh(new THREE.BufferGeometry(), this.glowMat);
+    this.flameZ = 0.8;
+    this.flame.position.z = this.flameZ;
+    this.pod.add(this.parts, this.lit, this.flame);
 
-    // Wings: a flat swept triangle, mirrored.
-    const wingShape = new THREE.Shape();
-    wingShape.moveTo(0, -0.2);
-    wingShape.lineTo(1.35, 0.75);
-    wingShape.lineTo(1.35, 1.05);
-    wingShape.lineTo(0, 0.95);
-    wingShape.closePath();
-    const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.06, bevelEnabled: false });
-    wingGeo.rotateX(Math.PI / 2);
-    wingGeo.translate(0.2, 0.02, 0);
-    const wingR = new THREE.Mesh(wingGeo, hull);
-    const wingL = new THREE.Mesh(wingGeo, hull);
-    wingL.scale.x = -1;
-    this.model.add(wingR, wingL);
+    this.orbs = new THREE.InstancedMesh(mergeColored([
+      { geo: ico(0.085, 1), color: 0xffffff },
+      { geo: tf(new THREE.TorusGeometry(0.13, 0.018, 4, 14), { r: [Math.PI / 2, 0, 0] }), color: 0x6fb8ff },
+    ]), new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }), 3);
+    this.orbs.count = 0;
+    this.orbs.frustumCulled = false;
+    this.pod.add(this.orbs);
+    this._orbM = new THREE.Matrix4();
 
-    // Wing tip accents
-    const tipGeo = new THREE.BoxGeometry(0.08, 0.14, 0.5);
-    for (const s of [-1, 1]) {
-      const tip = new THREE.Mesh(tipGeo, accent);
-      tip.position.set(1.55 * s, 0.03, 0.92);
-      this.model.add(tip);
-    }
-
-    // Tail fin
-    const finShape = new THREE.Shape();
-    finShape.moveTo(0, 0);
-    finShape.lineTo(0.6, 0);
-    finShape.lineTo(0.55, 0.45);
-    finShape.lineTo(0.35, 0.45);
-    finShape.closePath();
-    const finGeo = new THREE.ExtrudeGeometry(finShape, { depth: 0.05, bevelEnabled: false });
-    finGeo.rotateY(-Math.PI / 2);
-    const fin = new THREE.Mesh(finGeo, accent);
-    fin.position.set(0.025, 0.12, 0.85);
-    this.model.add(fin);
-
-    // Twin engines with glowing nozzles
-    this.nozzles = [];
-    const engGeo = new THREE.CylinderGeometry(0.16, 0.2, 0.7, 8);
-    engGeo.rotateX(Math.PI / 2);
-    const glowGeo = new THREE.CircleGeometry(0.15, 12);
-    for (const s of [-1, 1]) {
-      const eng = new THREE.Mesh(engGeo, dark);
-      eng.position.set(0.45 * s, -0.02, 1.15);
-      this.model.add(eng);
-      const glow = new THREE.Mesh(glowGeo, this.glowMat);
-      glow.position.set(0.45 * s, -0.02, 1.51);
-      this.model.add(glow);
-      this.nozzles.push(glow);
-    }
+    // Trail origins (read by nozzleWorld / scaled by race.js).
+    this.nozzles = [new THREE.Object3D(), new THREE.Object3D()];
+    this.pod.add(this.nozzles[0], this.nozzles[1]);
 
     // Engine light illuminating the ship + nearby debris
     this.engineLight = new THREE.PointLight(0x4fdcff, 6, 8, 2);
     this.engineLight.position.set(0, 0.2, 2.0);
     this.group.add(this.engineLight);
 
-    this.model.scale.setScalar(0.8);
+    this.model.scale.setScalar(MODEL_SCALE);
 
     // Shield bubble: fresnel rim glow, additive.
     this.shieldMat = new THREE.ShaderMaterial({
@@ -115,7 +141,7 @@ export class Ship {
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     });
     this.shield = new THREE.Mesh(new THREE.SphereGeometry(1.35, 24, 16), this.shieldMat);
-    this.shield.scale.set(1.25, 0.6, 1.2);
+    this.shield.scale.set(1.2, 0.8, 1.3);
     this.shield.visible = false;
     this.group.add(this.shield);
     this.shieldTarget = 0;
@@ -132,6 +158,11 @@ export class Ship {
     this.targetX = 0;
     this.time = 0;
     this._tmp = new THREE.Vector3();
+
+    this.skinColors = { hull: 0xd8e2f0, accent: 0xff3ca8, glass: 0x3cf2ff, trail: [0.45, 0.9, 1] };
+    this.levels = {};
+    for (const id of UPGRADE_IDS) this.levels[id] = 0;
+    this._buildParts();
     this.reset();
   }
 
@@ -157,6 +188,271 @@ export class Ship {
     this.engineLight.color.setRGB(skin.trail[0], skin.trail[1], skin.trail[2]);
     this.trailColor = skin.trail;
     this.trailColor2 = skin.trail2;
+    // Some upgrade parts carry the skin's colours: rebuild only if they changed.
+    const s = this.skinColors;
+    if (s.hull !== skin.hull || s.accent !== skin.accent || s.glass !== skin.glass || s.trail.join() !== skin.trail.join()) {
+      this.skinColors = { hull: skin.hull, accent: skin.accent, glass: skin.glass, trail: skin.trail.slice() };
+      this._buildParts();
+    }
+  }
+
+  /**
+   * Show purchased upgrades on the pod. `levels` = {engine, accel, grip, tank,
+   * armor, shield, magnet, thrusters, booster, focus, lucky}; missing = 0.
+   * Rebuilds the merged geometry only when something changed.
+   */
+  setUpgrades(levels = {}) {
+    let changed = false;
+    for (const id of UPGRADE_IDS) {
+      const v = Math.max(0, (levels[id] | 0));
+      if (this.levels[id] !== v) { this.levels[id] = v; changed = true; }
+    }
+    if (changed) this._buildParts();
+    return changed;
+  }
+
+  // Engine flame length (race.js / preview drive this directly).
+  setThrust(s) {
+    for (const n of this.nozzles) n.scale.setScalar(s);
+    this.flame.scale.set(1, 1, s);
+  }
+
+  // Per-frame animation of upgrade parts (orbiting shield emitters).
+  animate(dt) {
+    this._animT = (this._animT || 0) + dt;
+    const n = this.orbs.count;
+    if (!n) return;
+    const t = this._animT;
+    const m = this._orbM;
+    for (let i = 0; i < n; i++) {
+      const a = t * 1.8 + (i / n) * Math.PI * 2;
+      m.makeRotationY(-a + t * 2);
+      m.setPosition(Math.cos(a) * 0.95, 0.22 + Math.sin(t * 3 + i * 2) * 0.08, Math.sin(a) * 1.1);
+      this.orbs.setMatrixAt(i, m);
+    }
+    this.orbs.instanceMatrix.needsUpdate = true;
+  }
+
+  // ---------------------------------------------------------------- build
+  _buildParts() {
+    const L = this.levels;
+    const S = this.skinColors;
+    const solid = [];
+    const lit = [];
+    const flame = [];
+    const P = (geo, color) => solid.push({ geo, color });
+    const G = (geo, color) => lit.push({ geo, color });
+    const trailHex = new THREE.Color(S.trail[0], S.trail[1], S.trail[2]).getHex();
+    const FZ = this.flameZ;
+    // Flame: disc + cone at nozzle (x, y, z) facing +Z, radius r, length len.
+    const F = (x, y, z, r, len) => {
+      flame.push({ geo: tf(new THREE.CircleGeometry(r, 10), { p: [x, y, z - FZ + 0.005] }), color: 0x5a5a5a });
+      flame.push({ geo: tf(new THREE.CircleGeometry(r * 0.55, 8), { p: [x, y, z - FZ + 0.008] }), color: 0xcfcfcf });
+      // Open cone fading from bright at the nozzle to black (= invisible, additive) at the tip.
+      const cone = new THREE.ConeGeometry(r * 0.75, len, 8, 3, true);
+      const cp = cone.attributes.position;
+      const cc = new Float32Array(cp.count * 3);
+      for (let i = 0; i < cp.count; i++) {
+        const t = (cp.getY(i) + len / 2) / len;
+        const b = Math.pow(1 - t, 2) * 0.6;
+        cc[i * 3] = cc[i * 3 + 1] = cc[i * 3 + 2] = b;
+      }
+      cone.setAttribute('color', new THREE.BufferAttribute(cc, 3));
+      flame.push({ geo: tf(cone, { r: [Math.PI / 2, 0, 0], p: [x, y, z - FZ + len / 2] }), color: null });
+    };
+
+    // ---- pilot (human, helmet + visor) ----
+    P(tf(ico(0.16, 1), { s: [1.25, 0.75, 0.95], p: [0, 0.36, -0.06] }), SUIT);           // shoulders
+    P(tf(ico(0.135, 2), { p: [0, 0.52, -0.1] }), HELMET);                                   // helmet
+    P(tf(new THREE.BoxGeometry(0.035, 0.03, 0.24), { p: [0, 0.645, -0.08] }), S.accent);   // helmet ridge
+    P(tf(cyl(0.05, 0.05, 0.05, 8), { r: [0, 0, Math.PI / 2], p: [0.135, 0.51, -0.08] }), 0x3a4460); // ear cups
+    P(tf(cyl(0.05, 0.05, 0.05, 8), { r: [0, 0, Math.PI / 2], p: [-0.135, 0.51, -0.08] }), 0x3a4460);
+    const visorGeo = () => new THREE.SphereGeometry(0.142, 14, 5, Math.PI * 1.5 - 0.95, 1.9, 1.2, 0.65);
+    P(tf(visorGeo(), { p: [0, 0.52, -0.1] }), L.focus ? 0x0d1a33 : 0xffb13c);              // gold visor (dark when focus lens glows)
+    // cockpit rim
+    P(tf(new THREE.TorusGeometry(0.34, 0.03, 5, 24), { r: [Math.PI / 2, 0, 0], s: [0.95, 1.3, 1], p: [0, 0.3, -0.12] }), DARK);
+
+    // ---- base hull details ----
+    // central rear engine (bigger per engine level)
+    const eL = L.engine;
+    const eR = 0.2 + eL * 0.03;
+    const eLen = 0.3 + eL * 0.05;
+    const eZ = EGG_A - 0.08 + eLen / 2;
+    P(tf(cyl(eR * 0.9, eR * 1.1, eLen, 14), { r: [Math.PI / 2, 0, 0], p: [0, 0, eZ] }), DARK);
+    P(tf(new THREE.TorusGeometry(eR * 0.95, 0.03, 5, 16), { p: [0, 0, eZ + eLen / 2] }), METAL);
+    for (let i = 0; i < eL; i++) {
+      const z = eZ + eLen / 2 - 0.06 - i * (eLen - 0.1) / Math.max(1, eL);
+      G(tf(new THREE.TorusGeometry(eR * 1.1 + 0.01, 0.022, 5, 18), { p: [0, 0, z] }), trailHex);
+    }
+    F(0, 0, eZ + eLen / 2, eR * 0.7, 0.45 + eL * 0.05 + L.accel * 0.04);
+
+    // twin trail nozzles (lower sides)
+    for (const s of [-1, 1]) {
+      P(tf(cyl(0.075, 0.095, 0.32, 10), { r: [Math.PI / 2, 0, 0], p: [0.3 * s, -0.17, 0.62] }), DARK);
+      P(tf(new THREE.TorusGeometry(0.08, 0.02, 4, 12), { p: [0.3 * s, -0.17, 0.78] }), METAL);
+      F(0.3 * s, -0.17, 0.78, 0.07, 0.32 + L.accel * 0.05);
+    }
+    this.nozzles[0].position.set(-0.3, -0.17, 0.8);
+    this.nozzles[1].position.set(0.3, -0.17, 0.8);
+
+    // stubby winglets (like the hens' pods) unless the grip stabilizers replace them
+    if (!L.grip) {
+      for (const s of [-1, 1]) {
+        P(tf(new THREE.ConeGeometry(0.2, 0.36, 4), { r: [0, 0, -Math.PI / 2 * s], s: [1, 1, 0.25], p: [0.56 * s, -0.08, 0.35] }), DARK);
+      }
+    }
+
+    // ---- accel: extra nozzles around the tail ----
+    const accelAng = [Math.PI / 2, Math.PI / 2 + 0.75, Math.PI / 2 - 0.75, Math.PI * 1.5, Math.PI / 2 + 1.5];
+    const accelR = eR + 0.16;
+    for (let i = 0; i < Math.min(5, L.accel); i++) {
+      let a = accelAng[i];
+      if (i === 4) a = Math.PI / 2 - 1.5;
+      const x = Math.cos(a) * accelR * 1.1, y = Math.sin(a) * accelR * 0.85;
+      const z = EGG_A - 0.05;
+      P(tf(cyl(0.05, 0.065, 0.26, 8), { r: [Math.PI / 2, 0, 0], p: [x, y, z] }), DARK);
+      P(tf(new THREE.TorusGeometry(0.055, 0.016, 4, 10), { p: [x, y, z + 0.13] }), S.accent);
+      F(x, y, z + 0.13, 0.05, 0.28 + L.accel * 0.05);
+    }
+
+    // ---- grip: side stabilizer fins with glowing tips ----
+    if (L.grip) {
+      const span = 0.28 + L.grip * 0.1;
+      for (const s of [-1, 1]) {
+        const x0 = 0.46;
+        P(tf(new THREE.ConeGeometry(0.2 + L.grip * 0.015, span, 4), { r: [0, 0, -Math.PI / 2 * s], s: [1, 1, 0.22], p: [(x0 + span / 2) * s, -0.02, 0.36] }), S.hull);
+        // swept trailing edge strip (dark)
+        P(tf(new THREE.BoxGeometry(span, 0.03, 0.06), { p: [(x0 + span / 2) * s, -0.02, 0.5] }), DARK);
+        // vertical tip plate + glow
+        P(tf(new THREE.BoxGeometry(0.035, 0.18 + L.grip * 0.02, 0.26), { p: [(x0 + span) * s, 0.02, 0.4] }), DARK);
+        G(tf(ico(0.05 + L.grip * 0.006, 0), { s: [0.8, 1, 2.2], p: [(x0 + span + 0.02) * s, 0.02, 0.4] }), S.accent);
+      }
+    }
+
+    // ---- tank: side boost canisters ----
+    if (L.tank) {
+      const r = 0.07 + L.tank * 0.02;
+      const len = 0.34 + L.tank * 0.07;
+      for (const s of [-1, 1]) {
+        const x = (0.5 + r * 0.7) * s, y = -0.2, z = 0.12;
+        P(tf(cyl(r, r, len, 10), { r: [Math.PI / 2, 0, 0], p: [x, y, z] }), S.accent);
+        P(tf(ico(r, 1), { s: [1, 1, 0.6], p: [x, y, z - len / 2] }), METAL);
+        P(tf(cyl(r * 0.8, r, 0.08, 10), { r: [Math.PI / 2, 0, 0], p: [x, y, z + len / 2 + 0.04] }), DARK);
+        G(tf(new THREE.TorusGeometry(r * 1.02, 0.02, 4, 12), { p: [x, y, z] }), 0x5dffb0);
+        if (L.tank >= 3) G(tf(new THREE.TorusGeometry(r * 1.02, 0.02, 4, 12), { p: [x, y, z - len * 0.25] }), 0x5dffb0);
+        if (L.tank >= 5) G(tf(new THREE.TorusGeometry(r * 1.02, 0.02, 4, 12), { p: [x, y, z + len * 0.25] }), 0x5dffb0);
+      }
+    }
+
+    // ---- armor plates: Lv1 nose, Lv2 sides, Lv3 full ----
+    if (L.armor >= 1) {
+      P(eggShell(0.62, 1, { scale: 1.05, segs: 16, steps: 5 }), ARMOR);
+      P(tf(new THREE.TorusGeometry(eggR(0.62) * 1.05, 0.02, 4, 16), { s: [1, FLAT, 1], p: [0, 0, -0.62 * EGG_A * 1.05] }), METAL);
+    }
+    if (L.armor >= 2) {
+      for (const c of [Math.PI / 2, Math.PI * 1.5]) {
+        P(eggShell(-0.55, 0.5, { phi0: c - 0.55, phiLen: 1.1, scale: 1.05, segs: 5, steps: 6 }), ARMOR);
+        for (const u of [-0.4, 0.05, 0.4]) {
+          const pt = eggPoint(u, c, 1.07);
+          P(tf(ico(0.025, 0), { p: pt }), METAL);
+        }
+      }
+    }
+    if (L.armor >= 3) {
+      P(eggShell(-0.88, -0.25, { phi0: -0.6, phiLen: 1.2, scale: 1.045, segs: 5, steps: 5 }), ARMOR);   // top rear
+      P(eggShell(-0.6, 0.6, { phi0: Math.PI - 0.7, phiLen: 1.4, scale: 1.045, segs: 5, steps: 6 }), ARMOR);   // belly
+      for (const u of [-0.8, -0.55, -0.3]) P(tf(ico(0.025, 0), { p: eggPoint(u, 0, 1.065) }), METAL);
+      // armored fin on top (spine)
+      P(tf(new THREE.ConeGeometry(0.16, 0.34, 4), { s: [0.2, 1, 1], p: [0, 0.4, 0.52], r: [0.5, 0, 0] }), ARMOR);
+    }
+
+    // ---- magnet: antenna with a horseshoe magnet ----
+    if (L.magnet) {
+      const mast = 0.2 + L.magnet * 0.04;
+      const base = [0.2, 0.3, 0.46];
+      P(tf(cyl(0.018, 0.026, mast, 6), { p: [base[0], base[1] + mast / 2, base[2]] }), METAL);
+      const R = 0.06 + L.magnet * 0.018;
+      const tube = 0.025 + L.magnet * 0.006;
+      const top = base[1] + mast + R;
+      P(tf(new THREE.TorusGeometry(R, tube, 6, 12, Math.PI), { r: [0, 0, Math.PI], p: [base[0], top, base[2]] }), 0xe8262f);
+      for (const s of [-1, 1]) {
+        P(tf(cyl(tube, tube, 0.07, 6), { p: [base[0] + R * s, top + 0.035, base[2]] }), 0xe8ecf5);
+      }
+      if (L.magnet >= 3) G(tf(ico(0.02, 0), { p: [base[0], top + 0.1, base[2]] }), 0xffe066);
+    }
+
+    // ---- thrusters: small side RCS pods ----
+    if (L.thrusters) {
+      const pairs = [1, 1, 2, 2, 3][Math.min(5, L.thrusters) - 1];
+      const sz = 0.85 + L.thrusters * 0.1;
+      const zs = [-0.3, -0.02, -0.55];
+      for (let k = 0; k < pairs; k++) {
+        const z = zs[k];
+        const u = -z / EGG_A;
+        const rx = eggR(u);
+        for (const s of [-1, 1]) {
+          const x = (rx - 0.02) * s, y = 0.06;
+          P(tf(cyl(0.045 * sz, 0.055 * sz, 0.14 * sz, 8), { r: [0, 0, Math.PI / 2], p: [x + 0.06 * sz * s, y, z] }), DARK);
+          G(tf(new THREE.CircleGeometry(0.035 * sz, 8), { r: [0, Math.PI / 2 * s, 0], p: [x + 0.135 * sz * s, y, z] }), trailHex);
+          P(tf(cyl(0.04 * sz, 0.03 * sz, 0.1 * sz, 8), { r: [Math.PI / 2, 0, 0], p: [x + 0.06 * sz * s, y, z + 0.1 * sz] }), METAL);
+        }
+      }
+    }
+
+    // ---- booster: glowing accent racing stripes (1 per level) ----
+    const stripes = [[0.3, -0.85, 0.8], [-0.3, -0.85, 0.8], [0.62, -0.8, 0.75], [-0.62, -0.8, 0.75], [0, -0.85, -0.42]];
+    for (let i = 0; i < Math.min(5, L.booster); i++) {
+      const [phi, u0, u1] = stripes[i];
+      G(eggShell(u0, u1, { phi0: phi - 0.045, phiLen: 0.09, scale: 1.06 + (L.armor >= 2 ? 0.02 : 0), segs: 1, steps: 12 }), S.accent);
+    }
+
+    // ---- focus: glowing visor + targeting lens on the nose ----
+    if (L.focus) {
+      const f = Math.min(3, L.focus);
+      const vc = new THREE.Color(0x3cf2ff).multiplyScalar(0.45 + f * 0.2).getHex();
+      G(tf(new THREE.SphereGeometry(0.146, 14, 3, Math.PI * 1.5 - 0.8, 1.6, 1.38, 0.08 + f * 0.05), { p: [0, 0.52, -0.1] }), vc);
+      const nz = -EGG_A * (L.armor ? 1.05 : 1) - 0.02;
+      const lr = 0.05 + f * 0.02;
+      P(tf(cyl(lr * 1.3, lr * 1.5, 0.06, 12), { r: [Math.PI / 2, 0, 0], p: [0, 0, nz + 0.02] }), DARK);
+      G(tf(new THREE.CircleGeometry(lr, 12), { r: [0, Math.PI, 0], p: [0, 0, nz - 0.012] }), 0xff3a4a);
+      G(tf(new THREE.TorusGeometry(lr * 1.35, 0.012, 4, 16), { p: [0, 0, nz - 0.015] }), 0xff8a5c);
+      if (f >= 2) {
+        G(tf(new THREE.BoxGeometry(lr * 3.4, 0.01, 0.01), { p: [0, 0, nz - 0.02] }), 0xffd0c0);
+        G(tf(new THREE.BoxGeometry(0.01, lr * 3.4, 0.01), { p: [0, 0, nz - 0.02] }), 0xffd0c0);
+      }
+      if (f >= 3) G(tf(new THREE.TorusGeometry(lr * 2, 0.012, 4, 20), { p: [0, 0, nz - 0.01] }), 0xff8a5c);
+    }
+
+    // ---- lucky: feathers on the helmet ----
+    const feathers = [[0, 0xffd35c], [0.38, 0x5dff8a], [-0.38, 0x5dff8a]];
+    for (let i = 0; i < Math.min(3, L.lucky); i++) {
+      const [a, col] = feathers[i];
+      const len = 0.2 - i * 0.02;
+      const g = new THREE.ConeGeometry(0.035, len, 5);
+      g.translate(0, len / 2, 0);
+      g.scale(1, 1, 0.35);
+      g.rotateX(0.75);
+      g.rotateZ(a);
+      g.translate(0, 0.63, -0.06);
+      P(g, col);
+      G(tf(ico(0.018, 0), { p: [Math.sin(-a) * 0.02, 0.645, -0.06] }), col);
+    }
+
+    // shield emitters (orbs)
+    this.orbs.count = Math.min(3, L.shield);
+
+    this._swap(this.parts, solid);
+    this._swap(this.lit, lit);
+    this._swap(this.flame, flame);
+    this.animate(0);
+  }
+
+  _swap(mesh, parts) {
+    const old = mesh.geometry;
+    mesh.geometry = parts.length ? mergeColored(parts) : new THREE.BufferGeometry();
+    mesh.visible = parts.length > 0;
+    old.dispose();
+    for (const p of parts) p.geo.dispose();
   }
 
   // Show / hide the shield bubble (fades smoothly).
@@ -218,9 +514,9 @@ export class Ship {
 
     // Engine flicker scales with speed.
     const flicker = 0.85 + Math.random() * 0.3;
-    const s = (0.9 + speedNorm * 0.6) * flicker;
-    for (const n of this.nozzles) n.scale.setScalar(s);
+    this.setThrust((0.9 + speedNorm * 0.6) * flicker);
     this.engineLight.intensity = (5 + speedNorm * 5) * flicker;
+    this.animate(realDt);
   }
 
   // World-space nozzle positions for particle emission.

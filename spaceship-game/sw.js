@@ -1,6 +1,6 @@
 // Offline support. Network-first so players always get the latest release when
 // online; the cache is only a fallback for offline play. Bump VERSION on release.
-const VERSION = 'void-runner-v6';
+const VERSION = 'void-runner-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -15,7 +15,9 @@ const ASSETS = [
   './src/renderer.js',
   './src/lighting.js',
   './src/environment.js',
+  './src/worlds.js',
   './src/ship.js',
+  './src/ship-preview.js',
   './src/obstacles.js',
   './src/particles.js',
   './src/fx.js',

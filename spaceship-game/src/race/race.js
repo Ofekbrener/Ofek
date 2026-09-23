@@ -3,6 +3,7 @@ import { Track, TRACK_HALF } from './track.js';
 import { RIVALS } from './leagues.js';
 import { Ship } from '../ship.js';
 import { Particles } from '../particles.js';
+import { createSky, createHero, applyHero, createWeather, applyWeatherStyle, toSRGB, setStyle } from '../worlds.js';
 import { eggPodGeometry, chickenBodyGeometry, wingGeometry, mergeColored, tf } from '../geo.js';
 
 const COUNTDOWN = 3.2;
@@ -25,7 +26,7 @@ export class RaceSession {
     this.scene.add(this.hemi, this.key);
 
     this.particles = new Particles(this.scene, quality === 'high' ? 1000 : 600);
-    this._buildBackdrop();
+    this._buildBackdrop(quality);
 
     // Player ship lives inside a root that we orient along the track.
     this.ship = new Ship(this.scene);
@@ -97,7 +98,7 @@ export class RaceSession {
     this.shake = 0;
   }
 
-  _buildBackdrop() {
+  _buildBackdrop(quality) {
     const N = 1500;
     const pos = new Float32Array(N * 3);
     for (let i = 0; i < N; i++) {
@@ -110,18 +111,50 @@ export class RaceSession {
     this.stars = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xbfd6ff, size: 2, sizeAttenuation: false, fog: false }));
     this.scene.add(this.stars);
 
-    this.planetMat = new THREE.MeshStandardMaterial({ color: 0x2fd6c3, emissive: 0x0a3a44, roughness: 0.8, fog: false });
-    this.planet = new THREE.Mesh(new THREE.SphereGeometry(120, 32, 20), this.planetMat);
-    this.planet.position.set(-500, 140, -600);
-    this.ringMat = new THREE.MeshBasicMaterial({ color: 0xff9ad5, transparent: true, opacity: 0.4, side: THREE.DoubleSide, fog: false });
-    const ring = new THREE.Mesh(new THREE.RingGeometry(170, 250, 64), this.ringMat);
-    ring.rotation.x = -Math.PI / 2.4;
-    this.planet.add(ring);
-    this.scene.add(this.planet);
+    // Galaxy world: sky dome (follows the camera), hero backdrop and weather.
+    this.sky = createSky(1000);
+    this.scene.add(this.sky);
+    this.hero = createHero();
+    this.hero.position.set(0, 230, -760);
+    this.scene.add(this.hero);
+    this.weather = createWeather(quality === 'high' ? 420 : 220);
+    this.weather.uniforms.uBox.value.set(70, 34, 70);
+    this.scene.add(this.weather.points);
+  }
+
+  // Sky, weather, fog and light rig from a galaxy's world block.
+  _applyWorld(galaxy) {
+    const w = galaxy.world;
+    const su = this.sky.material.uniforms;
+    const s = w.sky;
+    toSRGB(su.uTop.value, s.top); toSRGB(su.uHorizon.value, s.horizon); toSRGB(su.uBottom.value, s.bottom);
+    toSRGB(su.uNeb1.value, s.neb1); toSRGB(su.uNeb2.value, s.neb2); toSRGB(su.uSun.value, s.sun);
+    su.uDensity.value = s.density; su.uScale.value = s.scale; su.uRays.value = s.rays; su.uScan.value = s.scan;
+    su.uSunDir.value.copy(this.hero.position).normalize();
+    applyHero(this.hero, w, 2.6);
+    setStyle(this.sky.material, w.style);
+    applyWeatherStyle(this.weather, w);
+    this.scene.background.set(s.bottom);
+    this.scene.fog.color.set(w.fog.color).convertLinearToSRGB();
+    this.hemi.color.set(w.light.sky);
+    this.hemi.groundColor.set(w.light.ground);
+    this.hemi.intensity = w.light.hemi + 0.1;
+    this.key.color.set(w.light.key);
+    this.key.intensity = w.light.keyI * 0.9;
+  }
+
+  _updateWorld(dt) {
+    this.sky.position.copy(this.camera.position);
+    const t = this.sky.material.uniforms.uTime;
+    t.value = (t.value + dt) % 1000;
+    this.hero.material.uniforms.uTime.value = t.value;
+    this.weather.uniforms.uCenter.value.copy(this.camera.position);
+    this.weather.tick(dt);
   }
 
   setAspect(a) {
     this.camera.aspect = a;
+    this.weather.uniforms.uScale.value = window.innerHeight * Math.min(window.devicePixelRatio || 1, 2);
     this.baseFov = a < 1 ? 78 : 64;
     this.camera.fov = this.baseFov;
     this.camera.updateProjectionMatrix();
@@ -133,6 +166,7 @@ export class RaceSession {
    * @param galaxy  theme galaxy
    * @param stats   {engine, accel, grip, tank, armor} levels
    * @param skin    ship skin
+   * @param opts.upgrades all upgrade levels (upgradeLevels(prog)) shown on the pod; defaults to `stats`
    */
   load(league, trackDef, galaxy, stats, skin, opts = {}) {
     if (this.track) this.track.dispose(this.scene);
@@ -148,15 +182,11 @@ export class RaceSession {
     this.tutorialState = { cd: 4, corners: 0 };
 
     // Theme
-    this.scene.background.set(galaxy.colors.bg);
-    this.scene.fog.color.set(galaxy.colors.bg);
-    this.hemi.color.set(galaxy.colors.sky);
+    this._applyWorld(galaxy);
     this.stars.material.color.set(galaxy.colors.star);
-    this.planetMat.color.set(galaxy.planet.a);
-    this.planetMat.emissive.set(galaxy.planet.b).multiplyScalar(0.4);
-    this.ringMat.color.set(galaxy.planet.ring);
 
     this.ship.setSkin(skin);
+    this.ship.setUpgrades(opts.upgrades || stats);
     this.ship.reset();
     this.ship.setShielded(false);
 
@@ -830,7 +860,8 @@ export class RaceSession {
         this.ship.shieldMat.uniforms.uTime.value += dt;
         const flick = 0.85 + Math.random() * 0.3;
         const s = (r.boostT > 0 ? 1.8 : 1.1) * flick;
-        for (const n of this.ship.nozzles) n.scale.setScalar(s);
+        this.ship.setThrust(s);
+        this.ship.animate(dt);
       } else {
         obj.rotateY(r.spinT > 0 ? r.spinT * 12 : yaw);
         obj.rotateZ(bank);
@@ -869,6 +900,7 @@ export class RaceSession {
     const fov = (this.baseFov || 70) + speedN * 8 + (p.boostT > 0 ? 8 : 0);
     this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 4);
     this.camera.updateProjectionMatrix();
+    this._updateWorld(Math.min(dt, 0.1));
   }
 
   // HUD snapshot

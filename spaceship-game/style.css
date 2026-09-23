@@ -379,6 +379,9 @@ h2 { font-size: 30px; font-weight: 900; letter-spacing: 0.1em; margin-bottom: 18
 .hangar-panel { max-width: 440px; display: flex; flex-direction: column; max-height: calc(100vh - 32px - var(--safe-top) - var(--safe-bottom)); padding: 20px 16px; }
 .hangar-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .hangar-head h2 { margin: 0; font-size: 24px; }
+.ship-preview { display: block; width: 100%; height: 150px; flex: none; margin: -4px 0 6px; border-radius: 14px;
+  background: #0b0f22; box-shadow: inset 0 0 0 1px rgba(120, 170, 255, 0.12); }
+@media (max-height: 640px) { .ship-preview { height: 110px; } }
 .hangar-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; margin: 0 -4px 12px; padding: 0 4px; flex: 1; min-height: 0; }
 .section-label { font-size: 11px; letter-spacing: 0.25em; color: var(--dim); text-align: left; margin: 12px 0 8px; }
 .upgrade-list { display: flex; flex-direction: column; gap: 8px; }
@@ -708,3 +711,36 @@ h2 { font-size: 30px; font-weight: 900; letter-spacing: 0.1em; margin-bottom: 18
 .rr-power { margin-top: 8px; font-size: 13px; }
 .rr-power .power-chip-rr { font-size: 13px; }
 #btn-welcome-go { letter-spacing: 0.06em; white-space: nowrap; }
+
+/* ---- Home hub ---- */
+.home-title { font-size: 38px; }
+.home-title span { font-size: 24px; }
+.home-preview { height: 150px; margin: 10px 0 10px; background: radial-gradient(ellipse at 50% 60%, rgba(60, 242, 255, 0.14), transparent 70%); box-shadow: none; }
+@media (max-height: 700px) { .home-preview { height: 110px; } .home-title { font-size: 30px; } .home-title span { font-size: 19px; } }
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.mode-card {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 14px 10px 12px; border-radius: 16px; border: 1px solid; cursor: pointer;
+  font: inherit; color: var(--fg); text-align: center; min-width: 0;
+  transition: transform 0.12s;
+}
+.mode-card:active { transform: scale(0.96); }
+.dodge-card { background: linear-gradient(160deg, rgba(60, 242, 255, 0.22), rgba(106, 44, 255, 0.18)); border-color: rgba(60, 242, 255, 0.5); box-shadow: 0 0 20px rgba(60, 242, 255, 0.18); }
+.race-card { background: linear-gradient(160deg, rgba(255, 211, 92, 0.24), rgba(255, 106, 60, 0.18)); border-color: rgba(255, 180, 80, 0.55); box-shadow: 0 0 20px rgba(255, 150, 60, 0.18); }
+.mode-card.locked { filter: saturate(0.4); opacity: 0.8; }
+.mc-icon { font-size: 30px; line-height: 1; }
+.mc-title { font-size: 18px; font-weight: 900; letter-spacing: 0.14em; }
+.mc-name { font-size: 12px; font-weight: 700; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mc-bar { display: block; width: 100%; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; margin: 4px 0 2px; }
+.mc-bar > span { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--accent); }
+.race-card .mc-bar > span { background: var(--gold); }
+.mc-meta { font-size: 11px; color: var(--dim); }
+.mc-goal { font-size: 11px; font-weight: 700; color: var(--gold); margin-top: 2px; }
+.dodge-card .mc-goal { color: var(--accent); }
+details.howto { text-align: left; margin-top: 14px; }
+details.howto summary { cursor: pointer; text-align: center; font-weight: 700; color: var(--dim); list-style: none; }
+details.howto summary::-webkit-details-marker { display: none; }
+details.howto summary::after { content: ' ▾'; }
+details.howto[open] summary { margin-bottom: 6px; }
+.btn-row .home-btn { flex: 0 0 56px; }
+.home-preview + .chip-row { flex-wrap: nowrap; }

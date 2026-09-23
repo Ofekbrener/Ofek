@@ -59,7 +59,7 @@ export class RaceMenuUI {
           : `<span class="track-lock">🔒 Podium in ${CAREER[ci - 1].track.name} to unlock</span>`;
         row.innerHTML = `
           <span class="track-dot" style="background:radial-gradient(circle at 35% 30%, ${hex(g.planet.a)}, ${hex(g.planet.b)})"><b>${n}</b></span>
-          <span class="track-name">${t.name}<small>Race ${n} · ${t.laps} laps · ${g.name}</small>${tag}${status}</span>
+          <span class="track-name">${t.name}<small>Race ${n} · ${t.laps} lap${t.laps === 1 ? "" : "s"} · ${g.name}</small>${tag}${status}</span>
           <span class="track-best">${best ? `${MEDAL[best] || ''} ${ordinal(best)}` : unlocked ? '▶' : '🔒'}</span>`;
         row.addEventListener('click', () => {
           if (!unlocked) { this.audio.denied(); return; }
