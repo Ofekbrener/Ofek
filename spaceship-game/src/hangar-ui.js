@@ -20,6 +20,16 @@ export class HangarUI {
     this.balance = $('hangar-crystals');
     // Live 3D turntable of the pod with every purchased upgrade on it.
     this.preview = new ShipPreview($('hangar-preview'));
+    // Tabs keep each list short enough to fit on one screen.
+    this.tabs = [...document.querySelectorAll('#screen-hangar .tab')];
+    for (const t of this.tabs) t.addEventListener('click', () => { this.audio.click(); this.setTab(t.dataset.tab); });
+    this.setTab('dodge');
+  }
+
+  setTab(name) {
+    this.tab = name;
+    for (const t of this.tabs) t.classList.toggle('active', t.dataset.tab === name);
+    for (const pane of document.querySelectorAll('#screen-hangar [data-pane]')) pane.classList.toggle('pane-off', pane.dataset.pane !== name);
   }
 
   render(flashId = null) {

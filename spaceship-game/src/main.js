@@ -297,9 +297,9 @@ const soundBtn = $('btn-sound');
 const hapticsBtn = $('btn-haptics');
 function refreshToggles() {
   soundBtn.classList.toggle('off', audio.muted);
-  soundBtn.textContent = audio.muted ? '🔇 Sound' : '🔊 Sound';
+  soundBtn.textContent = audio.muted ? '🔇' : '🔊';
   hapticsBtn.classList.toggle('off', haptics.level === 0);
-  hapticsBtn.textContent = `📳 Vibration: ${haptics.label}`;
+  hapticsBtn.textContent = `📳 ${haptics.label}`;
 }
 if (!haptics.supported) hapticsBtn.classList.add('hidden');
 soundBtn.addEventListener('click', () => {
@@ -435,12 +435,7 @@ function openHangar(from, highlight = null) {
   hangarUI.render();
   showScreen('hangar');
   hangarUI.preview.start();
-  const target = from === 'race' || highlight ? $('race-upgrade-list') : $('upgrade-list');
-  requestAnimationFrame(() => {
-    const glow = highlight && target.querySelector('.ftue-glow');
-    if (glow) glow.scrollIntoView({ block: 'center' });
-    else target.previousElementSibling.scrollIntoView({ block: 'start' });
-  });
+  hangarUI.setTab(from === 'race' || highlight ? 'race' : 'dodge');
 }
 
 function closeHangar() {

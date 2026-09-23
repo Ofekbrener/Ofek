@@ -744,3 +744,71 @@ details.howto summary::after { content: ' ▾'; }
 details.howto[open] summary { margin-bottom: 6px; }
 .btn-row .home-btn { flex: 0 0 56px; }
 .home-preview + .chip-row { flex-wrap: nowrap; }
+
+/* ---- One-screen layouts: Home + Garage never scroll; the 3D preview absorbs spare height ---- */
+.screen > .home-panel, .screen > .hangar-panel {
+  display: flex; flex-direction: column; gap: 8px;
+  height: 100%; max-height: 760px; max-width: 440px;
+  overflow: hidden; padding: 14px 14px;
+}
+.home-panel > *, .hangar-panel > * { flex: none; margin: 0; }
+.home-panel .ship-preview, .hangar-panel .ship-preview { flex: 1 1 0; min-height: 0; height: auto; max-height: 220px; margin: 0; }
+.home-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.home-title { font-size: 26px; letter-spacing: 0.06em; text-align: left; white-space: nowrap; }
+.home-title span { display: inline; font-size: 26px; letter-spacing: 0.06em; margin: 0; }
+.home-toggles { display: flex; gap: 6px; }
+.home-toggles .toggle-btn { padding: 6px 9px; font-size: 13px; border-radius: 10px; white-space: nowrap; }
+.home-chips { flex-wrap: nowrap; gap: 6px; }
+.home-chips .chip { padding: 4px 9px; white-space: nowrap; }
+.rank-chip b { color: var(--gold); }
+.home-xp { height: 5px; }
+.home-panel .next-step { padding: 10px 12px; }
+.home-panel .ns-row { margin-bottom: 8px; }
+.home-panel .ns-label { margin-bottom: 2px; }
+.home-panel .ns-icon { flex-basis: 36px; height: 36px; font-size: 22px; }
+.home-panel .ns-title { font-size: 14px; }
+.home-panel .ns-text { font-size: 11px; }
+.home-panel .ns-btn { padding: 10px; min-height: 42px; font-size: 15px; }
+.home-panel .mode-grid { margin: 0; gap: 8px; }
+.home-panel .mode-card { padding: 10px 8px; gap: 2px; }
+.mc-top { display: flex; align-items: center; gap: 6px; }
+.home-panel .mc-icon { font-size: 22px; }
+.home-panel .mc-title { font-size: 16px; }
+.home-panel .hangar-btn { padding: 12px; }
+
+.hangar-panel .hangar-head { margin: 0; }
+.hangar-panel .hangar-head h2 { font-size: 22px; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tab {
+  padding: 9px 4px; border-radius: 12px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer;
+  color: var(--dim); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.tab.active { color: #031018; background: linear-gradient(135deg, #3cf2ff, #7a8bff); border-color: transparent; }
+.tab-body { flex: none; }
+.hangar-panel .upgrade-list { gap: 5px; }
+.hangar-panel .upgrade { grid-template-columns: 28px 1fr auto; gap: 8px; padding: 6px 8px; border-radius: 12px; }
+.hangar-panel .upgrade .u-icon { font-size: 21px; }
+.hangar-panel .upgrade .u-name { font-size: 13px; }
+.hangar-panel .upgrade .u-desc { font-size: 11px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hangar-panel .upgrade > div:nth-child(2) { min-width: 0; }
+.hangar-panel .pips { margin-top: 3px; }
+.hangar-panel .pip { height: 4px; }
+.hangar-panel .buy-btn { min-width: 70px; padding: 8px; font-size: 13px; }
+.hangar-panel .skin-list { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.hangar-panel .skin { padding: 8px 4px; }
+.hangar-panel .skin .buy-btn { min-width: 0; padding: 7px 2px; font-size: 12px; }
+.hangar-panel #btn-hangar-back { padding: 11px; }
+@media (max-height: 640px) {
+  .home-panel .mode-card .mc-name { display: none; }
+  .home-panel .ns-text { display: none; }
+  .hangar-panel .pips { display: none; }
+}
+/* Panes share one grid cell, so the body is always as tall as the longest tab (no jumping). */
+.tab-body { display: grid; align-items: start; }
+.tab-body > [data-pane] { grid-area: 1 / 1; }
+.tab-body > .pane-off { visibility: hidden; pointer-events: none; }
+@media (max-width: 400px) {
+  .home-title, .home-title span { font-size: 20px; letter-spacing: 0.04em; }
+  .home-toggles .toggle-btn { padding: 5px 7px; font-size: 12px; }
+  .home-chips .chip { padding: 4px 7px; font-size: 11px; }
+}
