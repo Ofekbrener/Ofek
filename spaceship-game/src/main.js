@@ -25,7 +25,7 @@ import { RaceSession } from './race/race.js';
 import { TRACK_HALF } from './race/track.js';
 import { RaceMenuUI, showResults, fmtTime } from './race/race-ui.js';
 import { LEAGUES, RACE_QUIPS, RACE_UPGRADES, CAREER, careerIndex, ordinal } from './race/leagues.js';
-import { nextStep, Handoff, raceLabel, cheapestAffordableRaceUpgrade, cheapestRaceUpgrade, farmGalaxy } from './ftue.js';
+import { nextStep, Handoff, raceLabel, cheapestAffordableRaceUpgrade, cheapestRaceUpgrade, farmGalaxy, tutorialStage, TUTORIAL_STEPS, TUTORIAL_ALLOW, TUTORIAL_HINT } from './ftue.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -188,6 +188,22 @@ function renderModeCards() {
   $('mc-race-fill').style.width = `${(done / CAREER.length) * 100}%`;
 }
 
+// Tutorial: tapping a locked Home button nudges the player back to the current step.
+document.addEventListener('click', (e) => {
+  const el = e.target.closest && e.target.closest('.tut-locked');
+  if (!el) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  audio.denied();
+  haptics.tap();
+  const card = $('next-step');
+  card.classList.remove('nudge');
+  void card.offsetWidth;
+  card.classList.add('nudge');
+  const stage = tutorialStage(prog);
+  if (stage) $('ns-text').textContent = `🔒 ${TUTORIAL_HINT[stage]}`;
+}, true);
+
 // 🏠 from anywhere: stop what's running and show the Home hub.
 function goHome() {
   audio.click();
@@ -203,6 +219,16 @@ function goHome() {
 let currentStep = null;
 function renderNextStep() {
   currentStep = nextStep(prog);
+  // Tutorial: only the current step's button is live; the rest are locked.
+  const stage = tutorialStage(prog);
+  const allow = stage ? TUTORIAL_ALLOW[stage] : null;
+  for (const [id, key] of [['btn-start', 'dodge'], ['btn-race', 'race'], ['btn-hangar', 'garage']]) {
+    $(id).classList.toggle('tut-locked', !!stage && key !== allow);
+    $(id).classList.toggle('tut-glow', !!stage && key === allow);
+  }
+  $('next-step').classList.toggle('tutorial', !!stage);
+  document.querySelector('#next-step .ns-label').textContent = stage
+    ? `TUTORIAL · STEP ${TUTORIAL_STEPS.indexOf(stage) + 1} OF ${TUTORIAL_STEPS.length}` : 'NEXT STEP';
   $('ns-icon').textContent = currentStep.icon;
   $('ns-title').textContent = currentStep.title;
   $('ns-text').textContent = currentStep.text;
@@ -245,12 +271,14 @@ const handoff = new Handoff(audio);
 
 // Hand-off (c): first Race Garage purchase → point at the next race.
 function onUpgradeBought(id) {
+  if (hangarUI.lockTo) { hangarUI.lockTo = null; $('btn-hangar-back').classList.remove('hidden'); $('hangar-tut').classList.add('hidden'); hangarUI.render(id); }
   if (!RACE_UPGRADES.some((u) => u.id === id) || prog.ftueSeen('upgrade')) return;
   const r = prog.nextCareerRace;
   if (!r) return;
   prog.ftueMark('upgrade');
   const n = careerIndex(r.track.id) + 1;
   handoff.show({
+    forced: !!tutorialStage(prog),
     icon: '⚡',
     title: `RACE ${n} IS READY!`,
     text: `Your ship is stronger — <b>${raceLabel(r.track.id)}</b> is ready!<br>⚡ Ship Power ${prog.shipPower} · Recommended ${r.track.power}`,
@@ -264,8 +292,14 @@ function onUpgradeBought(id) {
 
 // Hand-off (b): first Dodge run that paid drumsticks → send the player to the Garage.
 function afterDodgeRun(earned, screen) {
+  const wasTutorial = tutorialStage(prog) === 'dodge';
   prog.ftueMark('dodged');
-  if (earned <= 0 || prog.ftueSeen('garage')) return;
+  let bonus = 0;
+  if (wasTutorial) {
+    // Tutorial: make sure the first Race Garage upgrade is affordable.
+    const want = cheapestRaceUpgrade(prog);
+    if (want && prog.crystals < want.cost) { bonus = want.cost - prog.crystals; prog.data.crystals += bonus; prog.save(); updateMenuMeta(); }
+  } else if (earned <= 0 || prog.ftueSeen('garage')) return;
   prog.ftueMark('garage');
   const buy = cheapestAffordableRaceUpgrade(prog);
   const want = buy || cheapestRaceUpgrade(prog);
@@ -273,9 +307,10 @@ function afterDodgeRun(earned, screen) {
     : buy ? `<br>Try <b>${want.u.icon} ${want.u.name}</b> (🍗 ${want.cost}) for +1 ⚡ Ship Power.`
     : `<br>Save up 🍗 ${want.cost} for <b>${want.u.icon} ${want.u.name}</b> (you have 🍗 ${prog.crystals}).`;
   handoff.showLater(1400, {
+    forced: !!tutorialStage(prog),
     icon: '🍗',
-    title: `YOU EARNED 🍗 ${earned}`,
-    text: `Spend it in the Garage to make your ship faster.${tip}`,
+    title: `YOU EARNED 🍗 ${earned + bonus}`,
+    text: `${bonus ? `Includes a 🎁 tutorial bonus of 🍗 ${bonus}. ` : ''}Spend it in the Garage to make your ship faster.${tip}`,
     celebrate: true,
     buttons: [
       { label: '🛠 GO TO GARAGE', primary: true, onClick: () => openHangar(screen, buy ? buy.u.id : null) },
@@ -459,7 +494,12 @@ function openHangar(from, highlight = null) {
   audio.unlock();
   audio.click();
   state.returnTo = from;
+  const tut = tutorialStage(prog) === 'garage';
+  if (tut && !highlight) { const w = cheapestAffordableRaceUpgrade(prog) || cheapestRaceUpgrade(prog); highlight = w ? w.u.id : null; }
   hangarUI.highlightId = highlight;
+  hangarUI.lockTo = tut ? highlight : null;   // tutorial: only the highlighted upgrade can be bought
+  $('btn-hangar-back').classList.toggle('hidden', tut);
+  $('hangar-tut').classList.toggle('hidden', !tut);
   hangarUI.render();
   showScreen('hangar');
   hangarUI.preview.start();
@@ -499,6 +539,26 @@ function onWaveStart() {
   hud.setLevel(journey.endless ? `ENDLESS W${journey.wave + 1}` : `WAVE ${lw + 1}/${journey.waveCount}`);
   hud.showBanner(`WAVE ${lw + 1}`, 1100);
   audio.setLevel(lw + 1);
+  // Tutorial coach on the very first Dodge run.
+  if (tutorialStage(prog) === 'dodge' && !journey.endless) {
+    const tips = [
+      ['👆 Drag anywhere (or hold ◀ ▶) to dodge hens, eggs & rocks', '🍗 Grab drumsticks: they buy upgrades in the Garage'],
+      ['🛡 Blue orbs give shields: each one saves you from a hit', '🔥 Skim past hazards for bonus points'],
+      ['⚠ Boss next! Your pod fires by itself, you just dodge'],
+    ][Math.min(2, lw)];
+    tips.forEach((t, i) => setTimeout(() => { if (state.mode === 'playing') coach(t, 3600); }, 1300 + i * 4200));
+  }
+}
+
+// Coach bubble above the steer buttons (tutorial tips).
+let coachTimer = 0;
+function coach(text, ms = 3500) {
+  const el = $('coach');
+  el.textContent = text;
+  el.classList.remove('hidden');
+  el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+  clearTimeout(coachTimer);
+  coachTimer = setTimeout(() => el.classList.add('hidden'), ms);
 }
 
 function onWaveClear() {
@@ -563,6 +623,10 @@ function onBossIntro() {
     hud.galaxyCard(b.title.toUpperCase(), b.name, journey.galaxy.bossQuip);
   }, 1300);
   hud.showBoss(b.name);
+  if (!prog.ftueSeen('bossTip')) {
+    prog.ftueMark('bossTip');
+    setTimeout(() => { if (boss.active) coach('🚀 Your pod auto-fires at the boss. Just DODGE the eggs she lays!', 5000); }, 2600);
+  }
   audio.setBoss(true);
   audio.bossRoar();
   haptics.bossIntro();
@@ -570,18 +634,28 @@ function onBossIntro() {
   fx.flash('rgba(255, 60, 90, 0.5)', 0.35, 500);
 }
 
+// Auto-fire lands many small hits: keep each one light, celebrate every quarter and the K.O.
+let bossQuarter = 4;
 boss.onHit = (frac) => {
   hud.setBossHp(frac);
-  audio.missileHit();
-  haptics.bossHit();
-  fx.shake(0.35);
-  fx.flash('rgba(255, 255, 255, 0.5)', 0.3, 200);
-  fx.slowMo(0.2, 0.06);
-  hud.popup(frac > 0 ? 'DIRECT HIT!' : 'K.O.!', 0.5, '');
+  const q = Math.ceil(frac * 4);
+  if (frac <= 0 || q < bossQuarter) {
+    bossQuarter = q;
+    audio.missileHit();
+    haptics.bossHit();
+    fx.shake(0.35);
+    fx.flash('rgba(255, 255, 255, 0.5)', 0.3, 200);
+    fx.slowMo(0.2, 0.06);
+    hud.popup(frac > 0 ? `${q * 25}% LEFT!` : 'K.O.!', 0.5, '');
+  } else {
+    audio.softHit();
+    fx.shake(0.06);
+  }
 };
 
 boss.onAttack = (kind) => {
-  if (kind === 'fan') audio.cluck(0.8, 0.22);
+  if (kind === 'fire') { audio.pew(); return; }
+  if (kind === 'fan' || kind === 'lay' || kind === 'rain') audio.cluck(0.8, 0.22);
   else if (kind === 'summon') { audio.cluck(1.2, 0.2); setTimeout(() => audio.cluck(1.4, 0.15), 160); }
   else if (kind === 'throw') audio.cluck(0.6, 0.25);
   else if (kind === 'laser') audio.countdown(false);
@@ -769,7 +843,11 @@ function gameOver() {
   $('over-near').textContent = state.nearMisses;
   $('over-time').textContent = `${Math.floor(state.time)}s`;
   $('new-best').classList.toggle('hidden', !isBest);
-  $('btn-restart').textContent = journey.endless ? 'RETRY ENDLESS' : 'RETRY GALAXY';
+  // Checkpoint: campaign retries resume at the wave (or boss) you crashed on.
+  state.checkpoint = journey.endless ? null : { g: journey.gIndex, wave: journey.localWave };
+  $('btn-restart').textContent = journey.endless ? 'RETRY ENDLESS'
+    : journey.isBossWave ? '↻ RETRY BOSS'
+    : journey.localWave > 0 ? `↻ RETRY WAVE ${journey.localWave + 1}` : '↻ RETRY GALAXY';
 
   const b = bank();
   $('pay-collected').textContent = '0';
@@ -808,7 +886,13 @@ function gameOver() {
 }
 
 function retry() {
+  const cp = state.checkpoint;
   startRun(journey.endless ? 'endless' : journey.gIndex);
+  if (cp && cp.wave > 0) {
+    journey.wave = cp.wave;
+    journey._startPhase();
+    if (journey.isBossWave) onBossIntro(); else onWaveStart();
+  }
 }
 
 $('btn-start').addEventListener('click', openMap);
@@ -1034,6 +1118,7 @@ function openRaceMenu() {
 
 // Stop whatever is running (dodge run or race) and return to menu state.
 function leaveRun() {
+  $('coach').classList.add('hidden');
   audio.stopMusic();
   audio.stopEngine();
   hud.show(false);
@@ -1150,6 +1235,7 @@ function finishRace(results, place) {
   const nextDef = CAREER[careerIndex(t.id) + 1] || null;
   const nextWasOpen = nextDef && prog.raceUnlocked(nextDef.track.id);
   const firstTrophy = prog.trophies === 0;
+  const tutBefore = tutorialStage(prog);
   const rec = prog.recordRace(t.id, place);
   prog.bankRun(prize, prize * 4);
   updateMenuMeta();
@@ -1184,6 +1270,7 @@ function finishRace(results, place) {
     // Hand-off (a): first trophy ever → the Dodge journey.
     prog.ftueMark('trophy');
     handoff.showLater(700, {
+      forced: !!tutorialStage(prog),
       icon: '🏆',
       title: 'TROPHY EARNED!',
       text: `It unlocks the <b>${GALAXIES[0].name}</b> in the Dodge Journey. Dodge the hens there to earn 🍗 drumsticks for Garage upgrades.`,
@@ -1203,14 +1290,29 @@ function finishRace(results, place) {
     if (fg >= 0) buttons.push({ label: '🐔 EARN 🍗 IN DODGE', primary: !buy, onClick: () => goGalaxy(fg) });
     buttons.push({ label: '↻ RETRY ANYWAY', onClick: () => goRace(lg, t) });
     handoff.showLater(700, {
+      forced: !!tutorialStage(prog),
       icon: '⚡',
       title: 'NEED MORE POWER',
       text: `⚡ Ship Power ${prog.shipPower} · Recommended ${t.power}.<br>Earn 🍗 in the Dodge journey and upgrade your ship in the Garage.`,
       buttons,
     }, stillHere);
   }
+  maybeFinishTutorial(tutBefore);
 }
 const failHints = new Set();
+
+// Tutorial finished: everything opens up.
+function maybeFinishTutorial(stageBefore) {
+  if (stageBefore !== 'race2' || tutorialStage(prog)) return;
+  prog.ftueMark('done');
+  handoff.showLater(900, {
+    icon: '🎓',
+    title: 'TUTORIAL COMPLETE!',
+    text: 'You know the loop: <b>🏁 Race</b> for 🏆 → <b>🐔 Dodge</b> for 🍗 → <b>🛠 Garage</b> upgrades → harder races.<br>Everything is unlocked now. Go get that Mother Hen!',
+    celebrate: true,
+    buttons: [{ label: '🏠 LET\'S GO', primary: true, onClick: () => goHome() }],
+  });
+}
 
 $('btn-race').addEventListener('click', openRaceMenu);
 $('btn-next-step').addEventListener('click', () => runStep(currentStep || nextStep(prog)));
@@ -1300,7 +1402,7 @@ function updateRun(dt, realDt) {
     const ev = journey.update(dt);
     if (ev === 'waveStart') onWaveStart();
     else if (ev === 'waveClear') onWaveClear();
-    else if (ev === 'bossFight') hud.popup('Grab 🌽 corn to fire!', 0.5, '');
+    else if (ev === 'bossFight') { bossQuarter = 4; hud.popup('AUTO-FIRE! DODGE THE EGGS!', 0.5, ''); }
   }
 
   state.speed = journey.speed * state.mods.speedMult;
@@ -1462,7 +1564,8 @@ function frame(now) {
   // Engine trail (skin-coloured)
   if (ship.group.visible) {
     ship.group.updateMatrixWorld();
-    const rate = (quality === 'high' ? 110 : 65) * (1 + speedNorm * 0.5);
+    const tb = ship.trailBoost || 1;
+    const rate = (quality === 'high' ? 110 : 65) * (1 + speedNorm * 0.5) * (tb > 1 ? 1.5 : 1);
     state.emitAcc += dt * rate;
     const c1 = ship.trailColor;
     const c2 = ship.trailColor2;
@@ -1474,7 +1577,7 @@ function frame(now) {
         particles.emit(
           tmpV.x + (Math.random() - 0.5) * 0.1, tmpV.y + (Math.random() - 0.5) * 0.1, tmpV.z,
           (Math.random() - 0.5) * 0.8 - ship.vx * 0.15, (Math.random() - 0.5) * 0.6, 3 + Math.random() * 3,
-          0.3 + Math.random() * 0.18, 0.7 + speedNorm * 0.4,
+          (0.3 + Math.random() * 0.18) * tb, (0.7 + speedNorm * 0.4) * (tb > 1 ? 1.5 : 1),
           c[0], c[1], c[2], 0.6, 1,
         );
       }

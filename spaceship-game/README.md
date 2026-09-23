@@ -29,7 +29,8 @@ Space hens have overrun five galaxies. Open the **Star Map**, pick a galaxy, and
 | 4 | Frostfeather Expanse | ice-shard fields, egg blizzards | Rooster Frost |
 | 5 | Omelette Core | everything + gravity wells | The Supreme Mother Hen |
 
-- Each galaxy has **4 waves** (the first galaxy has 3), with a power-up choice after each wave, and then a **boss**. You can't shoot, so grab the **🌽 corn cobs** that appear during the fight; each one launches a homing corn missile.
+- Each galaxy has **4 waves** (the first galaxy has 3), with a power-up choice after each wave, and then a **boss**. In boss fights your pod **auto-fires**; your job is to dodge the eggs she lays. Crashing lets you retry from the wave (or boss) you reached.
+- **Tutorial:** new players are guided through one full loop (Race 1 → Dodge → Garage upgrade → Race 2) before everything unlocks.
 - Beating a boss rains drumsticks, earns **1–3 stars** (★ clear, ★★ no shield lost, ★★★ flawless and 70%+ of the drumsticks), unlocks the next galaxy, and lets you **warp through hyperspace** into it.
 - **🎁 Gift boxes** give a random power-up: +1 shield, Mega Magnet, Double Drumsticks, or Feather Dash (invincible and smashes through hens).
 - Beating the Supreme Mother Hen unlocks **∞ Endless mode**, which cycles every galaxy with a boss every 5th wave and gets faster each loop.

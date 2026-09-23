@@ -14,6 +14,7 @@ export class HangarUI {
     this.onChange = onChange;
     this.onBuy = onBuy || (() => {});
     this.highlightId = null;   // FTUE: upgrade to point at with a pulsing glow
+    this.lockTo = null;        // tutorial: only this upgrade can be bought (tabs locked)
     this.upgradeList = $('upgrade-list');
     this.raceList = $('race-upgrade-list');
     this.skinList = $('skin-list');
@@ -25,7 +26,10 @@ export class HangarUI {
     this.preview = new ShipPreview($('hangar-preview'));
     // Tabs keep each list short enough to fit on one screen.
     this.tabs = [...document.querySelectorAll('#screen-hangar .tab')];
-    for (const t of this.tabs) t.addEventListener('click', () => { this.audio.click(); this.setTab(t.dataset.tab); });
+    for (const t of this.tabs) t.addEventListener('click', () => {
+      if (this.lockTo) { this.audio.denied(); return; }
+      this.audio.click(); this.setTab(t.dataset.tab);
+    });
     this.setTab('dodge');
   }
 
@@ -69,7 +73,7 @@ export class HangarUI {
       const btn = document.createElement('button');
       btn.className = 'buy-btn' + (maxed ? ' maxed' : '');
       btn.innerHTML = maxed ? 'MAX' : `🍗 ${cost}`;
-      btn.disabled = maxed || p.crystals < cost;
+      btn.disabled = maxed || p.crystals < cost || (this.lockTo && this.lockTo !== u.id);
       btn.addEventListener('click', () => {
         if (p.buy(u.id)) {
           this.audio.purchase();

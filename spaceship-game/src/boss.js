@@ -117,13 +117,14 @@ export class Boss {
   start(spec, level, tintHex) {
     this.spec = spec;
     this.level = level;
-    this.hp = this.maxHp = spec.hp;
+    // The ship auto-fires, so each boss soaks many small hits.
+    this.hp = this.maxHp = spec.hp * 5;
+    this.fireT = 0.6;
     this.active = true;
     this.defeated = false;
     this.state = 'enter';
     this.t = 0;
     this.attackT = 2.2;
-    this.cornT = 1.2;
     this.lastAttack = '';
     this.flash = 0;
     this.deathT = 0;
@@ -151,7 +152,7 @@ export class Boss {
   get hpFrac() { return this.maxHp ? this.hp / this.maxHp : 0; }
   get entering() { return this.state === 'enter'; }
 
-  // Grabbing a corn cob launches one of these at the boss.
+  // The pod auto-fires these at the boss during the fight.
   launchMissile(fromX) {
     const m = this.missiles.find((o) => !o.active);
     if (!m) return;
@@ -163,7 +164,7 @@ export class Boss {
     if (this.state !== 'fight') return;
     this.hp = Math.max(0, this.hp - 1);
     this.flash = 1;
-    this.particles.burst(this.x, this.y + 1, this.z + 1.5, 50, 9, 0.9, 0.6, [[1, 1, 1], [1, 0.9, 0.6], [1, 0.6, 0.2]], 2, 0.2);
+    this.particles.burst(this.x, this.y + 1, this.z + 1.5, 16, 7, 0.6, 0.45, [[1, 1, 1], [1, 0.9, 0.6], [1, 0.6, 0.2]], 2, 0.2);
     if (this.onHit) this.onHit(this.hpFrac);
     if (this.hp <= 0) {
       this.state = 'dying';
@@ -191,7 +192,20 @@ export class Boss {
     const H = CONFIG.halfWidth;
     if (this.onAttack) this.onAttack(kind);
 
-    if (kind === 'fan') {
+    if (kind === 'lay') {
+      // She lays a clutch of eggs around (and at) the pod's lane.
+      const n = 3 + Math.min(2, Math.floor(this.level / 2));
+      for (let i = 0; i < n; i++) {
+        const x = shipX + (i - (n - 1) / 2) * 1.5 + (Math.random() - 0.5) * 0.6;
+        this.chickens.dropEgg(x, this.z + 2, this.y + 0.5, 0.85 + i * 0.12);
+      }
+    } else if (kind === 'rain') {
+      // Scattered eggs landing at different times across the lanes.
+      const n = 5 + Math.min(3, this.level);
+      for (let i = 0; i < n; i++) {
+        this.chickens.dropEgg((Math.random() * 2 - 1) * H, this.z + 2 + Math.random() * 3, this.y + 0.5, 0.7 + Math.random() * 0.9);
+      }
+    } else if (kind === 'fan') {
       // A fan of eggs across the lanes, leaving one gap to slip through.
       const gapX = (Math.random() * 2 - 1) * (H - 1.3);
       const n = 7 + Math.min(3, this.level);
@@ -234,10 +248,12 @@ export class Boss {
         this._attack(shipX);
         this.attackT = (2.8 / tempo) * (0.85 + Math.random() * 0.3);
       }
-      this.cornT -= dt;
-      if (this.cornT <= 0) {
-        this.pickups.spawnAt(this._safeX(), -110, CORN);
-        this.cornT = 2.3 + Math.random() * 0.6;
+      // Auto-fire: a missile every ~0.7s from the pod.
+      this.fireT -= dt;
+      if (this.fireT <= 0) {
+        this.launchMissile(shipX);
+        if (this.onAttack) this.onAttack('fire');
+        this.fireT = 0.7;
       }
     } else if (this.state === 'dying') {
       this.deathT += realDt;

@@ -870,7 +870,7 @@ export class RaceSession {
       if (this.running && this.countdown <= 0 && Math.random() < 0.9) {
         const c = r.isPlayer ? this.ship.trailColor : [1, 0.6, 0.2];
         const bx = f.p.x - f.t.x * 1.3, by = f.p.y - f.t.y * 1.3, bz = f.p.z - f.t.z * 1.3;
-        const boost = r.boostT > 0 ? 1.6 : 1;
+        const boost = (r.boostT > 0 ? 1.6 : 1) * (r.isPlayer ? (this.ship.trailBoost || 1) : 1);
         this.particles.emit(bx, by, bz, -f.t.x * 4 + (Math.random() - 0.5), (Math.random() - 0.5) * 0.5, -f.t.z * 4 + (Math.random() - 0.5),
           0.35 * boost, 0.6 * boost, c[0], c[1], c[2], 1, 0);
       }
