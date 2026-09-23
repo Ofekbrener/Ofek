@@ -15,6 +15,7 @@ const ASSETS = [
   './src/renderer.js',
   './src/lighting.js',
   './src/environment.js',
+  './src/worlds.js',
   './src/ship.js',
   './src/obstacles.js',
   './src/particles.js',
