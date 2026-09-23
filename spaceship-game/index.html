@@ -67,16 +67,18 @@
     <!-- Start screen -->
     <div id="screen-start" class="screen">
       <div class="panel scroll">
-        <h1 class="title">VOID<span>RUNNER</span></h1>
+        <h1 class="title home-title">VOID<span>RUNNER</span></h1>
         <div class="subtitle">🐔 Revenge of the Space Hens 🐔</div>
-        <p class="tagline">Cross five galaxies overrun by poultry. Dodge the eggs. Grab the drumsticks. Stop the Mother Hen.</p>
-        <div class="rank-box">
-          <div class="rank-row"><span id="start-rank">Cadet</span><span class="balance">🍗 <b id="start-crystals">0</b></span></div>
-          <div class="xp-bar"><div id="start-xp-fill"></div></div>
-        </div>
+        <!-- Home: your pod on a turntable, wearing every upgrade you own -->
+        <canvas id="home-preview" class="ship-preview home-preview" aria-label="Your ship"></canvas>
         <div class="chip-row">
-          <span class="chip trophy-chip">🏆 <b id="start-trophies">0</b> · unlocks galaxies</span>
+          <span class="chip">🍗 <b id="start-crystals">0</b></span>
+          <span class="chip trophy-chip">🏆 <b id="start-trophies">0</b></span>
           <span class="chip">⚡ Power <b id="start-power">1</b></span>
+        </div>
+        <div class="rank-box">
+          <div class="rank-row"><span id="start-rank">Cadet</span></div>
+          <div class="xp-bar"><div id="start-xp-fill"></div></div>
         </div>
         <!-- FTUE: always names the single next action of the core loop -->
         <div id="next-step" class="next-step">
@@ -87,16 +89,35 @@
           </div>
           <button id="btn-next-step" class="primary-btn ns-btn">CONTINUE ➜</button>
         </div>
-        <button id="btn-start" class="primary-btn dodge-btn">🐔 DODGE JOURNEY</button>
-        <button id="btn-race" class="primary-btn race-btn">🏁 RACE LEAGUE</button>
-        <button id="btn-hangar" class="secondary-btn hangar-btn">🛠 HANGAR &amp; GARAGE</button>
-        <div class="howto">
-          <div><b>Drag</b> anywhere or hold <b>◀ ▶</b> to steer</div>
-          <div><b>Skim hazards</b> for bonus · collect 🍗 for upgrades</div>
-          <div>Beat bosses by grabbing <b>🌽 corn missiles</b></div>
-          <div><b>Race</b> chicken rivals to win 🏆 trophies that open new galaxies</div>
-          <div class="desktop-only">Keyboard: <b>A / D</b> or <b>← →</b></div>
+        <!-- The two journeys -->
+        <div class="mode-grid">
+          <button id="btn-start" class="mode-card dodge-card">
+            <span class="mc-icon">🐔</span>
+            <span class="mc-title">DODGE</span>
+            <span id="mc-dodge-name" class="mc-name">Coop Nebula</span>
+            <span class="mc-bar"><span id="mc-dodge-fill"></span></span>
+            <span id="mc-dodge-meta" class="mc-meta">Galaxy 1/5</span>
+            <span id="mc-dodge-goal" class="mc-goal">Earn 🍗 drumsticks</span>
+          </button>
+          <button id="btn-race" class="mode-card race-card">
+            <span class="mc-icon">🏁</span>
+            <span class="mc-title">RACE</span>
+            <span id="mc-race-name" class="mc-name">Coop Loop</span>
+            <span class="mc-bar"><span id="mc-race-fill"></span></span>
+            <span id="mc-race-meta" class="mc-meta">Race 1/9</span>
+            <span class="mc-goal">Win 🏆 trophies</span>
+          </button>
         </div>
+        <button id="btn-hangar" class="secondary-btn hangar-btn">🛠 GARAGE</button>
+        <details class="howto">
+          <summary>How to play</summary>
+          <div><b>Drag</b> anywhere or hold <b>◀ ▶</b> to steer</div>
+          <div><b>Race</b> chicken rivals to win 🏆 trophies that open galaxies</div>
+          <div><b>Dodge</b> through galaxies to collect 🍗 drumsticks</div>
+          <div>Spend 🍗 in the <b>Garage</b>: every upgrade shows on your pod</div>
+          <div>Beat bosses by grabbing <b>🌽 corn missiles</b></div>
+          <div class="desktop-only">Keyboard: <b>A / D</b> or <b>← →</b></div>
+        </details>
         <div id="start-best" class="best"></div>
         <div class="toggles">
           <button id="btn-sound" class="toggle-btn">🔊 Sound</button>
@@ -135,7 +156,7 @@
       <div class="panel scroll">
         <h2>PAUSED</h2>
         <button id="btn-resume" class="primary-btn">RESUME</button>
-        <button id="btn-quit" class="secondary-btn">MAIN MENU</button>
+        <button id="btn-quit" class="secondary-btn">🏠 HOME</button>
       </div>
     </div>
 
@@ -161,8 +182,9 @@
         </div>
         <button id="btn-restart" class="primary-btn">RETRY GALAXY</button>
         <div class="btn-row">
-          <button id="btn-over-hangar" class="secondary-btn">🛠 HANGAR</button>
+          <button id="btn-over-hangar" class="secondary-btn">🛠 GARAGE</button>
           <button id="btn-menu" class="secondary-btn">🗺 MAP</button>
+          <button id="btn-over-home" class="secondary-btn home-btn" aria-label="Home">🏠</button>
         </div>
       </div>
     </div>
@@ -201,7 +223,7 @@
         <div id="galaxy-list" class="scroll map-scroll"></div>
         <div class="btn-row">
           <button id="btn-map-hangar" class="secondary-btn">🛠 HANGAR</button>
-          <button id="btn-map-back" class="secondary-btn">BACK</button>
+          <button id="btn-map-back" class="secondary-btn">🏠 HOME</button>
         </div>
       </div>
       <div id="briefing" class="briefing hidden">
@@ -231,8 +253,9 @@
         </div>
         <button id="btn-next-galaxy" class="primary-btn">NEXT GALAXY ➜</button>
         <div class="btn-row">
-          <button id="btn-victory-hangar" class="secondary-btn">🛠 HANGAR</button>
+          <button id="btn-victory-hangar" class="secondary-btn">🛠 GARAGE</button>
           <button id="btn-victory-map" class="secondary-btn">🗺 MAP</button>
+          <button id="btn-victory-home" class="secondary-btn home-btn" aria-label="Home">🏠</button>
         </div>
       </div>
     </div>
@@ -248,7 +271,7 @@
         <div id="league-list" class="scroll map-scroll league-scroll"></div>
         <div class="btn-row">
           <button id="btn-race-garage" class="secondary-btn">🛠 GARAGE</button>
-          <button id="btn-race-back" class="secondary-btn">BACK</button>
+          <button id="btn-race-back" class="secondary-btn">🏠 HOME</button>
         </div>
       </div>
     </div>
@@ -294,6 +317,7 @@
           <h2>PAUSED</h2>
           <button id="rbtn-resume" class="primary-btn">RESUME</button>
           <button id="rbtn-quit" class="secondary-btn">QUIT RACE</button>
+          <button id="rbtn-home" class="secondary-btn">🏠 HOME</button>
         </div>
       </div>
     </div>
@@ -314,6 +338,7 @@
         <div class="btn-row">
           <button id="btn-rr-retry" class="secondary-btn">↻ RETRY</button>
           <button id="btn-rr-menu" class="secondary-btn">🏁 LEAGUES</button>
+          <button id="btn-rr-home" class="secondary-btn home-btn" aria-label="Home">🏠</button>
         </div>
       </div>
     </div>

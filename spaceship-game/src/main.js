@@ -17,6 +17,7 @@ import { haptics } from './haptics.js';
 import { store } from './storage.js';
 import { Progression, POWERUPS, UPGRADES, drawCards, rankInfo, upgradeLevels } from './progression.js';
 import { HangarUI, showCards } from './hangar-ui.js';
+import { ShipPreview } from './ship-preview.js';
 import { GALAXIES, QUIPS, pick } from './galaxies.js';
 import { Journey } from './journey.js';
 import { StarMapUI, starsHTML } from './starmap-ui.js';
@@ -146,8 +147,15 @@ const screens = {
   raceResults: $('screen-race-results'),
   welcome: $('screen-welcome'),
 };
+// Home screen turntable: your pod with every upgrade you own.
+const homePreview = new ShipPreview($('home-preview'));
 function showScreen(name) {
   for (const [k, el] of Object.entries(screens)) el.classList.toggle('hidden', k !== name);
+  if (name === 'start') {
+    homePreview.setSkin(prog.skin);
+    homePreview.setUpgrades(upgradeLevels(prog));
+    homePreview.start();
+  } else homePreview.stop();
 }
 
 function updateMenuMeta() {
@@ -158,7 +166,35 @@ function updateMenuMeta() {
   $('start-xp-fill').style.width = `${(r.into / r.need) * 100}%`;
   $('start-trophies').textContent = prog.trophies;
   $('start-power').textContent = prog.shipPower;
+  renderModeCards();
   renderNextStep();
+}
+
+// Home: progress summary on the Dodge and Race cards.
+function renderModeCards() {
+  const n = GALAXIES.length;
+  const open = prog.galaxyOpen(0);
+  let gi = Math.min(n - 1, prog.unlocked - 1);
+  while (gi > 0 && !prog.galaxyOpen(gi)) gi--;
+  $('btn-start').classList.toggle('locked', !open);
+  $('mc-dodge-name').textContent = open ? GALAXIES[gi].name : '🔒 Locked';
+  $('mc-dodge-meta').textContent = open ? `Galaxy ${gi + 1}/${n} · ★ ${prog.totalStars}` : 'Needs 🏆 1 from a race';
+  $('mc-dodge-fill').style.width = `${(Math.min(n, prog.unlocked - 1) / n) * 100}%`;
+  const next = prog.nextCareerRace;
+  const done = CAREER.filter((c) => { const b = prog.bestPlace(c.track.id); return b && b <= 3; }).length;
+  $('mc-race-name').textContent = next ? next.track.name : 'Career complete! 👑';
+  $('mc-race-meta').textContent = `${next ? `Race ${careerIndex(next.track.id) + 1}/${CAREER.length}` : `${CAREER.length}/${CAREER.length}`} · 🏆 ${prog.trophies}`;
+  $('mc-race-fill').style.width = `${(done / CAREER.length) * 100}%`;
+}
+
+// 🏠 from anywhere: stop what's running and show the Home hub.
+function goHome() {
+  audio.click();
+  handoff.hide();
+  $('rh-pausebox').classList.add('hidden');
+  if (state.mode !== 'menu') leaveRun();
+  updateMenuMeta();
+  showScreen('start');
 }
 
 // ---------------------------------------------------------------- FTUE
@@ -755,7 +791,7 @@ function retry() {
 $('btn-start').addEventListener('click', openMap);
 $('btn-restart').addEventListener('click', retry);
 $('btn-menu').addEventListener('click', openMap);
-$('btn-quit').addEventListener('click', () => { audio.resume(); toMenu(); });
+$('btn-quit').addEventListener('click', () => { audio.resume(); goHome(); });
 $('btn-resume').addEventListener('click', resumeGame);
 $('btn-pause').addEventListener('click', pauseGame);
 $('btn-hangar').addEventListener('click', () => openHangar('start'));
@@ -763,7 +799,9 @@ $('btn-over-hangar').addEventListener('click', () => openHangar('over'));
 $('btn-map-hangar').addEventListener('click', () => openHangar('map'));
 $('btn-victory-hangar').addEventListener('click', () => openHangar('victory'));
 $('btn-hangar-back').addEventListener('click', closeHangar);
-$('btn-map-back').addEventListener('click', () => { audio.click(); updateMenuMeta(); showScreen('start'); });
+$('btn-map-back').addEventListener('click', goHome);
+$('btn-over-home').addEventListener('click', goHome);
+$('btn-victory-home').addEventListener('click', goHome);
 $('btn-victory-map').addEventListener('click', openMap);
 $('btn-next-galaxy').addEventListener('click', () => {
   audio.click();
@@ -1162,7 +1200,9 @@ $('btn-welcome-go').addEventListener('click', () => {
 });
 // First launch: welcome + the core loop instead of the start menu.
 if (needsWelcome()) showScreen('welcome');
-$('btn-race-back').addEventListener('click', () => { audio.click(); updateMenuMeta(); showScreen('start'); });
+$('btn-race-back').addEventListener('click', goHome);
+$('btn-rr-home').addEventListener('click', goHome);
+$('rbtn-home').addEventListener('click', goHome);
 $('btn-race-garage').addEventListener('click', () => openHangar('race'));
 $('btn-rr-retry').addEventListener('click', () => { audio.click(); startRace(state.raceLeague, state.raceTrack); });
 $('btn-rr-next').addEventListener('click', () => { audio.click(); if (state.nextRace) startRace(state.nextRace.lg, state.nextRace.t); });
@@ -1175,6 +1215,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 function updateRace(realDt) {
+  if (!race.player) { renderer.render(scene, camera); return; }
   const steer = state.mode === 'race' ? input.raceSteer() : 0;
   const live = state.mode === 'race';
   race.update(realDt, steer, live && raceBoost, live && raceItem);
@@ -1302,7 +1343,7 @@ function frame(now) {
   }
   if (state.mode === 'race' || state.mode === 'raceDone' || state.mode === 'raceResults') {
     updateRace(realDt);
-    if (DEBUG) debugEl.textContent = `fps ${perf.fps.toFixed(0)}  q:${quality}\ncalls ${renderer.info.render.calls}\n${state.mode} place ${race.playerPlace} v ${race.player.v.toFixed(1)}`;
+    if (DEBUG) debugEl.textContent = `fps ${perf.fps.toFixed(0)}  q:${quality}\ncalls ${renderer.info.render.calls}\n${state.mode} place ${race.playerPlace} v ${race.player ? race.player.v.toFixed(1) : '-'}`;
     return;
   }
 
