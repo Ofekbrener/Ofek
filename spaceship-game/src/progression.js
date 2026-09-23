@@ -62,6 +62,13 @@ const DEFAULT_SAVE = {
 const ALL_UPGRADES = () => [...UPGRADES, ...RACE_UPGRADES];
 export const GALAXY_COUNT = 5;
 
+// Every upgrade level (Dodge + Race Garage) as {id: level}, for Ship.setUpgrades.
+export function upgradeLevels(prog) {
+  const out = {};
+  for (const u of ALL_UPGRADES()) out[u.id] = prog.level(u.id);
+  return out;
+}
+
 export class Progression {
   constructor() {
     this.data = this._load();

@@ -1,4 +1,5 @@
-import { UPGRADES, SKINS, upgradeCost } from './progression.js';
+import { UPGRADES, SKINS, upgradeCost, upgradeLevels } from './progression.js';
+import { ShipPreview } from './ship-preview.js';
 import { RACE_UPGRADES } from './race/leagues.js';
 
 const $ = (id) => document.getElementById(id);
@@ -17,6 +18,8 @@ export class HangarUI {
     this.raceList = $('race-upgrade-list');
     this.skinList = $('skin-list');
     this.balance = $('hangar-crystals');
+    // Live 3D turntable of the pod with every purchased upgrade on it.
+    this.preview = new ShipPreview($('hangar-preview'));
   }
 
   render(flashId = null) {
@@ -26,6 +29,10 @@ export class HangarUI {
     this._renderUpgrades(this.upgradeList, UPGRADES, flashId);
     this._renderUpgrades(this.raceList, RACE_UPGRADES, flashId);
     this._renderSkins(flashId);
+
+    this.preview.setSkin(p.skin);
+    this.preview.setUpgrades(upgradeLevels(p));
+    if (flashId) this.preview.pop();
   }
 
   _renderUpgrades(list, defs, flashId) {

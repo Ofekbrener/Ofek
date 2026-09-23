@@ -133,6 +133,7 @@ export class RaceSession {
    * @param galaxy  theme galaxy
    * @param stats   {engine, accel, grip, tank, armor} levels
    * @param skin    ship skin
+   * @param opts.upgrades all upgrade levels (upgradeLevels(prog)) shown on the pod; defaults to `stats`
    */
   load(league, trackDef, galaxy, stats, skin, opts = {}) {
     if (this.track) this.track.dispose(this.scene);
@@ -157,6 +158,7 @@ export class RaceSession {
     this.ringMat.color.set(galaxy.planet.ring);
 
     this.ship.setSkin(skin);
+    this.ship.setUpgrades(opts.upgrades || stats);
     this.ship.reset();
     this.ship.setShielded(false);
 
@@ -830,7 +832,8 @@ export class RaceSession {
         this.ship.shieldMat.uniforms.uTime.value += dt;
         const flick = 0.85 + Math.random() * 0.3;
         const s = (r.boostT > 0 ? 1.8 : 1.1) * flick;
-        for (const n of this.ship.nozzles) n.scale.setScalar(s);
+        this.ship.setThrust(s);
+        this.ship.animate(dt);
       } else {
         obj.rotateY(r.spinT > 0 ? r.spinT * 12 : yaw);
         obj.rotateZ(bank);
