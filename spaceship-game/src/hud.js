@@ -15,6 +15,15 @@ export class HUD {
     this.powersEl = $('hud-powers');
     this.activePopup = null;
     this.shieldCount = -1;
+    this.galaxyEl = $('hud-galaxy');
+    this.progressEl = $('hud-progress');
+    this.effectEl = $('hud-effect');
+    this.bossBar = $('boss-bar');
+    this.bossName = $('boss-name');
+    this.bossFill = $('boss-hp-fill');
+    this.card = $('galaxy-card');
+    this.segs = [];
+    this._progKey = '';
     this.shown = -1;
     this.bannerTimer = null;
     this.bannerAnim = null;
@@ -25,7 +34,9 @@ export class HUD {
   reset() {
     this.shown = -1;
     this.setScore(0);
-    this.setLevel(1);
+    this.setLevel('WAVE 1');
+    this.showBoss(null);
+    this.setEffect(null);
     this.setCombo(1);
     this.popups.textContent = '';
     this.activePopup = null;
@@ -89,8 +100,61 @@ export class HUD {
     this.scoreEl.animate(frames, { duration: 260 + strength * 80, easing: 'cubic-bezier(.2,1.6,.4,1)' });
   }
 
-  setLevel(level) {
-    this.levelEl.textContent = level;
+  setLevel(label) {
+    this.levelEl.textContent = label;
+  }
+
+  setGalaxy(name) { this.galaxyEl.textContent = name.toUpperCase(); }
+
+  // Galaxy progress: 4 wave segments + a boss icon. `wave` 0..4, `frac` 0..1 within it.
+  setProgress(wave, frac, waves = 4) {
+    if (!this.segs.length || this.segs.length !== waves) {
+      this.progressEl.textContent = '';
+      this.segs = [];
+      for (let i = 0; i < waves; i++) {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        const fill = document.createElement('i');
+        seg.appendChild(fill);
+        this.progressEl.appendChild(seg);
+        this.segs.push(fill);
+      }
+      this.bossIcon = document.createElement('div');
+      this.bossIcon.className = 'boss';
+      this.bossIcon.textContent = '🐔';
+      this.progressEl.appendChild(this.bossIcon);
+    }
+    const key = `${wave}:${Math.round(frac * 50)}`;
+    if (key === this._progKey) return;
+    this._progKey = key;
+    this.segs.forEach((f, i) => {
+      f.style.width = `${i < wave ? 100 : i === wave ? frac * 100 : 0}%`;
+    });
+    this.bossIcon.classList.toggle('on', wave >= waves);
+  }
+
+  showBoss(name) {
+    this.bossBar.classList.toggle('hidden', !name);
+    if (name) { this.bossName.textContent = name; this.setBossHp(1); }
+  }
+
+  setBossHp(frac) { this.bossFill.style.width = `${Math.max(0, frac) * 100}%`; }
+
+  setEffect(text) {
+    this.effectEl.classList.toggle('hidden', !text);
+    if (text) this.effectEl.textContent = text;
+  }
+
+  galaxyCard(num, name, tag) {
+    const c = this.card;
+    $('galaxy-card-num').textContent = num;
+    $('galaxy-card-name').textContent = name.toUpperCase();
+    $('galaxy-card-tag').textContent = tag;
+    c.classList.add('hidden');
+    void c.offsetWidth;
+    c.classList.remove('hidden');
+    clearTimeout(this._cardT);
+    this._cardT = setTimeout(() => c.classList.add('hidden'), 2700);
   }
 
   setCombo(combo) {

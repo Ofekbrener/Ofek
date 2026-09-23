@@ -28,10 +28,10 @@ export class Lighting {
     this.flashPower = power;
   }
 
-  setLevelHue(level) {
-    const h = (0.6 + (level - 1) * 0.11) % 1;
-    this._targetSky.setHSL(h, 0.7, 0.75);
-    this._targetRim.setHSL((h + 0.35) % 1, 1, 0.55);
+  // Tint the sky fill + rim light to a galaxy's palette (tweened in update).
+  setTheme(g) {
+    this._targetSky.set(g.colors.sky);
+    this._targetRim.set(g.colors.rim);
   }
 
   update(realDt) {

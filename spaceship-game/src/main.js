@@ -5,7 +5,9 @@ import { Lighting } from './lighting.js';
 import { Environment } from './environment.js';
 import { Ship } from './ship.js';
 import { Obstacles } from './obstacles.js';
-import { Pickups, CRYSTAL, ORB } from './pickups.js';
+import { Chickens } from './chickens.js';
+import { Boss } from './boss.js';
+import { Pickups, CRYSTAL, ORB, GIFT, CORN } from './pickups.js';
 import { Particles, PALETTES } from './particles.js';
 import { FX } from './fx.js';
 import { HUD } from './hud.js';
@@ -15,6 +17,9 @@ import { haptics } from './haptics.js';
 import { store } from './storage.js';
 import { Progression, POWERUPS, drawCards, rankInfo } from './progression.js';
 import { HangarUI, showCards } from './hangar-ui.js';
+import { GALAXIES, WAVES_PER_GALAXY, QUIPS, pick } from './galaxies.js';
+import { Journey } from './journey.js';
+import { StarMapUI, starsHTML } from './starmap-ui.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -33,14 +38,19 @@ try {
   throw err;
 }
 const { renderer, scene, camera, rig, resize } = gfx;
+scene.background = new THREE.Color(0x05060f);   // own copy: themes tween it
 
 const lighting = new Lighting(scene);
 const env = new Environment(scene, quality === 'high' ? CONFIG.starsHigh : CONFIG.starsLow);
+const particles = new Particles(scene, quality === 'high' ? CONFIG.particlesHigh : CONFIG.particlesLow);
 const ship = new Ship(scene);
-const obstacles = new Obstacles(scene, CONFIG.maxObstacles);
+const obstacles = new Obstacles(scene, CONFIG.maxObstacles, particles);
 const pickups = new Pickups(scene, CONFIG.maxPickups);
 obstacles.pickups = pickups;
-const particles = new Particles(scene, quality === 'high' ? CONFIG.particlesHigh : CONFIG.particlesLow);
+const chickens = new Chickens(scene, particles);
+chickens.setTint(0xffffff);
+const boss = new Boss(scene, particles, chickens, obstacles, pickups);
+const journey = new Journey({ obstacles, chickens, pickups, boss });
 const fx = new FX($('flash'));
 const hud = new HUD();
 const audio = new AudioEngine();
@@ -72,11 +82,12 @@ window.addEventListener('orientationchange', () => setTimeout(onResize, 200));
 onResize();
 
 // ---------------------------------------------------------------- state
+// modes: menu | playing | choosing | resuming | paused | dying | gameover
+//        | victory (post-boss celebration) | victoryScreen | warp
 const state = {
-  mode: 'menu',          // menu | playing | choosing | resuming | paused | dying | gameover
+  mode: 'menu',
   score: 0,
   time: 0,
-  level: 1,
   speed: 14,
   nearMisses: 0,
   combo: 1,
@@ -88,24 +99,32 @@ const state = {
   menuTime: 0,
   emitAcc: 0,
   slowMuffled: false,
-  perfectCd: 0,          // real seconds until a PERFECT may slow time again
+  perfectCd: 0,
   crystals: 0,
   crystalAcc: 0,
+  galaxyCrystals: 0,
+  bankedCrystals: 0,
+  bankedScore: 0,
   streak: 0,
   streakTimer: 0,
   shields: 0,
   picked: {},
   mods: prog.modifiers({}),
-  worldScale: 1,         // eases to 0 while choosing a power-up
+  worldScale: 1,
   resumeT: 0,
   countStep: 0,
-  hangarReturn: 'start',
+  returnTo: 'start',
+  effect: null,          // {type, t}
+  victoryT: 0,
+  warpT: 0,
+  splatCd: 0,
 };
 const nearEvents = [];
 const pickEvents = [];
 const tmpV = new THREE.Vector3();
 const lookTarget = new THREE.Vector3();
 let cardPick = null;
+let lastFov = 0;
 
 const screens = {
   start: $('screen-start'),
@@ -113,6 +132,8 @@ const screens = {
   over: $('screen-over'),
   hangar: $('screen-hangar'),
   cards: $('screen-cards'),
+  map: $('screen-map'),
+  victory: $('screen-victory'),
 };
 function showScreen(name) {
   for (const [k, el] of Object.entries(screens)) el.classList.toggle('hidden', k !== name);
@@ -132,6 +153,15 @@ const hangarUI = new HangarUI(prog, {
   haptics,
   onChange: () => { ship.setSkin(prog.skin); updateMenuMeta(); },
 });
+const starMap = new StarMapUI(prog, {
+  audio,
+  onLaunch: (i) => startRun(i),
+  onEndless: () => startRun('endless'),
+});
+
+// Menu backdrop shows the next galaxy to conquer.
+env.setTheme(GALAXIES[starMap.suggested], true);
+lighting.setTheme(GALAXIES[starMap.suggested]);
 
 // ---------------------------------------------------------------- toggles
 const soundBtn = $('btn-sound');
@@ -139,7 +169,8 @@ const hapticsBtn = $('btn-haptics');
 function refreshToggles() {
   soundBtn.classList.toggle('off', audio.muted);
   soundBtn.textContent = audio.muted ? '🔇 Sound' : '🔊 Sound';
-  hapticsBtn.classList.toggle('off', !haptics.enabled);
+  hapticsBtn.classList.toggle('off', haptics.level === 0);
+  hapticsBtn.textContent = `📳 Vibration: ${haptics.label}`;
 }
 if (!haptics.supported) hapticsBtn.classList.add('hidden');
 soundBtn.addEventListener('click', () => {
@@ -149,7 +180,7 @@ soundBtn.addEventListener('click', () => {
   refreshToggles();
 });
 hapticsBtn.addEventListener('click', () => {
-  haptics.setEnabled(!haptics.enabled);
+  haptics.cycle();
   audio.click();
   refreshToggles();
 });
@@ -161,48 +192,83 @@ function applyMods() {
   ship.handling = m.handling;
   input.handling = m.handling;
   obstacles.orbChance = m.orbChance;
+  obstacles.giftChance = m.giftChance;
 }
 
 function setShields(n) {
-  state.shields = Math.min(5, n);
+  state.shields = Math.max(0, Math.min(5, n));
   ship.setShielded(state.shields > 0);
   hud.setShields(state.shields);
 }
 
+function magnetRadius() {
+  let r = state.mods.magnet;
+  if (state.effect && state.effect.type === 'magnet') r += 3;
+  if (state.mode === 'victory') r += 9;
+  return r;
+}
+
 // ---------------------------------------------------------------- flow
-function startGame() {
+function stopWorld() {
+  obstacles.reset();
+  chickens.reset();
+  pickups.reset();
+  boss.stop();
+  hud.showBoss(null);
+}
+
+function startRun(which) {
   audio.unlock();
   audio.click();
   haptics.tap();
 
   Object.assign(state, {
-    mode: 'playing', score: 0, time: 0, level: 1, speed: CONFIG.baseSpeed,
-    nearMisses: 0, combo: 1, comboTimer: 0, nextMilestone: CONFIG.milestone,
-    nextTick: 100, deathTimer: 0, emitAcc: 0, slowMuffled: false, perfectCd: 0,
-    crystals: 0, crystalAcc: 0, streak: 0, streakTimer: 0, picked: {},
-    worldScale: 1, resumeT: 0,
+    mode: 'playing', score: 0, time: 0, nearMisses: 0, combo: 1, comboTimer: 0,
+    nextMilestone: CONFIG.milestone, nextTick: 100, deathTimer: 0, emitAcc: 0, slowMuffled: false,
+    perfectCd: 0, crystals: 0, crystalAcc: 0, galaxyCrystals: 0, bankedCrystals: 0, bankedScore: 0,
+    streak: 0, streakTimer: 0, picked: {}, worldScale: 1, resumeT: 0, effect: null,
   });
   applyMods();
-  obstacles.reset();
-  pickups.reset();
+  stopWorld();
   ship.reset();
   ship.setSkin(prog.skin);
   fx.reset();
   input.reset();
   input.enabled = true;
   hud.reset();
+  hud.setPowers({}, POWERUPS);
   hud.show(true);
   setShields(state.mods.startShields);
   showScreen(null);
+  starMap.closeBriefing();
 
-  env.setLevelHue(1);
-  lighting.setLevelHue(1);
-  audio.setLevel(1);
+  if (which === 'endless') journey.startEndless();
+  else journey.startCampaign(which);
+  enterGalaxy(true);
+
   audio.startMusic();
   audio.muffleMusic(18000, 0.1);
   audio.startEngine();
-  hud.showBanner('GO!', 900);
   perf.reset();
+}
+
+// Visuals, music and HUD for the journey's current galaxy.
+function enterGalaxy(fromMenu = false) {
+  const g = journey.galaxy;
+  if (fromMenu) env.hidePlanet();
+  env.setTheme(g);
+  lighting.setTheme(g);
+  chickens.setTint(g.id === 'frost' ? 0xdff4ff : 0xffffff);
+  audio.setGalaxy(g.music);
+  audio.setLevel(1);
+  audio.setBoss(false);
+  state.galaxyCrystals = 0;
+  hud.setGalaxy(g.name);
+  hud.setLevel(journey.endless ? `ENDLESS W${journey.wave + 1}` : 'GET READY');
+  hud.setProgress(0, 0, WAVES_PER_GALAXY);
+  const num = journey.endless ? `∞ ENDLESS · LOOP ${journey.loop + 1}` : `GALAXY ${journey.gIndex + 1} OF ${GALAXIES.length}`;
+  hud.galaxyCard(num, g.name, g.tagline);
+  setTimeout(() => audio.cluck(1, 0.12), 900);
 }
 
 function toMenu() {
@@ -211,6 +277,7 @@ function toMenu() {
   audio.stopEngine();
   input.enabled = false;
   hud.show(false);
+  stopWorld();
   ship.reset();
   ship.setShielded(false);
   state.mode = 'menu';
@@ -218,10 +285,28 @@ function toMenu() {
   showScreen('start');
 }
 
+function openMap() {
+  audio.unlock();
+  audio.click();
+  if (state.mode !== 'menu') {
+    audio.stopMusic();
+    audio.stopEngine();
+    hud.show(false);
+    stopWorld();
+    ship.reset();
+    ship.setShielded(false);
+    state.mode = 'menu';
+  }
+  starMap.render();
+  env.setTheme(GALAXIES[starMap.suggested]);
+  lighting.setTheme(GALAXIES[starMap.suggested]);
+  showScreen('map');
+}
+
 function openHangar(from) {
   audio.unlock();
   audio.click();
-  state.hangarReturn = from;
+  state.returnTo = from;
   hangarUI.render();
   showScreen('hangar');
 }
@@ -229,7 +314,8 @@ function openHangar(from) {
 function closeHangar() {
   audio.click();
   updateMenuMeta();
-  showScreen(state.hangarReturn);
+  if (state.returnTo === 'map') starMap.render();
+  showScreen(state.returnTo);
 }
 
 function pauseGame() {
@@ -250,16 +336,34 @@ function resumeGame() {
   showScreen(null);
 }
 
-// ---- in-run power-up choice ----
-function openCards(level) {
+// ---- waves ----
+function onWaveStart() {
+  const lw = journey.localWave;
+  hud.setLevel(journey.endless ? `ENDLESS W${journey.wave + 1}` : `WAVE ${lw + 1}/${WAVES_PER_GALAXY}`);
+  hud.showBanner(`WAVE ${lw + 1}`, 1100);
+  audio.setLevel(lw + 1);
+}
+
+function onWaveClear() {
+  const lw = journey.localWave;
+  audio.waveClear();
+  haptics.waveClear();
+  env.pulse(1);
+  hud.popup(pick(QUIPS.waveClear), 0.5, 'cyan');
   const cards = drawCards(state.picked);
-  if (!cards.length) return;
+  if (!cards.length) { advanceWave(); return; }
+  const title = lw + 1 >= WAVES_PER_GALAXY ? 'BOSS INCOMING! GEAR UP' : `WAVE ${lw + 1} CLEAR!`;
+  setTimeout(() => openCards(title, cards), 500);
+}
+
+function openCards(title, cards) {
+  if (state.mode !== 'playing') return;
   state.mode = 'choosing';
   input.enabled = false;
   input.release();
   audio.muffleMusic(1400, 0.15);
   showScreen('cards');
-  cardPick = showCards(level, cards, pickPower);
+  cardPick = showCards(title, cards, pickPower);
 }
 
 function pickPower(def) {
@@ -274,14 +378,131 @@ function pickPower(def) {
   haptics.card();
   cardPick = null;
   showScreen(null);
-
-  // Clear the lane ahead and count back in.
   obstacles.clearAhead(-40);
+  chickens.clearAhead(-40);
   state.mode = 'resuming';
   state.resumeT = 0.9;
   state.countStep = 0;
   input.enabled = true;
   audio.muffleMusic(18000, 0.3);
+}
+
+// After cards/countdown: go to the next wave, boss or (endless) next galaxy.
+function advanceWave() {
+  const next = journey.nextWave();
+  if (next === 'warp') startWarp();
+  else if (next === 'bossIntro') onBossIntro();
+  else if (next === 'wave') onWaveStart();
+}
+
+// ---- boss ----
+function onBossIntro() {
+  const b = journey.galaxy.boss;
+  hud.setLevel('BOSS');
+  hud.setProgress(WAVES_PER_GALAXY, 0, WAVES_PER_GALAXY);
+  hud.showBanner('⚠ WARNING ⚠', 1400);
+  setTimeout(() => {
+    if (!boss.active) return;
+    hud.galaxyCard(b.title.toUpperCase(), b.name, journey.galaxy.bossQuip);
+  }, 1300);
+  hud.showBoss(b.name);
+  audio.setBoss(true);
+  audio.bossRoar();
+  haptics.bossIntro();
+  fx.shake(0.4);
+  fx.flash('rgba(255, 60, 90, 0.5)', 0.35, 500);
+}
+
+boss.onHit = (frac) => {
+  hud.setBossHp(frac);
+  audio.missileHit();
+  haptics.bossHit();
+  fx.shake(0.35);
+  fx.flash('rgba(255, 255, 255, 0.5)', 0.3, 200);
+  fx.slowMo(0.2, 0.06);
+  hud.popup(frac > 0 ? 'DIRECT HIT!' : 'K.O.!', 0.5, '');
+};
+
+boss.onAttack = (kind) => {
+  if (kind === 'fan') audio.cluck(0.8, 0.22);
+  else if (kind === 'summon') { audio.cluck(1.2, 0.2); setTimeout(() => audio.cluck(1.4, 0.15), 160); }
+  else if (kind === 'throw') audio.cluck(0.6, 0.25);
+  else if (kind === 'laser') audio.countdown(false);
+  else if (kind === 'beam') audio.missileLaunch();
+};
+
+boss.onDefeated = () => {
+  state.mode = 'victory';
+  state.victoryT = 3.4;
+  hud.showBoss(null);
+  obstacles.clearAhead(-300);
+  chickens.clearAhead(-300);
+  audio.setBoss(false);
+  audio.victory();
+  haptics.bossDefeated();
+  fx.shake(1);
+  fx.slowMo(0.3, 0.8);
+  fx.flash('rgba(255, 240, 200, 0.9)', 0.9, 700);
+  lighting.flashAt(boss.x, boss.y, boss.z + 4, 300, 0xfff0c0);
+  hud.showBanner(pick(QUIPS.victory), 2200);
+  // Drumstick shower!
+  for (let i = 0; i < 26; i++) {
+    pickups.spawnAt((Math.random() * 2 - 1) * CONFIG.halfWidth, -12 - Math.random() * 30);
+  }
+  state.score += 500 * state.mods.scoreMult;
+};
+
+// Bank drumsticks + XP earned since the last bank (galaxy victory or death).
+function bank() {
+  const final = Math.floor(state.score);
+  const scoreDelta = final - state.bankedScore;
+  const bonus = Math.floor(scoreDelta / CONFIG.payoutScoreDivisor);
+  const collected = state.crystals - state.bankedCrystals;
+  const res = prog.bankRun(collected + bonus, scoreDelta);
+  state.bankedScore = final;
+  state.bankedCrystals = state.crystals;
+  return { ...res, collected, bonus, earned: collected + bonus, xp: scoreDelta };
+}
+
+function showVictoryScreen() {
+  state.mode = 'victoryScreen';
+  input.enabled = false;
+  hud.show(false);
+  const gi = journey.gIndex;
+  const stars = journey.stars(state.galaxyCrystals);
+  const newUnlock = prog.completeGalaxy(gi, stars);
+  const b = bank();
+  const last = gi >= GALAXIES.length - 1;
+  $('victory-title').textContent = last ? 'THE HENS ARE DEFEATED!' : pick(QUIPS.victory);
+  $('victory-galaxy').textContent = journey.galaxy.name.toUpperCase();
+  $('victory-stars').innerHTML = starsHTML(stars, 3, true);
+  $('victory-quip').textContent = last ? '...for now. Rumours speak of an Infinite Coop.' : journey.galaxy.bossQuip;
+  $('victory-score').textContent = Math.floor(state.score).toLocaleString();
+  $('victory-banked').textContent = `+${b.earned}`;
+  const note = $('victory-unlock');
+  note.classList.toggle('hidden', !newUnlock);
+  note.textContent = last ? '∞ ENDLESS MODE UNLOCKED!' : `🔓 ${GALAXIES[gi + 1].name} unlocked!`;
+  $('btn-next-galaxy').classList.toggle('hidden', last);
+  showScreen('victory');
+  for (let i = 0; i < stars; i++) setTimeout(() => audio.starDing(i), 250 + i * 350);
+  audio.muffleMusic(2500, 0.4);
+}
+
+// ---- hyperspace ----
+const WARP_DUR = 2.8;
+function startWarp() {
+  state.mode = 'warp';
+  state.warpT = 0;
+  state.warped = false;
+  hud.show(true);
+  showScreen(null);
+  input.enabled = true;
+  audio.warp(WARP_DUR);
+  audio.muffleMusic(18000, 0.3);
+  hud.showBanner('HYPERSPACE', 1200);
+  obstacles.clearAhead(-300);
+  chickens.clearAhead(-300);
+  pickups.reset();
 }
 
 function crash() {
@@ -307,22 +528,50 @@ function crash() {
   audio.muffleMusic(450, 0.25);
   haptics.collision();
   env.pulse(1.5);
+  if (state.effect) endEffect();
 }
 
-// Shield soaks the hit: the obstacle shatters and the ship blinks briefly.
-function absorbHit(o) {
-  obstacles.destroy(o);
+// Knock a hazard out of the way (shield absorb or Feather Dash).
+function smash(hit) {
+  if (hit.kind === 'chicken') {
+    chickens.poof(hit.obj);
+    audio.cluck(1.5, 0.2);
+    pickups.spawnAt(hit.obj.x, -4);
+    pickups.spawnAt(hit.obj.x + (Math.random() - 0.5), -6);
+  } else if (hit.kind === 'puddle') {
+    chickens.splat(hit.obj);
+    audio.splat();
+  } else if (hit.kind === 'rock') {
+    const o = hit.obj;
+    obstacles.destroy(o);
+    particles.burst(o.x, 0, o.z, quality === 'high' ? 60 : 30, 11, 0.8, 0.5, [[0.8, 0.8, 0.85], [0.55, 0.5, 0.6]], 2, 0.4);
+  }
+}
+
+function absorbHit(hit) {
+  smash(hit);
   setShields(state.shields - 1);
+  journey.stats.hits++;
   ship.invuln = CONFIG.shieldGrace;
-  const hx = o.type === 0 ? o.x : ship.x;
-  particles.burst(hx, 0, o.z, quality === 'high' ? 70 : 35, 12, 0.8, 0.5, [[0.8, 0.8, 0.85], [0.55, 0.5, 0.6]], 2, 0.4);
   particles.burst(ship.x, 0, 0, quality === 'high' ? 60 : 30, 9, 0.6, 0.4, [[0.45, 0.7, 1], [0.8, 0.9, 1]], 2.5, 0.3);
   lighting.flashAt(ship.x, 0.6, 0.5, 70, 0x6fb8ff);
   fx.shake(0.5);
   fx.flash('rgba(111, 184, 255, 0.6)', 0.4, 350);
   audio.shieldBreak();
   haptics.shieldBreak();
-  hud.popup('SHIELD SAVED YOU', shipScreenX(), 'cyan');
+  hud.popup(pick(QUIPS.shield), shipScreenX(), 'cyan');
+}
+
+function resolveHit(hit) {
+  if (!hit || state.mode !== 'playing') return false;
+  if (state.effect && state.effect.type === 'dash') {
+    if (hit.kind !== 'laser') { smash(hit); fx.shake(0.2); audio.missileHit(); }
+    return false;
+  }
+  if (ship.invuln > 0) return false;
+  if (state.shields > 0) { absorbHit(hit); return false; }
+  crash();
+  return true;
 }
 
 function countUp(el, to, ms = 700) {
@@ -338,82 +587,91 @@ function countUp(el, to, ms = 700) {
 function gameOver() {
   state.mode = 'gameover';
   hud.show(false);
+  boss.stop();
   const final = Math.floor(state.score);
   const isBest = final > state.best;
   if (isBest) {
     state.best = final;
     store.set('best', final);
   }
+  if (journey.endless) prog.recordEndless(journey.wave + 1, final);
+  $('over-title').textContent = pick(QUIPS.gameOver);
   $('final-score').textContent = final.toLocaleString();
   $('over-best').textContent = state.best.toLocaleString();
-  $('over-level').textContent = state.level;
+  $('over-level').textContent = journey.endless
+    ? `∞ Wave ${journey.wave + 1}`
+    : `G${journey.gIndex + 1} · ${journey.isBossWave ? 'Boss' : `W${journey.localWave + 1}`}`;
   $('over-near').textContent = state.nearMisses;
   $('over-time').textContent = `${Math.floor(state.time)}s`;
   $('new-best').classList.toggle('hidden', !isBest);
+  $('btn-restart').textContent = journey.endless ? 'RETRY ENDLESS' : 'RETRY GALAXY';
 
-  // Bank crystals + XP.
-  const bonus = Math.floor(final / CONFIG.payoutScoreDivisor);
-  const earned = state.crystals + bonus;
-  const { before, after } = prog.bankRun(earned, final);
+  const b = bank();
   $('pay-collected').textContent = '0';
   $('pay-bonus').textContent = '0';
   $('pay-total').textContent = '0';
-  $('over-rank').textContent = before.title;
-  $('over-xp').textContent = `+${final.toLocaleString()} XP`;
+  $('over-rank').textContent = b.before.title;
+  $('over-xp').textContent = `+${b.xp.toLocaleString()} XP`;
   const fill = $('over-xp-fill');
   fill.style.transition = 'none';
-  fill.style.width = `${(before.into / before.need) * 100}%`;
+  fill.style.width = `${(b.before.into / b.before.need) * 100}%`;
   showScreen('over');
 
   setTimeout(() => {
-    countUp($('pay-collected'), state.crystals, 500);
-    countUp($('pay-bonus'), bonus, 500);
-    countUp($('pay-total'), earned, 900);
+    countUp($('pay-collected'), b.collected, 500);
+    countUp($('pay-bonus'), b.bonus, 500);
+    countUp($('pay-total'), b.earned, 900);
     fill.style.transition = '';
-    if (after.rank > before.rank) {
+    if (b.after.rank > b.before.rank) {
       fill.style.width = '100%';
       setTimeout(() => {
         fill.style.transition = 'none';
         fill.style.width = '0%';
         void fill.offsetWidth;
         fill.style.transition = '';
-        fill.style.width = `${(after.into / after.need) * 100}%`;
-        $('over-rank').textContent = `RANK UP! ${after.title}`;
+        fill.style.width = `${(b.after.into / b.after.need) * 100}%`;
+        $('over-rank').textContent = `RANK UP! ${b.after.title}`;
         audio.chime();
         haptics.milestone();
       }, 750);
     } else {
-      fill.style.width = `${(after.into / after.need) * 100}%`;
-      if (isBest) {
-        audio.chime();
-        haptics.milestone();
-      }
+      fill.style.width = `${(b.after.into / b.after.need) * 100}%`;
+      if (isBest) { audio.chime(); haptics.milestone(); }
     }
   }, 350);
 }
 
-$('btn-start').addEventListener('click', startGame);
-$('btn-restart').addEventListener('click', startGame);
-$('btn-menu').addEventListener('click', toMenu);
+function retry() {
+  startRun(journey.endless ? 'endless' : journey.gIndex);
+}
+
+$('btn-start').addEventListener('click', openMap);
+$('btn-restart').addEventListener('click', retry);
+$('btn-menu').addEventListener('click', openMap);
 $('btn-quit').addEventListener('click', () => { audio.resume(); toMenu(); });
 $('btn-resume').addEventListener('click', resumeGame);
 $('btn-pause').addEventListener('click', pauseGame);
 $('btn-hangar').addEventListener('click', () => openHangar('start'));
 $('btn-over-hangar').addEventListener('click', () => openHangar('over'));
+$('btn-map-hangar').addEventListener('click', () => openHangar('map'));
+$('btn-victory-hangar').addEventListener('click', () => openHangar('victory'));
 $('btn-hangar-back').addEventListener('click', closeHangar);
+$('btn-map-back').addEventListener('click', () => { audio.click(); updateMenuMeta(); showScreen('start'); });
+$('btn-victory-map').addEventListener('click', openMap);
+$('btn-next-galaxy').addEventListener('click', () => { audio.click(); startWarp(); });
+
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
     if (state.mode === 'playing') pauseGame();
     else if (state.mode === 'paused') resumeGame();
   }
-  if (state.mode === 'choosing' && cardPick && ['1', '2', '3'].includes(e.key)) {
-    cardPick(Number(e.key) - 1);
-  }
-  const onMenu = (state.mode === 'menu' || state.mode === 'gameover') && screens.hangar.classList.contains('hidden');
-  if ((e.key === ' ' || e.key === 'Enter') && onMenu) {
-    e.preventDefault();
-    startGame();
-  }
+  if (state.mode === 'choosing' && cardPick && ['1', '2', '3'].includes(e.key)) cardPick(Number(e.key) - 1);
+  if (e.key !== ' ' && e.key !== 'Enter') return;
+  const visible = (n) => !screens[n].classList.contains('hidden');
+  if (visible('start')) { e.preventDefault(); openMap(); }
+  else if (visible('map')) { e.preventDefault(); if (starMap.briefingOpen) $('btn-brief-go').click(); else starMap.openBriefing(starMap.suggested); }
+  else if (visible('over')) { e.preventDefault(); retry(); }
+  else if (visible('victory') && !$('btn-next-galaxy').classList.contains('hidden')) { e.preventDefault(); startWarp(); }
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -442,13 +700,13 @@ function onNearMiss(ev) {
   state.score += bonus;
   hud.setCombo(state.combo);
   const sx = ship.x + ev.side * 0.6;
+  if (ev.hen) audio.cluck(1.3, 0.12);
 
   if (perfect) {
     hud.popup(`PERFECT +${bonus}`, shipScreenX(), '');
     hud.pop(1.4, '#ffd35c');
     particles.burst(sx, 0, 0.2, quality === 'high' ? 30 : 16, 8, 0.45, 0.32, PALETTES.spark, 3, 0.6);
     audio.nearMiss(ev.side, 1);
-    // The big moment (slow-mo, flash, buzz) is rationed so it stays special.
     if (state.perfectCd <= 0) {
       state.perfectCd = CONFIG.perfectCooldown;
       fx.slowMo(CONFIG.slowMoScale, CONFIG.slowMoDuration + m.slowMoExtra);
@@ -467,16 +725,46 @@ function onNearMiss(ev) {
   }
 }
 
+const GIFTS = {
+  shield: { label: '🛡️ +1 SHIELD', dur: 0 },
+  magnet: { label: '🧲 MEGA MAGNET', dur: 8 },
+  double: { label: '🍗 DOUBLE DRUMSTICKS', dur: 8 },
+  dash: { label: '🪶 FEATHER DASH', dur: 5 },
+};
+
+function applyGift() {
+  const pool = ['magnet', 'double', 'dash'];
+  if (state.shields < 5) pool.push('shield', 'shield');
+  const type = pick(pool);
+  const g = GIFTS[type];
+  audio.giftOpen();
+  haptics.gift();
+  hud.popup(g.label, shipScreenX(), '');
+  particles.burst(ship.x, 0.3, 0, 40, 7, 0.7, 0.4, [[1, 0.3, 0.3], [1, 0.85, 0.3], [1, 1, 1]], 2.5, 0.6);
+  if (type === 'shield') { setShields(state.shields + 1); audio.shieldUp(); return; }
+  if (state.effect) endEffect();
+  state.effect = { type, t: g.dur };
+  if (type === 'dash') { ship.setDash(true); fx.kickFov(6); }
+}
+
+function endEffect() {
+  if (!state.effect) return;
+  if (state.effect.type === 'dash') { ship.setDash(false); ship.invuln = 0.8; }
+  state.effect = null;
+  hud.setEffect(null);
+}
+
 function onPickup(ev) {
   if (ev.type === CRYSTAL) {
-    state.crystalAcc += state.mods.crystalMult;
+    const mult = state.mods.crystalMult * (state.effect && state.effect.type === 'double' ? 2 : 1);
+    state.crystalAcc += mult;
     const n = Math.floor(state.crystalAcc);
+    state.galaxyCrystals++;
     state.streak = state.streakTimer > 0 ? state.streak + 1 : 0;
     state.streakTimer = 1.2;
     state.score += CONFIG.crystalScoreBonus * state.mods.scoreMult;
     audio.pickup(state.streak);
-    const c = ship.trailColor;
-    particles.burst(ev.x, 0.1, Math.min(ev.z, 0.3), quality === 'high' ? 14 : 8, 5, 0.4, 0.3, [[0.6, 1, 1], c, [1, 1, 1]], 3, 0.8);
+    particles.burst(ev.x, 0.1, Math.min(ev.z, 0.3), quality === 'high' ? 12 : 6, 5, 0.4, 0.3, [[1, 0.8, 0.4], [0.85, 0.5, 0.2], [1, 1, 1]], 3, 0.8);
     if (n !== state.crystals) {
       state.crystals = n;
       hud.setCrystals(n);
@@ -487,6 +775,13 @@ function onPickup(ev) {
     haptics.tap();
     hud.popup('+SHIELD', shipScreenX(), 'cyan');
     particles.burst(ship.x, 0.1, 0, quality === 'high' ? 40 : 20, 7, 0.6, 0.45, [[0.45, 0.7, 1], [0.8, 0.9, 1]], 2.5, 0.6);
+  } else if (ev.type === GIFT) {
+    applyGift();
+  } else if (ev.type === CORN) {
+    boss.launchMissile(ship.x);
+    audio.missileLaunch();
+    hud.popup('🌽 CORN MISSILE!', shipScreenX(), '');
+    particles.burst(ship.x, 0.2, 0, 20, 5, 0.4, 0.35, [[1, 0.85, 0.2], [1, 1, 0.6]], 3, 0.5);
   }
 }
 
@@ -500,30 +795,22 @@ function onScoreProgress() {
   while (state.score >= state.nextMilestone) {
     const m = state.nextMilestone;
     state.nextMilestone += CONFIG.milestone;
-    hud.showBanner(m.toLocaleString(), 1300);
     hud.pop(2.4, '#ffd35c');
     audio.chime();
-    haptics.milestone();
-    fx.flash('rgba(255, 211, 92, 0.55)', 0.35, 400);
+    fx.flash('rgba(255, 211, 92, 0.4)', 0.25, 400);
     env.pulse(1);
-    particles.burst(ship.x, 0.2, 0, quality === 'high' ? 90 : 45, 9, 0.9, 0.45, PALETTES.gold, 1.8, 0.5);
+    particles.burst(ship.x, 0.2, 0, quality === 'high' ? 70 : 35, 9, 0.9, 0.45, PALETTES.gold, 1.8, 0.5);
     ring.position.set(ship.x, -0.2, 0);
     ringT = 0;
+    if (m % 1000 === 0) haptics.milestone();
   }
 }
 
-function onLevelUp(level) {
-  state.level = level;
-  hud.setLevel(level);
-  audio.setLevel(level);
-  audio.levelUp();
-  haptics.levelUp();
-  env.setLevelHue(level);
-  lighting.setLevelHue(level);
-  particles.burst(ship.x, 0.2, -1, quality === 'high' ? 60 : 30, 10, 0.8, 0.4, PALETTES.pink, 2, 0.8);
-  if ((level - 1) % CONFIG.cardsEveryLevels === 0) openCards(level);
-  else hud.showBanner(`LEVEL ${level}`, 1500);
-}
+chickens.onEggLanded = () => {
+  if (state.splatCd > 0) return;
+  state.splatCd = 0.12;
+  audio.splat();
+};
 
 // ---------------------------------------------------------------- perf
 const perf = {
@@ -537,7 +824,6 @@ const perf = {
       this.frames = 0;
       this.acc = 0;
     }
-    // Auto-downgrade once, early in a run, if the device struggles.
     if (state.mode === 'playing' && !this.checked && quality === 'high') {
       this.sampleT += realDt;
       if (this.sampleT > 0.75) this.sampleFrames++;
@@ -558,41 +844,64 @@ if (DEBUG) debugEl.classList.remove('hidden');
 
 // ---------------------------------------------------------------- loop
 let last = performance.now();
-let lastFov = 0;
 
 function updateRun(dt, realDt) {
-  const m = state.mods;
   const live = state.mode === 'playing';
   if (live) {
     state.time += dt;
-    const level = 1 + Math.floor(state.time / CONFIG.levelDuration);
-    if (level !== state.level) onLevelUp(level);
+    const ev = journey.update(dt);
+    if (ev === 'waveStart') onWaveStart();
+    else if (ev === 'waveClear') onWaveClear();
+    else if (ev === 'bossFight') hud.popup('Grab 🌽 corn to fire!', 0.5, '');
   }
 
-  state.speed = Math.min(CONFIG.maxSpeed, CONFIG.baseSpeed + CONFIG.speedRamp * state.time) * m.speedMult;
-  const spawnInterval = CONFIG.minSpawnInterval +
-    (CONFIG.baseSpawnInterval - CONFIG.minSpawnInterval) * Math.exp(-state.time / CONFIG.spawnCurve);
-
+  state.speed = journey.speed * state.mods.speedMult;
   ship.setTarget(input.update(realDt, ship.x));
-  const hit = obstacles.update(dt, state.speed, spawnInterval, state.level, ship.x, live, nearEvents);
+
+  const hitObs = obstacles.update(dt, state.speed, ship.x, nearEvents);
+  const hitHen = chickens.update(dt, state.speed, ship.x, nearEvents);
+  const laserHit = boss.active ? boss.update(dt, realDt, state.speed, ship.x) : false;
+  ship.push = obstacles.pull;
+
   pickEvents.length = 0;
-  pickups.update(dt, state.speed, ship.x, m.magnet, pickEvents);
+  pickups.update(dt, state.speed, ship.x, magnetRadius(), pickEvents);
   for (const ev of pickEvents) onPickup(ev);
 
-  if (hit && state.mode === 'playing' && ship.invuln <= 0) {
-    if (state.shields > 0) absorbHit(hit);
-    else { crash(); return; }
-  }
-  if (live) for (const ev of nearEvents) onNearMiss(ev);
+  const hit = hitObs ? { obj: hitObs, kind: 'rock' } : hitHen || (laserHit ? { kind: 'laser' } : null);
+  if (resolveHit(hit)) return;
 
-  state.score += state.speed * dt * CONFIG.distanceScore * m.scoreMult;
+  if (live && nearEvents.length) {
+    // One near miss per frame, the tightest one.
+    let best = nearEvents[0];
+    for (const e of nearEvents) if (e.gap < best.gap) best = e;
+    onNearMiss(best);
+  }
+
+  state.score += state.speed * dt * CONFIG.distanceScore * state.mods.scoreMult;
   if (state.comboTimer > 0) {
     state.comboTimer -= dt;
     if (state.comboTimer <= 0) { state.combo = 1; hud.setCombo(1); }
   }
   if (state.streakTimer > 0) state.streakTimer -= dt;
+  if (state.effect && state.effect.t > 0) {
+    state.effect.t -= realDt;
+    if (state.effect.t <= 0) endEffect();
+    else hud.setEffect(`${GIFTS[state.effect.type].label} · ${Math.ceil(state.effect.t)}`);
+  }
   onScoreProgress();
   hud.setScore(state.score);
+  if (boss.active) hud.setBossHp(boss.hpFrac);
+  hud.setProgress(Math.min(journey.localWave, WAVES_PER_GALAXY), journey.waveFrac, WAVES_PER_GALAXY);
+}
+
+// Background drift for menus / post-run screens.
+function updateAttract(dt, realDt, target) {
+  state.menuTime += realDt;
+  state.speed += (target - state.speed) * (1 - Math.exp(-realDt * 1.5));
+  obstacles.update(dt, state.speed, 999, nearEvents);
+  chickens.update(dt, state.speed, 999, nearEvents);
+  pickups.update(dt, state.speed, 999, 0, pickEvents);
+  ship.push = 0;
 }
 
 function frame(now) {
@@ -610,8 +919,8 @@ function frame(now) {
 
   fx.update(realDt);
   state.perfectCd = Math.max(0, state.perfectCd - realDt);
+  state.splatCd = Math.max(0, state.splatCd - realDt);
 
-  // World time: slow-mo × power-up freeze.
   if (state.mode === 'choosing') {
     state.worldScale *= Math.exp(-realDt * 9);
   } else if (state.mode === 'resuming') {
@@ -627,6 +936,7 @@ function frame(now) {
       state.mode = 'playing';
       state.worldScale = 1;
       ship.invuln = CONFIG.resumeGrace;
+      advanceWave();
     }
   } else {
     state.worldScale = 1;
@@ -634,32 +944,66 @@ function frame(now) {
   const ts = fx.timeScale * state.worldScale;
   const dt = realDt * ts;
   nearEvents.length = 0;
+  env.warp += ((state.mode === 'warp' ? Math.sin(Math.min(1, state.warpT / WARP_DUR) * Math.PI) : 0) - env.warp) * (1 - Math.exp(-realDt * 6));
 
   if (state.mode === 'playing' || state.mode === 'choosing' || state.mode === 'resuming') {
     updateRun(dt, realDt);
+  } else if (state.mode === 'victory') {
+    // Celebration: world keeps flowing, drumsticks rain into the magnet.
+    state.speed = journey.speed;
+    ship.setTarget(input.update(realDt, ship.x));
+    obstacles.update(dt, state.speed, 999, nearEvents);
+    chickens.update(dt, state.speed, 999, nearEvents);
+    boss.update(dt, realDt, state.speed, ship.x);
+    pickEvents.length = 0;
+    pickups.update(dt, state.speed, ship.x, magnetRadius(), pickEvents);
+    for (const ev of pickEvents) onPickup(ev);
+    hud.setScore(state.score);
+    state.victoryT -= realDt;
+    if (state.victoryT <= 0) {
+      if (journey.endless) advanceWave();
+      else showVictoryScreen();
+    }
+  } else if (state.mode === 'warp') {
+    state.warpT += realDt;
+    const k = state.warpT / WARP_DUR;
+    state.speed = journey.speed * (1 + Math.sin(Math.min(1, k) * Math.PI) * 4);
+    ship.setTarget(input.update(realDt, ship.x));
+    fx.kickFov(Math.sin(Math.min(1, k) * Math.PI) * 26);
+    if (k > 0.3) fx.shake(realDt * 0.8);
+    if (k >= 0.6 && !state.warped) {
+      state.warped = true;
+      if (journey.endless) journey.afterWarp();
+      else journey.nextGalaxy();
+      enterGalaxy();
+      fx.flash('rgba(255, 255, 255, 0.95)', 0.95, 600);
+      haptics.waveClear();
+    }
+    obstacles.update(dt, state.speed, 999, nearEvents);
+    pickups.update(dt, state.speed, 999, 0, pickEvents);
+    if (k >= 1) {
+      state.mode = 'playing';
+      audio.startEngine();
+    }
   } else if (state.mode === 'dying') {
     state.speed = Math.max(6, state.speed * Math.exp(-dt * 1.2));
-    obstacles.update(dt, state.speed, 1, state.level, 999, false, nearEvents);
+    obstacles.update(dt, state.speed, 999, nearEvents);
+    chickens.update(dt, state.speed, 999, nearEvents);
+    if (boss.active) boss.update(dt, realDt, state.speed, 999);
     pickups.update(dt, state.speed, 999, 0, pickEvents);
     state.deathTimer -= realDt;
     if (state.deathTimer <= 0) gameOver();
   } else {
-    // menu / game over: calm attract mode
-    state.menuTime += realDt;
-    state.speed += ((state.mode === 'menu' ? 16 : 8) - state.speed) * (1 - Math.exp(-realDt * 1.5));
-    obstacles.update(dt, state.speed, 1, 1, 999, false, nearEvents);
-    pickups.update(dt, state.speed, 999, 0, pickEvents);
-    if (state.mode === 'menu') ship.setTarget(Math.sin(state.menuTime * 0.7) * 1.8);
+    updateAttract(dt, realDt, state.mode === 'menu' ? 16 : 8);
+    if (state.mode === 'menu' || state.mode === 'victoryScreen') ship.setTarget(Math.sin(state.menuTime * 0.7) * 1.8);
   }
 
-  // Restore music brightness after a near-miss slow-mo.
   if (state.slowMuffled && ts > 0.9 && state.mode === 'playing') {
     state.slowMuffled = false;
     audio.muffleMusic(18000, 0.15);
   }
 
   const speedNorm = THREE.MathUtils.clamp((state.speed - CONFIG.baseSpeed) / (CONFIG.maxSpeed - CONFIG.baseSpeed), 0, 1);
-  // Steering runs on real time: control never feels sluggish during slow-mo.
   ship.update(state.mode === 'choosing' ? 0 : realDt, speedNorm);
 
   // Engine trail (skin-coloured)
@@ -682,6 +1026,10 @@ function frame(now) {
         );
       }
     }
+    // Feather Dash: golden feathers streaming off the ship.
+    if (state.effect && state.effect.type === 'dash' && Math.random() < 0.6) {
+      particles.emit(ship.x + (Math.random() - 0.5), 0.2, 0.5, (Math.random() - 0.5) * 2, Math.random(), 8, 0.5, 0.5, 1, 0.85, 0.35, 1, 1);
+    }
   }
 
   particles.update(dt, state.speed);
@@ -697,7 +1045,6 @@ function frame(now) {
     if (ringT >= 1) ring.visible = false;
   }
 
-  // Camera follows the ship loosely, with shake + banking roll.
   camera.position.set(
     rig.basePos.x + ship.x * 0.4 + fx.shakeX,
     rig.basePos.y + fx.shakeY,
@@ -713,7 +1060,9 @@ function frame(now) {
     lastFov = fov;
   }
 
-  if (state.mode === 'playing' || state.mode === 'resuming') audio.setEngine(speedNorm, input.steer, ts);
+  if (state.mode === 'playing' || state.mode === 'resuming' || state.mode === 'warp' || state.mode === 'victory') {
+    audio.setEngine(speedNorm, input.steer, ts);
+  }
 
   renderer.render(scene, camera);
 
@@ -723,17 +1072,23 @@ function frame(now) {
       `fps ${perf.fps.toFixed(0)}  q:${quality}\n` +
       `calls ${info.calls}  tris ${info.triangles}\n` +
       `particles ${particles.alive}  speed ${state.speed.toFixed(1)}\n` +
-      `ts ${ts.toFixed(2)}  lvl ${state.level}  ${state.mode}`;
+      `ts ${ts.toFixed(2)}  ${state.mode}/${journey.phase} g${journey.gIndex} w${journey.wave}`;
   }
 }
 requestAnimationFrame(frame);
 
-// Expose a tiny hook for automated tests / debugging.
 if (DEBUG) {
   window.__game = {
-    state, ship, obstacles, pickups, fx, input, prog,
+    state, ship, obstacles, chickens, pickups, boss, journey, fx, input, prog,
     addCrystals(n) { prog.data.crystals += n; prog.save(); updateMenuMeta(); },
-    jumpTime(t) { state.time = t; },
+    // Jump straight into a galaxy/wave (wave 4 = boss).
+    jumpTo(g, wave = 0) {
+      startRun(g);
+      journey.wave = wave;
+      journey._startPhase();
+      if (journey.isBossWave) onBossIntro(); else onWaveStart();
+    },
+    unlockAll() { prog.data.galaxy.unlocked = 6; prog.save(); },
   };
 }
 

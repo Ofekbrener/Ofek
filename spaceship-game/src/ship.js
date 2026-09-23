@@ -119,6 +119,9 @@ export class Ship {
     this.shield.visible = false;
     this.group.add(this.shield);
     this.shieldTarget = 0;
+    this.shielded = false;
+    this.dash = false;
+    this.push = 0;            // external lateral force (gravity wells)
     this.invuln = 0;
     this.handling = 1;
     this.trailColor = [0.45, 0.9, 1];
@@ -137,6 +140,8 @@ export class Ship {
     this.vx = 0;
     this.targetX = 0;
     this.invuln = 0;
+    this.push = 0;
+    this.dash = false;
     this.group.position.set(0, 0, 0);
     this.group.visible = true;
     this.model.visible = true;
@@ -155,7 +160,21 @@ export class Ship {
   }
 
   // Show / hide the shield bubble (fades smoothly).
-  setShielded(on) { this.shieldTarget = on ? 1 : 0; }
+  setShielded(on) {
+    this.shielded = on;
+    this._refreshBubble();
+  }
+
+  // Feather Dash: golden bubble, invincible.
+  setDash(on) {
+    this.dash = on;
+    this._refreshBubble();
+  }
+
+  _refreshBubble() {
+    this.shieldTarget = this.shielded || this.dash ? 1 : 0;
+    this.shieldMat.uniforms.uColor.value.set(this.dash ? 0xffd35c : 0x6fb8ff);
+  }
 
   setTarget(x) {
     this.targetX = THREE.MathUtils.clamp(x, -CONFIG.halfWidth, CONFIG.halfWidth);
@@ -171,7 +190,7 @@ export class Ship {
     const steps = realDt > 1 / 60 ? 2 : 1;
     const h = realDt / steps;
     for (let i = 0; i < steps; i++) {
-      this.vx += ((this.targetX - this.x) * k - this.vx * d) * h;
+      this.vx += ((this.targetX - this.x) * k - this.vx * d + this.push) * h;
       this.x += this.vx * h;
     }
     this.x = THREE.MathUtils.clamp(this.x, -CONFIG.halfWidth - 0.2, CONFIG.halfWidth + 0.2);

@@ -14,14 +14,32 @@ It runs in any modern browser with nothing to install. You can also add it to yo
 
 - **Score** goes up with distance. You get a small tick every 100 points, and every 500 points plays a chime with a banner, a shockwave and a vibration.
 - **Near misses** (passing close to a rock without touching it) give bonus points and build a combo multiplier. A **PERFECT** near miss (extremely close) also slows down time briefly and gives a light vibration, at most once every 4 seconds, so it stays special.
-- **Crystals** (◆) are placed along the safe paths through each pattern. Collect them to spend in the **Hangar**.
+- **Drumsticks** (◆) are placed along the safe paths through each pattern. Collect them to spend in the **Hangar**.
 - **Difficulty** goes up every 20 seconds: faster speed, denser patterns, rock walls with gaps, energy barriers and drifting asteroids. The music tempo and neon colors change with each level.
+
+## The journey: Revenge of the Space Hens
+
+Space hens have overrun five galaxies. Open the **Star Map**, pick a galaxy, and cross it:
+
+| # | Galaxy | New hazards | Boss |
+|---|---|---|---|
+| 1 | Coop Nebula | chicken formations, egg bombers (eggs crack into fried-egg puddles) | Big Hen |
+| 2 | Yolk Belt | giant rolling eggs, rock walls | The Eggsecutioner (UFO) |
+| 3 | Frying-Pan Cluster | fire comets, sweeping grill-laser fences | Chef Cluckington |
+| 4 | Frostfeather Expanse | ice-shard fields, egg blizzards | Rooster Frost |
+| 5 | Omelette Core | everything + gravity wells | The Supreme Mother Hen |
+
+- Each galaxy has **4 waves**, with a power-up choice after each wave, and then a **boss**. You can't shoot, so grab the **🌽 corn cobs** that appear during the fight; each one launches a homing corn missile.
+- Beating a boss rains drumsticks, earns **1–3 stars** (★ clear, ★★ no shield lost, ★★★ flawless and 70%+ of the drumsticks), unlocks the next galaxy, and lets you **warp through hyperspace** into it.
+- **🎁 Gift boxes** give a random power-up: +1 shield, Mega Magnet, Double Drumsticks, or Feather Dash (invincible and smashes through hens).
+- Beating the Supreme Mother Hen unlocks **∞ Endless mode**, which cycles every galaxy with a boss every 5th wave and gets faster each loop.
+- **Vibration:** use the Off / Normal / Strong toggle on the start screen.
 
 ## Progression
 
-- **Hangar** (from the start or game-over screen): spend crystals on permanent upgrades.
+- **Hangar** (from the start or game-over screen): spend drumsticks on permanent upgrades.
   - Shield Generator: start each run with shields that absorb one hit each
-  - Crystal Magnet: pull nearby crystals toward the ship
+  - Crystal Magnet: pull nearby drumsticks toward the ship
   - Thrusters: faster steering
   - Score Booster: more points
   - Focus Core: a wider PERFECT window and longer slow-mo
@@ -29,7 +47,7 @@ It runs in any modern browser with nothing to install. You can also add it to yo
 - **Ship skins:** five color schemes (Classic, Crimson, Gold Rush, Stealth, Aurora). Each one changes the hull, accents and engine trail.
 - **Pilot rank:** every run earns XP equal to its score. The rank and XP bar show on the start screen, and rank-ups are celebrated on the game-over screen.
 - **Power-ups during a run:** each level-up freezes the action and offers 3 random power-ups (Extra Shield, Crystal Rush, Overdrive, Nimble, Magnet Pulse, Slow Field, Daredevil). Pick one, then a 3-2-1 countdown clears the lane and play resumes.
-- End-of-run payout: crystals collected plus a bonus of score ÷ 50. Progress is saved in the browser's localStorage.
+- End-of-run payout: drumsticks collected plus a bonus of score ÷ 50. Progress is saved in the browser's localStorage.
 
 ## Features
 
@@ -81,8 +99,14 @@ spaceship-game/
   vendor/three.module.min.js   Three.js r186, bundled locally so there's no CDN dependency
   src/
     main.js         Game loop, state machine, scoring, event wiring
+    galaxies.js     Galaxy definitions (look, hazards, music, boss, jokes)
+    journey.js      Campaign / endless state machine + wave director
+    chickens.js     Hen formations, egg bombers, eggs, fried-egg puddles
+    boss.js         Boss hens, attack patterns, grill lasers, corn missiles
+    starmap-ui.js   Star Map + briefings
+    geo.js          Procedural vertex-coloured models (hens, drumsticks, gifts, corn)
     progression.js  Save data, Hangar upgrades, skins, ranks, power-up pool
-    pickups.js      Crystals and shield orbs (pooled, magnet pull)
+    pickups.js      Drumsticks and shield orbs (pooled, magnet pull)
     hangar-ui.js    Hangar screen and power-up card picker
     config.js       All tuning values (speed curve, spawn rates, scoring, feel)
     renderer.js     Renderer, camera framing for portrait and landscape
