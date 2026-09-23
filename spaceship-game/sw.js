@@ -1,6 +1,6 @@
 // Offline support: pre-cache the game shell, then serve cache-first while
 // refreshing in the background (stale-while-revalidate). Bump VERSION on release.
-const VERSION = 'void-runner-v3';
+const VERSION = 'void-runner-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -33,6 +33,10 @@ const ASSETS = [
   './src/chickens.js',
   './src/boss.js',
   './src/starmap-ui.js',
+  './src/race/leagues.js',
+  './src/race/track.js',
+  './src/race/race.js',
+  './src/race/race-ui.js',
 ];
 
 self.addEventListener('install', (event) => {

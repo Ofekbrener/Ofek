@@ -35,6 +35,18 @@ Space hens have overrun five galaxies. Open the **Star Map**, pick a galaxy, and
 - Beating the Supreme Mother Hen unlocks **∞ Endless mode**, which cycles every galaxy with a boss every 5th wave and gets faster each loop.
 - **Vibration:** use the Off / Normal / Strong toggle on the start screen.
 
+## Race League: two journeys, one ship
+
+The start screen offers two journeys that feed each other:
+
+- **🐔 Dodge journey** (the galaxy campaign above) earns 🍗 drumsticks.
+- **🏁 Race League**: spend those drumsticks in the **Race Garage** on Hyper Engine, Afterburners, Gravity Grip, Boost Tank and Egg-Proof Armor. Then race four chicken rivals in rocket egg-pods (Nugget, Colonel Cluck, Big Bertha, The Kentucky Flash…) on procedurally generated neon tracks.
+  - **Controls:** the ship accelerates on its own, you drag (or use ◀ ▶) to steer, and you tap **BOOST** (Space / ↑ on desktop).
+  - **Boost** charges from boost pads and from drafting behind rivals.
+  - **Corners** push you outward, so take the inside line; Gravity Grip reduces the drift. Rocks and giant eggs on the track spin you out.
+  - **Leagues:** Rookie Roost Cup, Pro Poultry Series and Grand Hen Prix, with 3 tracks each. Podium finishes win drumstick prizes and 🏆 trophies.
+- **How they unlock each other:** galaxies 2–5 need 1 / 2 / 4 / 6 race trophies. The Pro league needs Galaxy 2 cleared plus 2 Rookie trophies, and the Grand Hen Prix needs Galaxy 4 cleared plus 2 Pro trophies.
+
 ## Progression
 
 - **Hangar** (from the start or game-over screen): spend drumsticks on permanent upgrades.
@@ -104,6 +116,10 @@ spaceship-game/
     chickens.js     Hen formations, egg bombers, eggs, fried-egg puddles
     boss.js         Boss hens, attack patterns, grill lasers, corn missiles
     starmap-ui.js   Star Map + briefings
+    race/leagues.js Leagues, tracks, chicken rivals, garage upgrades, unlock rules
+    race/track.js   Seeded procedural race tracks (spline, neon road, pads, obstacles)
+    race/race.js    Race session: physics, drafting, boost, AI rivals, camera, minimap
+    race/race-ui.js League menu + results screen
     geo.js          Procedural vertex-coloured models (hens, drumsticks, gifts, corn)
     progression.js  Save data, Hangar upgrades, skins, ranks, power-up pool
     pickups.js      Drumsticks and shield orbs (pooled, magnet pull)
