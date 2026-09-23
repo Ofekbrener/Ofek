@@ -43,11 +43,22 @@ export class StarMapUI {
   render() {
     const p = this.prog;
     $('map-stars').textContent = p.totalStars;
+    // No galaxy open yet: explain that trophies come from races.
+    const hint = $('map-hint');
+    if (hint) {
+      const need = p.galaxyTrophyReq(0);
+      hint.classList.toggle('hidden', p.galaxyOpen(0));
+      $('map-hint-text').innerHTML = `🏆 Galaxies open with race trophies. Finish top 3 in a race to earn one (${p.trophies}/${need}).`;
+    }
     this.list.textContent = '';
     GALAXIES.forEach((g, i) => {
-      const bossOk = i < p.unlocked;
-      const unlocked = p.galaxyOpen(i);
+            const unlocked = p.galaxyOpen(i);
       const need = p.galaxyTrophyReq(i);
+      const trophyOk = p.trophies >= need;
+      // Lock line: trophies (from races) first, then the previous boss.
+      const lockLine = !trophyOk
+        ? `<span class="g-lock">🔒 Needs 🏆 ${need} — win races (${p.trophies}/${need})</span>`
+        : i > 0 ? `🔒 Beat ${GALAXIES[i - 1].boss.name} in Galaxy ${i} first` : "";
       const el = document.createElement('button');
       el.className = 'gnode' + (unlocked ? '' : ' locked') + (i === this.suggested && unlocked ? ' current' : '');
       el.innerHTML = `
@@ -55,7 +66,7 @@ export class StarMapUI {
         <div>
           <div class="g-num">GALAXY ${i + 1}</div>
           <div class="g-name">${g.name}</div>
-          <div class="g-boss">${unlocked ? `Boss: ${g.boss.name}` : !bossOk ? '🔒 Beat the previous boss' : `🏆 Need ${need} race trophies (${p.trophies}/${need})`}</div>
+          <div class="g-boss">${unlocked ? `Boss: ${g.boss.name}` : lockLine}</div>
         </div>
         <div class="g-right stars-row">${unlocked ? starsHTML(p.starsFor(i)) : '🔒'}</div>`;
       el.addEventListener('click', () => {

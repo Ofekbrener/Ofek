@@ -6,11 +6,13 @@ const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 
 // DOM for the persistent Hangar (upgrades + skins).
 export class HangarUI {
-  constructor(progression, { audio, haptics, onChange }) {
+  constructor(progression, { audio, haptics, onChange, onBuy }) {
     this.prog = progression;
     this.audio = audio;
     this.haptics = haptics;
     this.onChange = onChange;
+    this.onBuy = onBuy || (() => {});
+    this.highlightId = null;   // FTUE: upgrade to point at with a pulsing glow
     this.upgradeList = $('upgrade-list');
     this.raceList = $('race-upgrade-list');
     this.skinList = $('skin-list');
@@ -34,7 +36,8 @@ export class HangarUI {
       const maxed = lvl >= u.max;
       const cost = maxed ? 0 : upgradeCost(u, lvl);
       const row = document.createElement('div');
-      row.className = 'upgrade' + (flashId === u.id ? ' bought' : '');
+      row.className = 'upgrade' + (flashId === u.id ? ' bought' : '') + (this.highlightId === u.id && !maxed ? ' ftue-glow' : '');
+      row.dataset.id = u.id;
       row.innerHTML = `
         <div class="u-icon">${u.icon}</div>
         <div>
@@ -46,13 +49,14 @@ export class HangarUI {
       btn.className = 'buy-btn' + (maxed ? ' maxed' : '');
       btn.innerHTML = maxed ? 'MAX' : `🍗 ${cost}`;
       btn.disabled = maxed || p.crystals < cost;
-      
       btn.addEventListener('click', () => {
         if (p.buy(u.id)) {
           this.audio.purchase();
           this.haptics.purchase();
+          if (this.highlightId === u.id) this.highlightId = null;
           this.render(u.id);
           this.onChange();
+          this.onBuy(u.id);
         } else {
           this.audio.denied();
         }
