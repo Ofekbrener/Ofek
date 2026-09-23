@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Void Runner">
-  <title>Void Runner</title>
+  <title>Void Runner: Revenge of the Space Hens</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -28,11 +28,12 @@
     <div id="hud" class="hidden">
       <div class="hud-top">
         <div class="hud-left">
-          <div class="hud-label">LEVEL</div>
-          <div id="hud-level" class="hud-small">1</div>
+          <div id="hud-galaxy" class="hud-label">COOP NEBULA</div>
+          <div id="hud-level" class="hud-small">WAVE 1</div>
         </div>
         <div class="hud-center">
           <div id="hud-score">0</div>
+          <div id="hud-progress" class="progress"></div>
           <div id="hud-combo" class="hidden">x2</div>
         </div>
         <div class="hud-right">
@@ -40,10 +41,21 @@
         </div>
       </div>
       <div class="hud-sub">
-        <div id="hud-crystals"><span class="gem">◆</span> <span id="hud-crystal-count">0</span></div>
+        <div id="hud-crystals">🍗 <span id="hud-crystal-count">0</span></div>
         <div id="hud-shields"></div>
       </div>
       <div id="hud-powers"></div>
+      <div id="hud-effect" class="hidden"></div>
+      <div id="boss-bar" class="hidden">
+        <div id="boss-name">BIG HEN</div>
+        <div class="boss-hp"><div id="boss-hp-fill"></div></div>
+        <div class="boss-hint">Grab 🌽 corn to fire missiles!</div>
+      </div>
+      <div id="galaxy-card" class="hidden">
+        <div id="galaxy-card-num">GALAXY 1</div>
+        <div id="galaxy-card-name">COOP NEBULA</div>
+        <div id="galaxy-card-tag">Where the feathers first flew</div>
+      </div>
       <div id="popups"></div>
       <div id="banner" class="hidden"></div>
       <div id="controls">
@@ -54,31 +66,33 @@
 
     <!-- Start screen -->
     <div id="screen-start" class="screen">
-      <div class="panel">
+      <div class="panel scroll">
         <h1 class="title">VOID<span>RUNNER</span></h1>
-        <p class="tagline">Dodge the debris. Skim the rocks. Survive the void.</p>
+        <div class="subtitle">🐔 Revenge of the Space Hens 🐔</div>
+        <p class="tagline">Cross five galaxies overrun by poultry. Dodge the eggs. Grab the drumsticks. Stop the Mother Hen.</p>
         <div class="rank-box">
-          <div class="rank-row"><span id="start-rank">Cadet</span><span class="balance"><span class="gem">◆</span> <b id="start-crystals">0</b></span></div>
+          <div class="rank-row"><span id="start-rank">Cadet</span><span class="balance">🍗 <b id="start-crystals">0</b></span></div>
           <div class="xp-bar"><div id="start-xp-fill"></div></div>
         </div>
-        <button id="btn-start" class="primary-btn">TAP TO LAUNCH</button>
+        <button id="btn-start" class="primary-btn">🚀 LAUNCH</button>
         <button id="btn-hangar" class="secondary-btn hangar-btn">🛠 HANGAR</button>
         <div class="howto">
           <div><b>Drag</b> anywhere or hold <b>◀ ▶</b> to steer</div>
-          <div><b>Skim rocks</b> for bonus · collect <span class="gem">◆</span> for upgrades</div>
+          <div><b>Skim hazards</b> for bonus · collect 🍗 for upgrades</div>
+          <div>Beat bosses by grabbing <b>🌽 corn missiles</b></div>
           <div class="desktop-only">Keyboard: <b>A / D</b> or <b>← →</b></div>
         </div>
         <div id="start-best" class="best"></div>
         <div class="toggles">
           <button id="btn-sound" class="toggle-btn">🔊 Sound</button>
-          <button id="btn-haptics" class="toggle-btn">📳 Haptics</button>
+          <button id="btn-haptics" class="toggle-btn">📳 Vibration: Normal</button>
         </div>
       </div>
     </div>
 
     <!-- Pause screen -->
     <div id="screen-pause" class="screen hidden">
-      <div class="panel">
+      <div class="panel scroll">
         <h2>PAUSED</h2>
         <button id="btn-resume" class="primary-btn">RESUME</button>
         <button id="btn-quit" class="secondary-btn">MAIN MENU</button>
@@ -87,28 +101,28 @@
 
     <!-- Game over screen -->
     <div id="screen-over" class="screen hidden">
-      <div class="panel">
-        <h2 class="over-title">SHIP DESTROYED</h2>
+      <div class="panel scroll">
+        <h2 id="over-title" class="over-title">YOU GOT EGGED!</h2>
         <div class="final-label">SCORE</div>
         <div id="final-score">0</div>
         <div id="new-best" class="hidden">★ NEW BEST ★</div>
         <div class="stats">
           <div><span>Best</span><b id="over-best">0</b></div>
-          <div><span>Level</span><b id="over-level">1</b></div>
+          <div><span>Reached</span><b id="over-level">G1 · W1</b></div>
           <div><span>Near misses</span><b id="over-near">0</b></div>
           <div><span>Time</span><b id="over-time">0s</b></div>
         </div>
         <div class="payout">
-          <div class="payout-row"><span>Crystals collected</span><b id="pay-collected">0</b></div>
+          <div class="payout-row"><span>Drumsticks collected</span><b id="pay-collected">0</b></div>
           <div class="payout-row"><span>Score bonus</span><b id="pay-bonus">0</b></div>
-          <div class="payout-row total"><span><span class="gem">◆</span> Earned</span><b id="pay-total">0</b></div>
+          <div class="payout-row total"><span>🍗 Earned</span><b id="pay-total">0</b></div>
           <div class="rank-row small"><span id="over-rank">Cadet</span><span id="over-xp">+0 XP</span></div>
           <div class="xp-bar"><div id="over-xp-fill"></div></div>
         </div>
-        <button id="btn-restart" class="primary-btn">PLAY AGAIN</button>
+        <button id="btn-restart" class="primary-btn">RETRY GALAXY</button>
         <div class="btn-row">
           <button id="btn-over-hangar" class="secondary-btn">🛠 HANGAR</button>
-          <button id="btn-menu" class="secondary-btn">MENU</button>
+          <button id="btn-menu" class="secondary-btn">🗺 MAP</button>
         </div>
       </div>
     </div>
@@ -118,10 +132,10 @@
       <div class="panel hangar-panel">
         <div class="hangar-head">
           <h2>HANGAR</h2>
-          <div class="balance big"><span class="gem">◆</span> <b id="hangar-crystals">0</b></div>
+          <div class="balance big">🍗 <b id="hangar-crystals">0</b></div>
         </div>
         <div class="scroll hangar-scroll">
-          <div class="section-label">UPGRADES</div>
+          <div class="section-label">CHICKEN-PROOFING UPGRADES</div>
           <div id="upgrade-list" class="upgrade-list"></div>
           <div class="section-label">SHIP SKINS</div>
           <div id="skin-list" class="skin-list"></div>
@@ -130,10 +144,56 @@
       </div>
     </div>
 
+    <!-- Star Map: choose a galaxy -->
+    <div id="screen-map" class="screen hidden">
+      <div class="panel map-panel">
+        <div class="hangar-head">
+          <h2>STAR MAP</h2>
+          <div class="balance big">★ <b id="map-stars">0</b><span class="dim">/15</span></div>
+        </div>
+        <div id="galaxy-list" class="scroll map-scroll"></div>
+        <div class="btn-row">
+          <button id="btn-map-hangar" class="secondary-btn">🛠 HANGAR</button>
+          <button id="btn-map-back" class="secondary-btn">BACK</button>
+        </div>
+      </div>
+      <div id="briefing" class="briefing hidden">
+        <div class="panel scroll">
+          <div id="brief-num" class="final-label">GALAXY 1</div>
+          <h2 id="brief-name">COOP NEBULA</h2>
+          <div id="brief-stars" class="stars-row"></div>
+          <p id="brief-text" class="brief-text"></p>
+          <div class="brief-boss">BOSS: <b id="brief-boss">BIG HEN</b></div>
+          <button id="btn-brief-go" class="primary-btn">🚀 LAUNCH</button>
+          <button id="btn-brief-back" class="secondary-btn">BACK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Galaxy cleared -->
+    <div id="screen-victory" class="screen hidden">
+      <div class="panel scroll">
+        <h2 id="victory-title" class="victory-title">GALAXY LIBERATED!</h2>
+        <div id="victory-galaxy" class="final-label">COOP NEBULA</div>
+        <div id="victory-stars" class="stars-row big"></div>
+        <div id="victory-quip" class="brief-text"></div>
+        <div class="payout">
+          <div class="payout-row"><span>Score</span><b id="victory-score">0</b></div>
+          <div class="payout-row total"><span>🍗 Banked</span><b id="victory-banked">0</b></div>
+          <div id="victory-unlock" class="unlock-note hidden"></div>
+        </div>
+        <button id="btn-next-galaxy" class="primary-btn">NEXT GALAXY ➜</button>
+        <div class="btn-row">
+          <button id="btn-victory-hangar" class="secondary-btn">🛠 HANGAR</button>
+          <button id="btn-victory-map" class="secondary-btn">🗺 MAP</button>
+        </div>
+      </div>
+    </div>
+
     <!-- In-run power-up choice -->
     <div id="screen-cards" class="screen hidden">
       <div class="cards-wrap">
-        <div id="cards-title" class="cards-title">LEVEL 2</div>
+        <div id="cards-title" class="cards-title">WAVE CLEAR!</div>
         <div class="cards-sub">Choose a power-up</div>
         <div id="card-list" class="card-list"></div>
       </div>

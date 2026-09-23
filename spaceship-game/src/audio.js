@@ -22,6 +22,9 @@ export class AudioEngine {
     this.muted = store.get('sound', '1') !== '1';
     this.intensity = 1;
     this.bpm = 118;
+    this.baseBpm = 118;
+    this.transpose = 0;
+    this.boss = false;
     this.musicOn = false;
     this.engineOn = false;
     this._timer = null;
@@ -161,9 +164,27 @@ export class AudioEngine {
     this.musicFilter.frequency.setTargetAtTime(freq, this.ctx.currentTime, time);
   }
 
+  // Per-galaxy key + tempo.
+  setGalaxy(music) {
+    this.transpose = music.transpose;
+    this.baseBpm = music.bpm;
+    this._retempo();
+  }
+
+  // Wave index 1..4 inside a galaxy: layers build up as the galaxy goes on.
   setLevel(level) {
     this.intensity = level;
-    this.bpm = Math.min(152, 118 + (level - 1) * 5);
+    this._retempo();
+  }
+
+  // Boss fight: all layers, driving snare, faster tempo.
+  setBoss(on) {
+    this.boss = on;
+    this._retempo();
+  }
+
+  _retempo() {
+    this.bpm = Math.min(160, this.baseBpm + (this.intensity - 1) * 3 + (this.boss ? 10 : 0));
     if (this.ctx) this.delay.delayTime.setTargetAtTime((60 / this.bpm) * 0.75, this.ctx.currentTime, 0.5);
   }
 
@@ -182,24 +203,27 @@ export class AudioEngine {
   _playStep(s, t) {
     const i16 = s % 16;
     const chord = CHORDS[Math.floor(s / 16) % 4];
-    const lvl = this.intensity;
+    const lvl = this.boss ? 4 : this.intensity;
+    const tr = this.transpose;
     const stepDur = 60 / this.bpm / 4;
 
     if (i16 % 4 === 0) this._kick(t);
+    if (this.boss && i16 === 14) this._kick(t);
     if (lvl >= 3 && (i16 === 4 || i16 === 12)) this._snare(t);
+    if (this.boss && (i16 === 11 || i16 === 15)) this._snare(t);
     if (i16 % 4 === 2) this._hat(t, 0.16);
     else if (lvl >= 3 && i16 % 2 === 1) this._hat(t, 0.06);
 
-    if (i16 % 2 === 0) {
-      const note = chord.root + (i16 % 4 === 2 ? 12 : 0);
-      this._bass(mtof(note), t, stepDur * 1.7);
+    if (i16 % 2 === 0 || (this.boss && i16 % 2 === 1)) {
+      const note = chord.root + tr + (i16 % 4 === 2 ? 12 : 0);
+      this._bass(mtof(note), t, stepDur * (this.boss ? 0.9 : 1.7));
     }
     if (lvl >= 2) {
       const idx = ARP[i16];
-      const m = idx < 3 ? chord.tones[idx] + 12 : chord.tones[0] + 24;
+      const m = (idx < 3 ? chord.tones[idx] + 12 : chord.tones[0] + 24) + tr;
       this._arp(mtof(m), t, stepDur * 0.9);
     }
-    if (i16 === 0) this._pad(chord.tones, t, stepDur * 16);
+    if (i16 === 0) this._pad(chord.tones.map((n) => n + tr), t, stepDur * 16);
   }
 
   _kick(t) {
@@ -479,6 +503,166 @@ export class AudioEngine {
     const f = this._filter('lowpass', 2500);
     const g = this._env(t, 0.003, 0.1, final ? 0.25 : 0.12);
     o.connect(f).connect(g).connect(this.sfxBus);
+  }
+
+  // ---------- poultry & journey SFX ----------
+
+  // Procedural "b-GAWK": two formant-filtered chirps with a pitch flick.
+  cluck(pitch = 1, vol = 0.18) {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime;
+    [[0, 520, 0.07], [0.09, 760, 0.14]].forEach(([dt, f, d]) => {
+      const t = t0 + dt;
+      const o = this._osc('sawtooth', f * pitch, t, d);
+      o.frequency.setValueAtTime(f * pitch * 0.8, t);
+      o.frequency.linearRampToValueAtTime(f * pitch * 1.35, t + d * 0.35);
+      o.frequency.exponentialRampToValueAtTime(f * pitch * 0.7, t + d);
+      const bp = this._filter('bandpass', 1400 * Math.sqrt(pitch), 3);
+      const g = this._env(t, 0.005, vol, d);
+      o.connect(bp).connect(g).connect(this.sfxBus);
+    });
+  }
+
+  bossRoar() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.cluck(0.32, 0.4);
+    const o = this._osc('sawtooth', 90, t, 1.0);
+    o.frequency.linearRampToValueAtTime(140, t + 0.3);
+    o.frequency.exponentialRampToValueAtTime(50, t + 1.0);
+    const ws = this.ctx.createWaveShaper();
+    ws.curve = this.crunch;
+    const f = this._filter('lowpass', 900, 2);
+    const g = this._env(t, 0.05, 0.35, 0.95);
+    o.connect(ws).connect(f).connect(g).connect(this.sfxBus);
+  }
+
+  splat() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const n = this._noise(t, 0.2);
+    const f = this._filter('lowpass', 1400, 1);
+    f.frequency.exponentialRampToValueAtTime(300, t + 0.15);
+    const g = this._env(t, 0.002, 0.18, 0.15);
+    n.connect(f).connect(g).connect(this.sfxBus);
+    const o = this._osc('sine', 300, t, 0.12);
+    o.frequency.exponentialRampToValueAtTime(90, t + 0.1);
+    const g2 = this._env(t, 0.002, 0.12, 0.1);
+    o.connect(g2).connect(this.sfxBus);
+  }
+
+  missileLaunch() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const n = this._noise(t, 0.5);
+    const f = this._filter('bandpass', 600, 2);
+    f.frequency.exponentialRampToValueAtTime(3000, t + 0.45);
+    const g = this._env(t, 0.02, 0.3, 0.45);
+    n.connect(f).connect(g).connect(this.sfxBus);
+    const o = this._osc('square', 300, t, 0.4);
+    o.frequency.exponentialRampToValueAtTime(900, t + 0.35);
+    const g2 = this._env(t, 0.01, 0.05, 0.35);
+    o.connect(g2).connect(this.sfxBus);
+  }
+
+  missileHit() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const n = this._noise(t, 0.6);
+    const f = this._filter('lowpass', 3000, 0.8);
+    f.frequency.exponentialRampToValueAtTime(150, t + 0.5);
+    const g = this._env(t, 0.002, 0.6, 0.55);
+    n.connect(f).connect(g).connect(this.sfxBus);
+    const o = this._osc('sine', 110, t, 0.5);
+    o.frequency.exponentialRampToValueAtTime(35, t + 0.45);
+    const g2 = this._env(t, 0.002, 0.7, 0.45);
+    o.connect(g2).connect(this.sfxBus);
+    this.cluck(0.55, 0.3);
+  }
+
+  giftOpen() {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime;
+    [79, 83, 86, 91, 95].forEach((m, i) => {
+      const t = t0 + i * 0.045;
+      const o = this._osc('triangle', mtof(m), t, 0.25);
+      const g = this._env(t, 0.003, 0.09, 0.22);
+      o.connect(g);
+      g.connect(this.sfxBus);
+      g.connect(this.delay);
+    });
+  }
+
+  // Hyperspace jump: rising roar and shimmer over ~2.4 s.
+  warp(dur = 2.4) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const n = this._noise(t, Math.min(1.8, dur));
+    const f = this._filter('bandpass', 200, 1.2);
+    f.frequency.exponentialRampToValueAtTime(5000, t + dur * 0.8);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.5, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    n.connect(f).connect(g).connect(this.sfxBus);
+    const o = this._osc('sawtooth', 60, t, dur);
+    o.frequency.exponentialRampToValueAtTime(800, t + dur * 0.9);
+    const f2 = this._filter('lowpass', 400, 4);
+    f2.frequency.exponentialRampToValueAtTime(4000, t + dur * 0.9);
+    const g2 = this.ctx.createGain();
+    g2.gain.setValueAtTime(0.0001, t);
+    g2.gain.linearRampToValueAtTime(0.15, t + dur * 0.8);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f2).connect(g2).connect(this.sfxBus);
+  }
+
+  waveClear() {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime;
+    [69, 72, 76, 81].forEach((m, i) => {
+      const t = t0 + i * 0.08;
+      const o = this._osc('square', mtof(m + this.transpose), t, 0.2);
+      const f = this._filter('lowpass', 3000);
+      const g = this._env(t, 0.004, 0.08, 0.2);
+      o.connect(f).connect(g);
+      g.connect(this.sfxBus);
+      g.connect(this.delay);
+    });
+  }
+
+  // Short victory fanfare (major key, bright).
+  victory() {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime;
+    const notes = [[72, 0, 0.15], [76, 0.15, 0.15], [79, 0.3, 0.15], [84, 0.45, 0.5], [79, 0.95, 0.15], [84, 1.1, 0.8]];
+    for (const [m, dt, d] of notes) {
+      const t = t0 + dt;
+      for (const [type, v, det] of [['square', 0.07, 0], ['sawtooth', 0.04, 7]]) {
+        const o = this._osc(type, mtof(m), t, d);
+        o.detune.value = det;
+        const f = this._filter('lowpass', 3500);
+        const g = this._env(t, 0.01, v, d);
+        o.connect(f).connect(g);
+        g.connect(this.sfxBus);
+        g.connect(this.delay);
+      }
+    }
+    this._kick(t0);
+    this._kick(t0 + 0.45);
+    this._kick(t0 + 1.1);
+  }
+
+  starDing(i = 0) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const f = mtof(84 + i * 4);
+    const o = this._osc('sine', f, t, 0.8);
+    const o2 = this._osc('sine', f * 2.01, t, 0.5);
+    const g = this._env(t, 0.003, 0.2, 0.7);
+    const g2 = this._env(t, 0.003, 0.06, 0.4);
+    o.connect(g); o2.connect(g2);
+    g.connect(this.sfxBus); g2.connect(this.sfxBus);
+    g.connect(this.delay);
   }
 
   // FM bell arpeggio for score milestones.

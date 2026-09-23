@@ -35,9 +35,9 @@ export class HangarUI {
         </div>`;
       const btn = document.createElement('button');
       btn.className = 'buy-btn' + (maxed ? ' maxed' : '');
-      btn.innerHTML = maxed ? 'MAX' : `<span class="gem">◆</span> ${cost}`;
+      btn.innerHTML = maxed ? 'MAX' : `🍗 ${cost}`;
       btn.disabled = maxed || p.crystals < cost;
-      if (!maxed && p.crystals < cost) btn.innerHTML = `◆ ${cost}`;
+      
       btn.addEventListener('click', () => {
         if (p.buy(u.id)) {
           this.audio.purchase();
@@ -70,7 +70,7 @@ export class HangarUI {
       } else if (owned) {
         btn.textContent = 'EQUIP';
       } else {
-        btn.innerHTML = `◆ ${s.cost}`;
+        btn.innerHTML = `🍗 ${s.cost}`;
         btn.disabled = p.crystals < s.cost;
       }
       btn.addEventListener('click', () => {
@@ -90,8 +90,8 @@ export class HangarUI {
 }
 
 // Renders the pick-1-of-3 power-up cards. Calls onPick(def) once.
-export function showCards(level, cards, onPick) {
-  $('cards-title').textContent = `LEVEL ${level}`;
+export function showCards(title, cards, onPick) {
+  $('cards-title').textContent = title;
   const list = $('card-list');
   list.textContent = '';
   let done = false;

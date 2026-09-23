@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
+import { drumstickGeometry, giftGeometry, cornGeometry } from './geo.js';
 
-export const CRYSTAL = 0;
-export const ORB = 1;
+export const CRYSTAL = 0;   // rendered as a drumstick 🍗 (the currency)
+export const ORB = 1;       // shield orb
+export const GIFT = 2;      // gift box: random short power-up
+export const CORN = 3;      // corn missile (boss fights)
 
-// Pooled collectibles: crystals (currency) and rare shield orbs.
+// Pooled collectibles: drumsticks (currency), shield orbs, gift boxes and corn missiles.
 export class Pickups {
   constructor(scene, max) {
     this.max = max;
@@ -13,13 +16,10 @@ export class Pickups {
       this.list.push({ active: false, type: CRYSTAL, x: 0, y: 0, z: 0, phase: 0, pulled: false });
     }
 
-    const crystalGeo = new THREE.OctahedronGeometry(0.32, 0);
-    crystalGeo.scale(0.8, 1.3, 0.8);
     this.crystalMat = new THREE.MeshStandardMaterial({
-      color: 0x7ff6ff, emissive: 0x19c6e6, emissiveIntensity: 1.6,
-      metalness: 0.3, roughness: 0.15, flatShading: true,
+      vertexColors: true, emissive: 0x3a1c08, emissiveIntensity: 1, roughness: 0.45, flatShading: true,
     });
-    this.crystals = new THREE.InstancedMesh(crystalGeo, this.crystalMat, max);
+    this.crystals = new THREE.InstancedMesh(drumstickGeometry(), this.crystalMat, max);
     this.crystals.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.crystals.frustumCulled = false;
     this.crystals.count = 0;
@@ -36,6 +36,19 @@ export class Pickups {
     this.orbs.count = 0;
     scene.add(this.orbs);
 
+    const propMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, emissive: 0x222222, flatShading: true });
+    this.gifts = new THREE.InstancedMesh(giftGeometry(), propMat, 6);
+    this.corns = new THREE.InstancedMesh(cornGeometry(), new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.3, emissive: 0x6a4a00, emissiveIntensity: 1.2, flatShading: true,
+    }), 8);
+    for (const m of [this.gifts, this.corns]) {
+      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      m.frustumCulled = false;
+      m.count = 0;
+      scene.add(m);
+    }
+    this.spawned = 0;          // drumsticks spawned (for star ratings)
+
     this.time = 0;
     this._m = new THREE.Matrix4();
     this._q = new THREE.Quaternion();
@@ -48,6 +61,11 @@ export class Pickups {
     for (const p of this.list) p.active = false;
     this.crystals.count = 0;
     this.orbs.count = 0;
+    this.spawned = 0;
+  }
+
+  clearType(type) {
+    for (const p of this.list) if (p.active && p.type === type) p.active = false;
   }
 
   spawnAt(x, z, type = CRYSTAL) {
@@ -60,6 +78,7 @@ export class Pickups {
     p.y = 0.1;
     p.phase = Math.random() * Math.PI * 2;
     p.pulled = false;
+    if (type === CRYSTAL) this.spawned++;
   }
 
   // A straight trail of crystals down the given x, leading into a gap.
@@ -82,6 +101,8 @@ export class Pickups {
     const R = CONFIG.crystalRadius;
     let ci = 0;
     let oi = 0;
+    let gi = 0;
+    let ki = 0;
     const m = this._m, q = this._q, e = this._e, pv = this._p, s = this._s;
 
     for (const p of this.list) {
@@ -93,7 +114,9 @@ export class Pickups {
       const dz = -p.z;
       const d2 = dx * dx + dz * dz;
       const pullR = magnet + R;
-      if (magnet > 0 && p.z > -pullR * 2.5 && p.z < 1 && d2 < pullR * pullR * 4) {
+      // Gift boxes and corn aren't magnetised — you have to steer into them.
+      const magnetic = p.type === CRYSTAL || p.type === ORB;
+      if (magnetic && magnet > 0 && p.z > -pullR * 2.5 && p.z < 1 && d2 < pullR * pullR * 4) {
         p.pulled = true;
       }
       if (p.pulled) {
@@ -111,9 +134,21 @@ export class Pickups {
       const bob = Math.sin(this.time * 4 + p.phase) * 0.15;
       pv.set(p.x, p.y + bob, p.z);
       if (p.type === CRYSTAL) {
-        q.setFromEuler(e.set(0, this.time * 3 + p.phase, 0.2));
-        s.setScalar(1);
+        q.setFromEuler(e.set(0.3, this.time * 3 + p.phase, 0.5));
+        s.setScalar(1.15);
         this.crystals.setMatrixAt(ci++, m.compose(pv, q, s));
+      } else if (p.type === GIFT) {
+        if (gi < 6) {
+          q.setFromEuler(e.set(0.2, this.time * 2 + p.phase, 0));
+          s.setScalar(1 + Math.sin(this.time * 6 + p.phase) * 0.06);
+          this.gifts.setMatrixAt(gi++, m.compose(pv, q, s));
+        }
+      } else if (p.type === CORN) {
+        if (ki < 8) {
+          q.setFromEuler(e.set(0.4, this.time * 4 + p.phase, 0.3));
+          s.setScalar(1.2);
+          this.corns.setMatrixAt(ki++, m.compose(pv, q, s));
+        }
       } else if (oi < 6) {
         q.setFromEuler(e.set(this.time, this.time * 1.3, 0));
         s.setScalar(1 + Math.sin(this.time * 8) * 0.08);
@@ -123,8 +158,9 @@ export class Pickups {
 
     this.crystals.count = ci;
     this.orbs.count = oi;
-    this.crystals.instanceMatrix.needsUpdate = true;
-    this.orbs.instanceMatrix.needsUpdate = true;
-    this.crystalMat.emissiveIntensity = 1.4 + Math.sin(this.time * 6) * 0.4;
+    this.gifts.count = gi;
+    this.corns.count = ki;
+    for (const mesh of [this.crystals, this.orbs, this.gifts, this.corns]) mesh.instanceMatrix.needsUpdate = true;
+    this.crystalMat.emissiveIntensity = 0.8 + Math.sin(this.time * 6) * 0.3;
   }
 }
