@@ -20,6 +20,9 @@ export class Lighting {
 
     this._targetSky = new THREE.Color(0x8fb8ff);
     this._targetRim = new THREE.Color(0xff3ca8);
+    this._targetGround = new THREE.Color(0x3a1450);
+    this._targetKey = new THREE.Color(0xffffff);
+    this._targetI = { hemi: 1.4, key: 2.2, rim: 1.2 };
   }
 
   flashAt(x, y, z, power = 120, color = 0xffaa55) {
@@ -28,10 +31,17 @@ export class Lighting {
     this.flashPower = power;
   }
 
-  // Tint the sky fill + rim light to a galaxy's palette (tweened in update).
+  // Re-rig the lights for a galaxy's world (tweened in update).
   setTheme(g) {
-    this._targetSky.set(g.colors.sky);
-    this._targetRim.set(g.colors.rim);
+    const L = g.world && g.world.light;
+    this._targetSky.set(L ? L.sky : g.colors.sky);
+    this._targetRim.set(L ? L.rim : g.colors.rim);
+    if (!L) return;
+    this._targetGround.set(L.ground);
+    this._targetKey.set(L.key);
+    this._targetI.hemi = L.hemi;
+    this._targetI.key = L.keyI;
+    this._targetI.rim = L.rimI;
   }
 
   update(realDt) {
@@ -40,5 +50,11 @@ export class Lighting {
     const k = 1 - Math.exp(-realDt * 1.5);
     this.hemi.color.lerp(this._targetSky, k);
     this.rim.color.lerp(this._targetRim, k);
+    this.hemi.groundColor.lerp(this._targetGround, k);
+    this.key.color.lerp(this._targetKey, k);
+    const t = this._targetI;
+    this.hemi.intensity += (t.hemi - this.hemi.intensity) * k;
+    this.key.intensity += (t.key - this.key.intensity) * k;
+    this.rim.intensity += (t.rim - this.rim.intensity) * k;
   }
 }
