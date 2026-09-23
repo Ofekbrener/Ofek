@@ -66,63 +66,48 @@
 
     <!-- Start screen -->
     <div id="screen-start" class="screen">
-      <div class="panel scroll">
-        <h1 class="title home-title">VOID<span>RUNNER</span></h1>
-        <div class="subtitle">🐔 Revenge of the Space Hens 🐔</div>
-        <!-- Home: your pod on a turntable, wearing every upgrade you own -->
+      <div class="panel home-panel">
+        <div class="home-head">
+          <h1 class="title home-title">VOID <span>RUNNER</span></h1>
+          <div class="home-toggles">
+            <button id="btn-sound" class="toggle-btn" aria-label="Sound">🔊</button>
+            <button id="btn-haptics" class="toggle-btn" aria-label="Vibration">📳</button>
+          </div>
+        </div>
+        <!-- Home: your pod on a turntable, wearing every upgrade you own (fills the free space) -->
         <canvas id="home-preview" class="ship-preview home-preview" aria-label="Your ship"></canvas>
-        <div class="chip-row">
+        <div class="chip-row home-chips">
           <span class="chip">🍗 <b id="start-crystals">0</b></span>
           <span class="chip trophy-chip">🏆 <b id="start-trophies">0</b></span>
-          <span class="chip">⚡ Power <b id="start-power">1</b></span>
+          <span class="chip">⚡ <b id="start-power">1</b></span>
+          <span class="chip rank-chip"><b id="start-rank">Cadet</b></span>
         </div>
-        <div class="rank-box">
-          <div class="rank-row"><span id="start-rank">Cadet</span></div>
-          <div class="xp-bar"><div id="start-xp-fill"></div></div>
-        </div>
+        <div class="xp-bar home-xp"><div id="start-xp-fill"></div></div>
+        <span id="start-best" class="hidden"></span>
         <!-- FTUE: always names the single next action of the core loop -->
         <div id="next-step" class="next-step">
-          <div class="ns-label">NEXT STEP</div>
           <div class="ns-row">
             <span id="ns-icon" class="ns-icon">🏁</span>
-            <div class="ns-body"><div id="ns-title" class="ns-title">Win a podium in Race 1</div><div id="ns-text" class="ns-text"></div></div>
+            <div class="ns-body"><div class="ns-label">NEXT STEP</div><div id="ns-title" class="ns-title">Win a podium in Race 1</div><div id="ns-text" class="ns-text"></div></div>
           </div>
           <button id="btn-next-step" class="primary-btn ns-btn">CONTINUE ➜</button>
         </div>
         <!-- The two journeys -->
         <div class="mode-grid">
           <button id="btn-start" class="mode-card dodge-card">
-            <span class="mc-icon">🐔</span>
-            <span class="mc-title">DODGE</span>
+            <span class="mc-top"><span class="mc-icon">🐔</span><span class="mc-title">DODGE</span></span>
             <span id="mc-dodge-name" class="mc-name">Coop Nebula</span>
             <span class="mc-bar"><span id="mc-dodge-fill"></span></span>
             <span id="mc-dodge-meta" class="mc-meta">Galaxy 1/5</span>
-            <span id="mc-dodge-goal" class="mc-goal">Earn 🍗 drumsticks</span>
           </button>
           <button id="btn-race" class="mode-card race-card">
-            <span class="mc-icon">🏁</span>
-            <span class="mc-title">RACE</span>
+            <span class="mc-top"><span class="mc-icon">🏁</span><span class="mc-title">RACE</span></span>
             <span id="mc-race-name" class="mc-name">Coop Loop</span>
             <span class="mc-bar"><span id="mc-race-fill"></span></span>
             <span id="mc-race-meta" class="mc-meta">Race 1/9</span>
-            <span class="mc-goal">Win 🏆 trophies</span>
           </button>
         </div>
         <button id="btn-hangar" class="secondary-btn hangar-btn">🛠 GARAGE</button>
-        <details class="howto">
-          <summary>How to play</summary>
-          <div><b>Drag</b> anywhere or hold <b>◀ ▶</b> to steer</div>
-          <div><b>Race</b> chicken rivals to win 🏆 trophies that open galaxies</div>
-          <div><b>Dodge</b> through galaxies to collect 🍗 drumsticks</div>
-          <div>Spend 🍗 in the <b>Garage</b>: every upgrade shows on your pod</div>
-          <div>Beat bosses by grabbing <b>🌽 corn missiles</b></div>
-          <div class="desktop-only">Keyboard: <b>A / D</b> or <b>← →</b></div>
-        </details>
-        <div id="start-best" class="best"></div>
-        <div class="toggles">
-          <button id="btn-sound" class="toggle-btn">🔊 Sound</button>
-          <button id="btn-haptics" class="toggle-btn">📳 Vibration: Normal</button>
-        </div>
       </div>
     </div>
 
@@ -193,17 +178,19 @@
     <div id="screen-hangar" class="screen hidden">
       <div class="panel hangar-panel">
         <div class="hangar-head">
-          <h2>HANGAR</h2>
+          <h2>GARAGE</h2>
           <div class="balance big">🍗 <b id="hangar-crystals">0</b></div>
         </div>
         <canvas id="hangar-preview" class="ship-preview" aria-label="Your ship"></canvas>
-        <div class="scroll hangar-scroll">
-          <div class="section-label">CHICKEN-PROOFING UPGRADES</div>
-          <div id="upgrade-list" class="upgrade-list"></div>
-          <div class="section-label">🏁 RACE GARAGE</div>
-          <div id="race-upgrade-list" class="upgrade-list"></div>
-          <div class="section-label">SHIP SKINS</div>
-          <div id="skin-list" class="skin-list"></div>
+        <div class="tabs" role="tablist">
+          <button class="tab" data-tab="dodge" role="tab">🐔 Dodge</button>
+          <button class="tab" data-tab="race" role="tab">🏁 Race</button>
+          <button class="tab" data-tab="skins" role="tab">🎨 Skins</button>
+        </div>
+        <div class="tab-body">
+          <div id="upgrade-list" class="upgrade-list" data-pane="dodge"></div>
+          <div id="race-upgrade-list" class="upgrade-list" data-pane="race"></div>
+          <div id="skin-list" class="skin-list" data-pane="skins"></div>
         </div>
         <button id="btn-hangar-back" class="primary-btn small">DONE</button>
       </div>
