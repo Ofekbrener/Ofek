@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#05060f">
+  <meta name="description" content="Void Runner — a 3D endless space dodger for your phone. Drag to steer, dodge asteroids, chase near misses.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Void Runner">
+  <title>Void Runner</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game"></canvas>
+
+    <div id="flash"></div>
+
+    <!-- In-game HUD -->
+    <div id="hud" class="hidden">
+      <div class="hud-top">
+        <div class="hud-left">
+          <div class="hud-label">LEVEL</div>
+          <div id="hud-level" class="hud-small">1</div>
+        </div>
+        <div class="hud-center">
+          <div id="hud-score">0</div>
+          <div id="hud-combo" class="hidden">x2</div>
+        </div>
+        <div class="hud-right">
+          <button id="btn-pause" class="icon-btn" aria-label="Pause">❚❚</button>
+        </div>
+      </div>
+      <div id="popups"></div>
+      <div id="banner" class="hidden"></div>
+      <div id="controls">
+        <button id="btn-left" class="steer-btn" aria-label="Steer left">◀</button>
+        <button id="btn-right" class="steer-btn" aria-label="Steer right">▶</button>
+      </div>
+    </div>
+
+    <!-- Start screen -->
+    <div id="screen-start" class="screen">
+      <div class="panel">
+        <h1 class="title">VOID<span>RUNNER</span></h1>
+        <p class="tagline">Dodge the debris. Skim the rocks. Survive the void.</p>
+        <button id="btn-start" class="primary-btn">TAP TO LAUNCH</button>
+        <div class="howto">
+          <div><b>Drag</b> anywhere or hold <b>◀ ▶</b> to steer</div>
+          <div><b>Near misses</b> give bonus points &amp; slow time</div>
+          <div class="desktop-only">Keyboard: <b>A / D</b> or <b>← →</b></div>
+        </div>
+        <div id="start-best" class="best"></div>
+        <div class="toggles">
+          <button id="btn-sound" class="toggle-btn">🔊 Sound</button>
+          <button id="btn-haptics" class="toggle-btn">📳 Haptics</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause screen -->
+    <div id="screen-pause" class="screen hidden">
+      <div class="panel">
+        <h2>PAUSED</h2>
+        <button id="btn-resume" class="primary-btn">RESUME</button>
+        <button id="btn-quit" class="secondary-btn">MAIN MENU</button>
+      </div>
+    </div>
+
+    <!-- Game over screen -->
+    <div id="screen-over" class="screen hidden">
+      <div class="panel">
+        <h2 class="over-title">SHIP DESTROYED</h2>
+        <div class="final-label">SCORE</div>
+        <div id="final-score">0</div>
+        <div id="new-best" class="hidden">★ NEW BEST ★</div>
+        <div class="stats">
+          <div><span>Best</span><b id="over-best">0</b></div>
+          <div><span>Level</span><b id="over-level">1</b></div>
+          <div><span>Near misses</span><b id="over-near">0</b></div>
+          <div><span>Time</span><b id="over-time">0s</b></div>
+        </div>
+        <button id="btn-restart" class="primary-btn">PLAY AGAIN</button>
+        <button id="btn-menu" class="secondary-btn">MAIN MENU</button>
+      </div>
+    </div>
+
+    <div id="debug" class="hidden"></div>
+  </div>
+
+  <noscript>Void Runner needs JavaScript and WebGL to run.</noscript>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
