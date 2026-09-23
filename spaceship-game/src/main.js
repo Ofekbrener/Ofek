@@ -17,7 +17,7 @@ import { haptics } from './haptics.js';
 import { store } from './storage.js';
 import { Progression, POWERUPS, drawCards, rankInfo } from './progression.js';
 import { HangarUI, showCards } from './hangar-ui.js';
-import { GALAXIES, WAVES_PER_GALAXY, QUIPS, pick } from './galaxies.js';
+import { GALAXIES, QUIPS, pick } from './galaxies.js';
 import { Journey } from './journey.js';
 import { StarMapUI, starsHTML } from './starmap-ui.js';
 import { RaceSession } from './race/race.js';
@@ -330,7 +330,8 @@ function startRun(which) {
   hud.reset();
   hud.setPowers({}, POWERUPS);
   hud.show(true);
-  setShields(state.mods.startShields);
+  // Galaxy 1 hands new pilots two free shields.
+  setShields(state.mods.startShields + (which === 0 ? 2 : 0));
   showScreen(null);
   starMap.closeBriefing();
 
@@ -357,7 +358,7 @@ function enterGalaxy(fromMenu = false) {
   state.galaxyCrystals = 0;
   hud.setGalaxy(g.name);
   hud.setLevel(journey.endless ? `ENDLESS W${journey.wave + 1}` : 'GET READY');
-  hud.setProgress(0, 0, WAVES_PER_GALAXY);
+  hud.setProgress(0, 0, journey.waveCount);
   const num = journey.endless ? `∞ ENDLESS · LOOP ${journey.loop + 1}` : `GALAXY ${journey.gIndex + 1} OF ${GALAXIES.length}`;
   hud.galaxyCard(num, g.name, g.tagline);
   setTimeout(() => audio.cluck(1, 0.12), 900);
@@ -432,7 +433,7 @@ function resumeGame() {
 // ---- waves ----
 function onWaveStart() {
   const lw = journey.localWave;
-  hud.setLevel(journey.endless ? `ENDLESS W${journey.wave + 1}` : `WAVE ${lw + 1}/${WAVES_PER_GALAXY}`);
+  hud.setLevel(journey.endless ? `ENDLESS W${journey.wave + 1}` : `WAVE ${lw + 1}/${journey.waveCount}`);
   hud.showBanner(`WAVE ${lw + 1}`, 1100);
   audio.setLevel(lw + 1);
 }
@@ -445,7 +446,7 @@ function onWaveClear() {
   hud.popup(pick(QUIPS.waveClear), 0.5, 'cyan');
   const cards = drawCards(state.picked);
   if (!cards.length) { advanceWave(); return; }
-  const title = lw + 1 >= WAVES_PER_GALAXY ? 'BOSS INCOMING! GEAR UP' : `WAVE ${lw + 1} CLEAR!`;
+  const title = lw + 1 >= journey.waveCount ? 'BOSS INCOMING! GEAR UP' : `WAVE ${lw + 1} CLEAR!`;
   setTimeout(() => openCards(title, cards), 500);
 }
 
@@ -492,7 +493,7 @@ function advanceWave() {
 function onBossIntro() {
   const b = journey.galaxy.boss;
   hud.setLevel('BOSS');
-  hud.setProgress(WAVES_PER_GALAXY, 0, WAVES_PER_GALAXY);
+  hud.setProgress(journey.waveCount, 0, journey.waveCount);
   hud.showBanner('⚠ WARNING ⚠', 1400);
   setTimeout(() => {
     if (!boss.active) return;
@@ -1270,7 +1271,7 @@ function updateRun(dt, realDt) {
   onScoreProgress();
   hud.setScore(state.score);
   if (boss.active) hud.setBossHp(boss.hpFrac);
-  hud.setProgress(Math.min(journey.localWave, WAVES_PER_GALAXY), journey.waveFrac, WAVES_PER_GALAXY);
+  hud.setProgress(Math.min(journey.localWave, journey.waveCount), journey.waveFrac, journey.waveCount);
 }
 
 // Background drift for menus / post-run screens.
