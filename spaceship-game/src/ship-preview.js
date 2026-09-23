@@ -58,9 +58,9 @@ export class ShipPreview {
     this.scene = new THREE.Scene();
     this.scene.background = backdrop();
     this.camera = new THREE.PerspectiveCamera(28, 2, 0.1, 50);
-    const dist = 5.7;
-    this.camera.position.set(0, Math.sin(pitch) * dist, Math.cos(pitch) * dist);
-    this.camera.lookAt(0, 0.05, 0);
+    this.pitch = pitch;
+    this.dist = 5.7;
+    this._frameCamera(5.7, 0.05);
 
     this.scene.add(new THREE.HemisphereLight(0xc4dcff, 0x3a1a55, 1.7));
     const key = new THREE.DirectionalLight(0xffffff, 2.4);
@@ -110,6 +110,11 @@ export class ShipPreview {
     this.render(dt, w, h);
   }
 
+  _frameCamera(dist, y) {
+    this.camera.position.set(0, Math.sin(this.pitch) * dist + y, Math.cos(this.pitch) * dist);
+    this.camera.lookAt(0, y, 0);
+  }
+
   render(dt = 0, w = this.canvas.clientWidth, h = this.canvas.clientHeight) {
     const renderer = getRenderer();
     if (!renderer || !w || !h) return;
@@ -121,6 +126,12 @@ export class ShipPreview {
     if (this.camera.aspect !== pw / ph) { this.camera.aspect = pw / ph; this.camera.updateProjectionMatrix(); }
 
     const ship = this.ship;
+    // Zoom out when add-ons (wings, pet, hat) make the pod bigger, so nothing is clipped.
+    const c = ship.cosmetics || {};
+    const want = c.wings || c.pet ? 8.4 : c.hat ? 6.6 : 5.7;
+    const k = dt > 0 ? 1 - Math.exp(-dt * 6) : 1;
+    this.dist += (want - this.dist) * k;
+    this._frameCamera(this.dist, c.hat || c.pet ? 0.35 : 0.05);
     ship.time += dt;
     let spinK = 1;
     let s = 1;

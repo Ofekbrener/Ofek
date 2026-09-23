@@ -551,6 +551,25 @@ export class AudioEngine {
     o.connect(g2).connect(this.sfxBus);
   }
 
+  // Light auto-fire blip and impact (boss fights fire many of these).
+  pew() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this._osc('square', 1200, t, 0.12);
+    o.frequency.exponentialRampToValueAtTime(380, t + 0.1);
+    const g = this._env(t, 0.003, 0.06, 0.1);
+    o.connect(g).connect(this.sfxBus);
+  }
+
+  softHit() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const n = this._noise(t, 0.15);
+    const f = this._filter('lowpass', 1800, 0.8);
+    const g = this._env(t, 0.002, 0.14, 0.12);
+    n.connect(f).connect(g).connect(this.sfxBus);
+  }
+
   missileLaunch() {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;

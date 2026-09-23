@@ -17,6 +17,9 @@ const EGG_R = 0.56;    // max radius
 const EGG_A = 0.85;    // half length (nose at z = -A, tail at z = +A)
 const FLAT = 0.75;     // vertical squash of the egg cross-section
 const MODEL_SCALE = 1.45;
+const HAT_SCALE = 1.9;     // cosmetic hats
+const WING_SCALE = 1.75;   // cosmetic wings
+const PET_SCALE = 1.0;     // cosmetic pets
 
 const DARK = 0x2a3350;
 const METAL = 0x8a93a8;
@@ -165,7 +168,7 @@ export class Ship {
     this.wingPivots = [1, -1].map((side) => {
       const pivot = new THREE.Group();
       pivot.position.set(0.4 * side, 0.1, 0.05);
-      pivot.scale.x = side;               // right wing is the mirrored left one
+      pivot.scale.set(side * WING_SCALE, WING_SCALE, WING_SCALE);   // right wing is the mirrored left one
       const solidW = new THREE.Mesh(new THREE.BufferGeometry(), this.partsMat);
       const litW = new THREE.Mesh(new THREE.BufferGeometry(), this.litMat);
       pivot.add(solidW, litW);
@@ -174,13 +177,14 @@ export class Ship {
       return pivot;
     });
     this.propeller = new THREE.Mesh(new THREE.BufferGeometry(), this.partsMat);
-    this.propeller.position.set(0, 0.86, -0.12);
+    this.propeller.position.set(0, 0.68 + 0.16 * HAT_SCALE, -0.12);
+    this.propeller.scale.setScalar(HAT_SCALE);
     this.pod.add(this.propeller);
     this.pet = new THREE.Group();
     this.petSolid = new THREE.Mesh(new THREE.BufferGeometry(), this.partsMat);
     this.petLit = new THREE.Mesh(new THREE.BufferGeometry(), this.litMat);
     this.pet.add(this.petSolid, this.petLit);
-    this.pet.scale.setScalar(0.62);
+    this.pet.scale.setScalar(PET_SCALE);
     this.pet.visible = false;
     this.group.add(this.pet);
     this._rainbow = [[1, 0, 0], [1, 1, 1]];
@@ -497,15 +501,20 @@ export class Ship {
     if (c && c.rainbow) { this.trailColor = this._rainbow[0]; this.trailColor2 = this._rainbow[1]; }
     else if (c) { this.trailColor = c.trail; this.trailColor2 = c.trail2; }
     else { this.trailColor = t1; this.trailColor2 = t2; }
+    this.trailBoost = c ? 2 : 1;   // add-on trails are thicker, longer and denser
     this.engineLight.color.setRGB(this.trailColor[0], this.trailColor[1], this.trailColor[2]);
   }
 
   // Hats sit on top of the glass dome (top ≈ y 0.71 in pod space).
-  _buildHat(P, G) {
+  _buildHat(P0, G0) {
     const c = this._cosmetic('hat');
     this.propeller.visible = false;
     if (!c) return;
-    const Y = 0.7, Z = -0.12;
+    const Y = 0.7, Z = -0.12, K = HAT_SCALE;
+    // Hats are drawn big so they read at gameplay distance: scale about the dome top.
+    const big = (g) => { g.translate(0, -Y, -Z); g.scale(K, K, K); g.translate(0, Y - 0.02, Z); return g; };
+    const P = (g, col) => P0(big(g), col);
+    const G = (g, col) => G0(big(g), col);
     const half = (r) => new THREE.SphereGeometry(r, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2);
     if (c.id === 'party') {
       P(tf(new THREE.ConeGeometry(0.11, 0.3, 14), { r: [0, 0, 0.18], p: [-0.025, Y + 0.14, Z] }), 0xff4fb0);
@@ -563,8 +572,12 @@ export class Ship {
         solid.push({ geo: tf(new THREE.BoxGeometry(0.03, 0.22, 0.2), { r: [0, 0, 0.2], p: [0.5, 0.08, 0.2] }), color: 0x2a3350 });
         lit.push({ geo: tf(ico(0.04, 0), { s: [1, 1, 2.2], p: [0.54, 0, 0.2] }), color: S.accent });
       } else if (c.id === 'angel') {
-        for (let i = 0; i < 5; i++) blade(0.2 + i * 0.045, 0.07, 0.2 + i * 0.2, i === 4 ? 0xffe9a8 : 0xffffff, { z: 0.05 + i * 0.03, yaw: -0.25 });
-        lit.push({ geo: tf(ico(0.03, 0), { p: [0.02, 0.02, 0.05] }), color: 0xfff6d0 });
+        for (let i = 0; i < 5; i++) {
+          const a = 0.2 + i * 0.2, len = 0.2 + i * 0.045;
+          blade(len, 0.07, a, 0xffffff, { z: 0.05 + i * 0.03, yaw: -0.25 });
+          lit.push({ geo: tf(ico(1, 1), { s: [0.05, 0.02, 0.045], p: [Math.cos(a) * len * 1.9, Math.sin(a) * len * 1.9, 0.05 + i * 0.03] }), color: 0xffe28a });
+        }
+        lit.push({ geo: tf(new THREE.TorusGeometry(0.09, 0.012, 4, 16), { r: [Math.PI / 2, 0, 0], p: [0.05, 0.32, 0.05] }), color: 0xffe28a });
       } else if (c.id === 'bat' || c.id === 'dragon') {
         const big = c.id === 'dragon' ? 1.35 : 1.2;
         const skin = c.id === 'dragon' ? 0xa8202e : 0x6a3a9a;
@@ -573,6 +586,10 @@ export class Ship {
           const a = 0.15 + i * 0.32;
           blade(0.28 * big, 0.16 * big, a, skin, { z: 0.08 + i * 0.05, yaw: -0.3, thick: 0.02 });
           solid.push({ geo: tf(cyl(0.014, 0.01, 0.56 * big, 5), { r: [0, 0, a - Math.PI / 2], p: [Math.cos(a) * 0.28 * big, Math.sin(a) * 0.28 * big, 0.04 + i * 0.05] }), color: bone });
+        }
+        for (let i = 0; i < 3; i++) {   // glowing veins
+          const a = 0.15 + i * 0.32;
+          lit.push({ geo: tf(cyl(0.008, 0.008, 0.4 * big, 4), { r: [0, 0, a - Math.PI / 2], p: [Math.cos(a) * 0.3 * big, Math.sin(a) * 0.3 * big + 0.01, 0.1 + i * 0.05] }), color: c.id === 'dragon' ? 0xffa21f : 0xc07bff });
         }
         if (c.id === 'dragon') for (let i = 0; i < 3; i++) {
           const a = 0.15 + i * 0.32;
@@ -637,7 +654,7 @@ export class Ship {
       pv.rotation.z = f ? Math.sin(t * 5) * f * pv.userData.side : 0;
     }
     if (this.pet.visible) {
-      this.pet.position.set(1.45 + Math.sin(t * 0.9) * 0.15, 0.75 + Math.sin(t * 2.6) * 0.14, 0.7 + Math.cos(t * 1.1) * 0.2);
+      this.pet.position.set(1.55 + Math.sin(t * 0.9) * 0.15, 0.95 + Math.sin(t * 2.6) * 0.14, 0.5 + Math.cos(t * 1.1) * 0.2);
       this.pet.rotation.set(0, Math.sin(t * 1.3) * 0.35, Math.sin(t * 2.6) * 0.12);
     }
     const c = this.cosmetics.trail === 'rainbow';

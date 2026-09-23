@@ -98,6 +98,32 @@ export function nextStep(prog) {
   return { icon: '🥇', title: 'Go for gold medals', text: 'Beat your best places in the Race League', label: 'RACES ➜', action: { type: 'raceMenu' } };
 }
 
+// ---- Forced tutorial path -------------------------------------------------
+// New players are walked through one full loop before anything else unlocks:
+//   1 race1  → podium in Race 1 (earns the first 🏆)
+//   2 dodge  → fly Galaxy 1 once (earns 🍗)
+//   3 garage → buy one Race Garage upgrade
+//   4 race2  → run Race 2 with the stronger ship
+// The stage is derived from progress, so it can never get stuck.
+export const TUTORIAL_STEPS = ['race1', 'dodge', 'garage', 'race2'];
+export function tutorialStage(prog) {
+  if (prog.data.ftue.done) return null;
+  const b1 = prog.bestPlace(CAREER[0].track.id);
+  if (!(b1 > 0 && b1 <= 3)) return 'race1';
+  if (!prog.ftueSeen('dodged')) return 'dodge';
+  if (prog.shipPower <= 1) return 'garage';
+  if (!prog.bestPlace(CAREER[1].track.id)) return 'race2';
+  return null;
+}
+// What each stage lets you tap on Home.
+export const TUTORIAL_ALLOW = { race1: 'race', dodge: 'dodge', garage: 'garage', race2: 'race' };
+export const TUTORIAL_HINT = {
+  race1: 'Tutorial: win a podium in Race 1 first',
+  dodge: 'Tutorial: fly the Dodge journey next',
+  garage: 'Tutorial: buy an upgrade in the Garage next',
+  race2: 'Tutorial: run Race 2 next',
+};
+
 // Reusable guided hand-off modal (one at a time). Buttons: [{label, primary, onClick}].
 // Tapping a button closes the modal first, then runs its handler.
 export class Handoff {
@@ -110,7 +136,9 @@ export class Handoff {
 
   get open() { return !this.el.classList.contains('hidden'); }
 
-  show({ icon, title, text, buttons = [], celebrate = false }) {
+  // forced: only primary buttons are shown (no "later" escape during the tutorial).
+  show({ icon, title, text, buttons = [], celebrate = false, forced = false }) {
+    if (forced && buttons.some((b) => b.primary)) buttons = buttons.filter((b) => b.primary);
     clearTimeout(this.pending);
     $('ho-icon').textContent = icon;
     $('ho-title').textContent = title;
