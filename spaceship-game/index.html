@@ -69,10 +69,7 @@
       <div class="panel home-panel">
         <div class="home-head">
           <h1 class="title home-title">VOID <span>RUNNER</span></h1>
-          <div class="home-toggles">
-            <button id="btn-sound" class="toggle-btn" aria-label="Sound">🔊</button>
-            <button id="btn-haptics" class="toggle-btn" aria-label="Vibration">📳</button>
-          </div>
+          <button id="btn-settings" class="toggle-btn settings-btn" aria-label="Settings">⚙</button>
         </div>
         <!-- Home: your pod on a turntable, wearing every upgrade you own (fills the free space) -->
         <canvas id="home-preview" class="ship-preview home-preview" aria-label="Your ship"></canvas>
@@ -108,6 +105,22 @@
           </button>
         </div>
         <button id="btn-hangar" class="secondary-btn hangar-btn">🛠 GARAGE</button>
+      </div>
+    </div>
+
+    <!-- Settings: sound, vibration, reset progress -->
+    <div id="screen-settings" class="screen hidden">
+      <div class="panel settings-panel">
+        <h2>SETTINGS</h2>
+        <button id="btn-sound" class="toggle-btn setting-row">🔊 Sound: On</button>
+        <button id="btn-haptics" class="toggle-btn setting-row">📳 Vibration: Normal</button>
+        <button id="btn-reset" class="toggle-btn setting-row danger-row">🗑 Reset progress</button>
+        <div id="reset-confirm" class="reset-confirm hidden">
+          <p><b>Start again as a new player?</b><br>This deletes all drumsticks, trophies, galaxies, upgrades, skins and add-ons on this device. It can't be undone.</p>
+          <button id="btn-reset-yes" class="primary-btn danger-btn">YES, START OVER</button>
+          <button id="btn-reset-no" class="secondary-btn">CANCEL</button>
+        </div>
+        <button id="btn-settings-back" class="primary-btn small">🏠 HOME</button>
       </div>
     </div>
 

@@ -146,6 +146,7 @@ const screens = {
   race: $('screen-race'),
   raceResults: $('screen-race-results'),
   welcome: $('screen-welcome'),
+  settings: $('screen-settings'),
 };
 // Home screen turntable: your pod with every upgrade you own.
 const homePreview = new ShipPreview($('home-preview'));
@@ -297,9 +298,9 @@ const soundBtn = $('btn-sound');
 const hapticsBtn = $('btn-haptics');
 function refreshToggles() {
   soundBtn.classList.toggle('off', audio.muted);
-  soundBtn.textContent = audio.muted ? '🔇' : '🔊';
+  soundBtn.textContent = audio.muted ? '🔇 Sound: Off' : '🔊 Sound: On';
   hapticsBtn.classList.toggle('off', haptics.level === 0);
-  hapticsBtn.textContent = `📳 ${haptics.label}`;
+  hapticsBtn.textContent = `📳 Vibration: ${haptics.label}`;
 }
 if (!haptics.supported) hapticsBtn.classList.add('hidden');
 soundBtn.addEventListener('click', () => {
@@ -314,6 +315,33 @@ hapticsBtn.addEventListener('click', () => {
   refreshToggles();
 });
 refreshToggles();
+
+// Settings screen, including "start again as a new player".
+$('btn-settings').addEventListener('click', () => {
+  audio.unlock();
+  audio.click();
+  $('reset-confirm').classList.add('hidden');
+  $('btn-reset').classList.remove('hidden');
+  showScreen('settings');
+});
+$('btn-settings-back').addEventListener('click', goHome);
+$('btn-reset').addEventListener('click', () => {
+  audio.click();
+  $('btn-reset').classList.add('hidden');
+  $('reset-confirm').classList.remove('hidden');
+});
+$('btn-reset-no').addEventListener('click', () => {
+  audio.click();
+  $('reset-confirm').classList.add('hidden');
+  $('btn-reset').classList.remove('hidden');
+});
+$('btn-reset-yes').addEventListener('click', () => {
+  haptics.tap();
+  // Wipe progress (keep sound / vibration preferences) and boot fresh into the Welcome screen.
+  store.remove('save');
+  store.remove('best');
+  location.reload();
+});
 
 // ---------------------------------------------------------------- modifiers
 function applyMods() {

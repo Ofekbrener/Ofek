@@ -8,6 +8,9 @@ export const store = {
       return fallback;
     }
   },
+  remove(key) {
+    try { localStorage.removeItem('voidrunner:' + key); } catch { /* ignore */ }
+  },
   set(key, value) {
     try { localStorage.setItem('voidrunner:' + key, String(value)); } catch { /* ignore */ }
   },
