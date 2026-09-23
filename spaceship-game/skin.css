@@ -1,0 +1,326 @@
+/* ==========================================================================
+   Void Runner skin: chunky cartoon-arcade art direction.
+   Cream paper panels, ink outlines, solid "pressable" buttons, a warm
+   poultry palette and hand-drawn SVG icons. No neon glow, no glass blur,
+   no gradient buttons.
+   ========================================================================== */
+
+@font-face { font-family: 'Lilita One'; src: url(fonts/lilita-one.woff2) format('woff2'); font-display: swap; }
+@font-face { font-family: 'Fredoka'; src: url(fonts/fredoka.woff2) format('woff2'); font-weight: 300 700; font-display: swap; }
+
+:root {
+  --ink: #2a1c33;
+  --ink-soft: #5a4a66;
+  --paper: #fff4dc;
+  --paper-2: #ffe8bf;
+  --card: #fffaf0;
+  --yolk: #ffc23a;
+  --yolk-d: #d98a0f;
+  --tomato: #ef4a36;
+  --tomato-d: #b3281c;
+  --teal: #1fb5a3;
+  --teal-d: #10796d;
+  --sky: #5cc3ff;
+  --sky-d: #2a84c4;
+  --grass: #78c850;
+  --grass-d: #4a9030;
+  --plum: #7a4fa3;
+  /* legacy tokens re-pointed at the new palette */
+  --fg: var(--ink);
+  --dim: var(--ink-soft);
+  --accent: var(--teal);
+  --accent-2: var(--tomato);
+  --gold: var(--yolk-d);
+  --panel: var(--paper);
+  --panel-border: var(--ink);
+  --display: 'Lilita One', 'Fredoka', system-ui, sans-serif;
+  --body: 'Fredoka', system-ui, sans-serif;
+}
+
+html, body { font-family: var(--body); font-weight: 500; color: var(--ink); background: #1d1430; }
+
+/* ---------- icons ---------- */
+.ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; display: inline-block; flex: none; overflow: visible; }
+.u-icon .ic, .a-icon .ic, .ns-icon .ic, .mc-icon .ic, .ho-icon .ic, .c-icon .ic, .rh-intro-icon .ic, .loop-node span .ic, .league-icon .ic { width: 1em; height: 1em; vertical-align: 0; }
+
+/* ---------- screens & panels ---------- */
+.screen { background: rgba(29, 20, 48, 0.55); }
+.panel {
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  box-shadow: 0 7px 0 var(--ink);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.panel h2, h2 {
+  font-family: var(--display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  text-shadow: none;
+}
+.dim, .tagline, .brief-text, .welcome-sub { color: var(--ink-soft); }
+
+/* Logo: chunky two-tone wordmark, slightly tilted like a sticker. */
+.title, .home-title {
+  font-family: var(--display);
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+  text-shadow: none;
+  transform: rotate(-2deg);
+}
+.title span, .home-title span {
+  color: var(--tomato);
+  letter-spacing: 0.01em;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+}
+.subtitle { color: var(--yolk-d); text-shadow: none; font-weight: 700; letter-spacing: 0.02em; }
+
+/* ---------- buttons ---------- */
+.primary-btn, .secondary-btn, .danger-btn, .race-btn, .buy-btn, .tab, .toggle-btn, .setting-row, .icon-btn, .addon-slot {
+  font-family: var(--display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  border: 3px solid var(--ink);
+  text-shadow: none;
+  transition: transform 0.06s, box-shadow 0.06s;
+}
+.primary-btn {
+  background: var(--yolk);
+  color: var(--ink);
+  border-radius: 16px;
+  box-shadow: inset 0 -5px 0 var(--yolk-d), 0 4px 0 var(--ink);
+  animation: none;
+  font-size: 20px;
+}
+.secondary-btn {
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 16px;
+  box-shadow: inset 0 -4px 0 #e6d6b4, 0 4px 0 var(--ink);
+}
+.race-btn, .danger-btn { background: var(--tomato); color: #fff; box-shadow: inset 0 -5px 0 var(--tomato-d), 0 4px 0 var(--ink); }
+.primary-btn:active, .secondary-btn:active, .race-btn:active, .danger-btn:active, .buy-btn:not(:disabled):active, .tab:active, .mode-card:active, .setting-row:active {
+  transform: translateY(3px);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18), 0 1px 0 var(--ink);
+}
+.primary-btn:disabled { background: #d9cdb4; box-shadow: 0 4px 0 var(--ink); color: var(--ink-soft); }
+.toggle-btn { background: var(--card); color: var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
+.toggle-btn.off { opacity: 0.6; text-decoration: none; }
+.icon-btn { background: var(--card); color: var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); letter-spacing: -1px; }
+
+/* ---------- chips, bars ---------- */
+.chip { background: var(--card); color: var(--ink); border: 2px solid var(--ink); font-family: var(--body); font-weight: 700; }
+.chip b { color: var(--ink); }
+.trophy-chip { background: var(--yolk); border-color: var(--ink); color: var(--ink); }
+.trophy-chip b { color: var(--ink); }
+.rank-chip b { color: var(--ink); }
+.xp-bar, .mc-bar, .boss-hp, .boost-meter { background: #e8dcc2; border: 2px solid var(--ink); box-sizing: content-box; }
+.xp-bar > div { background: var(--grass); box-shadow: none; }
+.balance, .balance b { color: var(--ink); font-family: var(--display); font-weight: 400; }
+
+/* ---------- Home ---------- */
+.next-step { background: var(--card); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); border-radius: 16px; }
+.next-step.tutorial { border-color: var(--ink); background: #fff1c2; }
+.ns-label, .next-step.tutorial .ns-label { color: var(--tomato-d); font-family: var(--display); font-weight: 400; letter-spacing: 0.06em; }
+.ns-title { font-family: var(--display); font-weight: 400; color: var(--ink); letter-spacing: 0.01em; }
+.ns-text { color: var(--ink-soft); font-weight: 600; }
+.ns-icon { background: var(--paper-2); border: 2px solid var(--ink); border-radius: 12px; }
+.mode-card { border: 3px solid var(--ink); border-radius: 16px; color: #fff; font-family: var(--body); }
+.dodge-card { background: var(--sky); box-shadow: inset 0 -6px 0 var(--sky-d), 0 4px 0 var(--ink); }
+.race-card { background: var(--tomato); box-shadow: inset 0 -6px 0 var(--tomato-d), 0 4px 0 var(--ink); }
+.mc-title { font-family: var(--display); font-weight: 400; letter-spacing: 0.03em; color: #fff; -webkit-text-stroke: 1.2px var(--ink); paint-order: stroke fill; text-shadow: 0 2px 0 var(--ink); }
+.mc-name { color: #fff; font-weight: 700; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35); }
+.mc-meta { color: rgba(255, 255, 255, 0.92); font-weight: 600; }
+.mc-bar { background: rgba(0, 0, 0, 0.18); border-color: var(--ink); }
+.mc-bar > span, .race-card .mc-bar > span { background: var(--yolk); }
+.hangar-btn { background: var(--card); }
+.home-preview, .ship-preview {
+  background: radial-gradient(circle at 50% 58%, #ffe7b3 0 32%, #ffd48a 33% 34%, transparent 35%), repeating-conic-gradient(from 0deg at 50% 58%, #ffcf73 0 10deg, #ffc25a 10deg 20deg);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.08);
+}
+.settings-btn { font-size: 20px; }
+
+/* ---------- Garage ---------- */
+.hangar-head h2 { font-size: 26px; }
+.tab { background: var(--card); color: var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); font-size: 14px; }
+.tab.active { background: var(--yolk); color: var(--ink); box-shadow: inset 0 -4px 0 var(--yolk-d), 0 3px 0 var(--ink); }
+.upgrade, .skin, .gnode, .rr-row, .track-row, .league, .card, .stats div, .payout {
+  background: var(--card);
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  box-shadow: 0 3px 0 rgba(42, 28, 51, 0.9);
+}
+.upgrade .u-name, .skin .s-name, .gnode .g-name, .track-name, .league-name, .card .c-name { font-family: var(--display); font-weight: 400; letter-spacing: 0.01em; color: var(--ink); }
+.upgrade .u-desc, .card .c-desc, .gnode .g-boss, .track-name small, .league-sub { color: var(--ink-soft); font-weight: 600; }
+.pip { background: #e3d5b8; border: 1.5px solid var(--ink); height: 7px !important; box-shadow: none; }
+.pip.on { background: var(--grass); box-shadow: none; }
+.buy-btn { background: var(--teal); color: #fff; border-radius: 12px; box-shadow: inset 0 -4px 0 var(--teal-d), 0 3px 0 var(--ink); border-width: 2.5px; }
+.buy-btn:disabled { background: #e3d5b8; color: #8c7d95; box-shadow: 0 3px 0 var(--ink); }
+.buy-btn.maxed { background: var(--yolk); color: var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.skin.equipped, .addon.equipped { border-color: var(--ink); background: #fff1c2; box-shadow: 0 0 0 3px var(--yolk), 0 3px 0 var(--ink); }
+.addon-slot { background: var(--card); color: var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); font-size: 12px; }
+.addon-slot.active { background: var(--sky); color: #fff; border-color: var(--ink); }
+.addon-slot i { background: var(--tomato); box-shadow: none; border: 1.5px solid var(--ink); }
+.ftue-glow { box-shadow: 0 0 0 4px var(--yolk), 0 3px 0 var(--ink) !important; }
+.bought { animation: boughtPop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes boughtPop { 0% { transform: scale(0.94); } 60% { transform: scale(1.03); } 100% { transform: scale(1); } }
+.hangar-tut, .coach { border: 3px solid var(--ink); background: var(--yolk); color: var(--ink); box-shadow: 0 4px 0 var(--ink); font-family: var(--display); font-weight: 400; letter-spacing: 0.01em; }
+
+/* ---------- Settings ---------- */
+.setting-row { background: var(--card); color: var(--ink); box-shadow: 0 4px 0 var(--ink); }
+.danger-row { color: var(--tomato-d); border-color: var(--ink); }
+.reset-confirm { background: #ffe2dc; border: 3px solid var(--ink); }
+.reset-confirm p, .reset-confirm p b { color: var(--ink); }
+
+/* ---------- Tutorial ---------- */
+.tut-locked { opacity: 0.55; filter: grayscale(0.9) brightness(1.05); }
+.tut-glow { animation: tutBounce 1.3s ease-in-out infinite; }
+@keyframes tutBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+/* ---------- In-game HUD: white type with ink outline ---------- */
+.hud-label, #hud-galaxy, .hud-small, #hud-level, #hud-score, #hud-combo, .popup, #banner, #rh-lap, #rh-time, .rh-place, #rh-speed, .rh-speed, #rh-count, #rh-msg, #boss-name, #hud-crystals, #galaxy-card-num, #galaxy-card-name, #galaxy-card-tag {
+  font-family: var(--display);
+  font-weight: 400;
+  -webkit-text-stroke: 5px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 var(--ink);
+  letter-spacing: 0.02em;
+}
+.hud-label, #hud-galaxy { color: #fff; font-size: 12px; -webkit-text-stroke-width: 3px; text-shadow: none; }
+.hud-small, #hud-level { color: var(--yolk); }
+#hud-score { color: #fff; }
+#hud-combo, .popup { color: var(--yolk); }
+.popup.cyan { color: var(--sky); text-shadow: 0 3px 0 var(--ink); }
+#banner { color: #fff; font-size: 38px; letter-spacing: 0.03em; }
+#hud-crystals { color: #fff; font-size: 20px; -webkit-text-stroke-width: 4px; }
+.steer-btn {
+  background: rgba(255, 244, 220, 0.9);
+  border: 3px solid var(--ink);
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--ink);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  font-family: var(--display);
+}
+.steer-btn.active { background: var(--yolk); transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.shield-pip { background: var(--sky) !important; border: 2px solid var(--ink) !important; box-shadow: none !important; }
+.power-chip { background: var(--card); color: var(--ink); border: 2px solid var(--ink); box-shadow: 0 2px 0 var(--ink); }
+.progress .seg { background: rgba(255, 244, 220, 0.5); border: 2px solid var(--ink); }
+.progress .seg > i { background: var(--yolk); box-shadow: none; }
+#boss-bar { font-family: var(--display); }
+#boss-name { color: #fff; font-size: 18px; }
+.boss-hp { border: 3px solid var(--ink); border-radius: 10px; height: 14px; }
+#boss-hp-fill { background: var(--tomato); box-shadow: inset 0 -4px 0 var(--tomato-d); }
+.boss-hint { color: #fff; font-family: var(--display); font-weight: 400; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; }
+#galaxy-card {
+  background: var(--yolk);
+  border: 3px solid var(--ink);
+  box-shadow: 0 5px 0 var(--ink);
+  border-radius: 14px;
+  padding: 10px 22px;
+  transform-origin: center;
+}
+#galaxy-card-num { color: var(--ink); -webkit-text-stroke: 0; text-shadow: none; font-size: 13px; }
+#galaxy-card-name { color: #fff; }
+#galaxy-card-tag { color: var(--ink); -webkit-text-stroke: 0; text-shadow: none; font-family: var(--body); font-weight: 700; }
+
+/* ---------- Race HUD ---------- */
+.rh-place, .rh-place small { color: var(--yolk); }
+#rh-lap { color: #fff; }
+#rh-time { color: #fff; -webkit-text-stroke-width: 3px; font-size: 15px; }
+#rh-speed { color: #fff; }
+.rh-speed small { color: #fff; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; font-family: var(--display); }
+#rh-msg { color: #fff; }
+#rh-count { color: var(--yolk); }
+.boost-meter { border-radius: 8px; }
+#rh-boost-fill { background: var(--yolk); box-shadow: none; }
+.boost-btn {
+  background: var(--tomato);
+  color: #fff;
+  border: 3px solid var(--ink);
+  box-shadow: inset 0 -6px 0 var(--tomato-d), 0 5px 0 var(--ink);
+  font-family: var(--display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  text-shadow: 0 2px 0 var(--ink);
+}
+.boost-btn.active { transform: translateY(3px); box-shadow: inset 0 -3px 0 var(--tomato-d), 0 2px 0 var(--ink); }
+.boost-btn.empty { background: #c9b9a8; box-shadow: 0 5px 0 var(--ink); }
+.item-btn { background: var(--card); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); color: var(--ink); }
+.item-btn.ready { background: var(--yolk); }
+#rh-map { background: rgba(255, 244, 220, 0.85); border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.rh-overlay .panel { background: var(--paper); }
+.rh-intro-title { font-family: var(--display); font-weight: 400; color: var(--ink); }
+.rh-intro-power { border: 2px solid var(--ink); background: var(--card); color: var(--ink); }
+.rh-intro-power.ok { background: #dff3cf; }
+.rh-intro-power.low { background: #ffd9d2; }
+.rr-row.me { background: #fff1c2; box-shadow: 0 0 0 3px var(--yolk), 0 3px 0 var(--ink); }
+.rr-place, .victory-title, .over-title, .cards-title, .welcome-title, .ho-title {
+  font-family: var(--display);
+  font-weight: 400;
+  color: var(--tomato);
+  text-shadow: 0 3px 0 var(--ink);
+  -webkit-text-stroke: 1.5px var(--ink);
+  paint-order: stroke fill;
+  letter-spacing: 0.02em;
+}
+#final-score { font-family: var(--display); font-weight: 400; color: var(--ink); text-shadow: none; }
+#new-best { color: var(--tomato-d); text-shadow: none; }
+.stats span, .payout-row, .final-label { color: var(--ink-soft); }
+.stats b, .payout-row b, .payout-row.total b { color: var(--ink); font-family: var(--display); font-weight: 400; }
+.unlock-note, .map-hint, .brief-boss, .race-power, .power-chip-rr { background: var(--card); border: 2px solid var(--ink); color: var(--ink); }
+.power-chip-rr.ok { background: #dff3cf; }
+.power-chip-rr.low { background: #ffd9d2; }
+
+/* ---------- Star map / leagues / cards ---------- */
+.gnode.current { background: #fff1c2; box-shadow: 0 0 0 3px var(--yolk), 0 3px 0 var(--ink); }
+.gnode.locked { opacity: 0.6; }
+.gnode .orb { border: 2.5px solid var(--ink); box-shadow: none; }
+.gnode .g-num, .league-head, .section-label, .cards-sub { color: var(--ink-soft); letter-spacing: 0.1em; font-weight: 700; }
+.stars-row span { color: var(--yolk); -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; text-shadow: none; }
+.stars-row .off { color: #e3d5b8; }
+.track-row.current { background: #fff1c2; box-shadow: 0 0 0 3px var(--yolk), 0 3px 0 var(--ink); }
+.track-dot { border: 2px solid var(--ink); box-shadow: none; }
+.track-tag { background: var(--tomato); color: #fff; border: 1.5px solid var(--ink); }
+#screen-cards .card { border-radius: 16px; }
+.card .c-key { background: var(--paper-2); color: var(--ink); border: 2px solid var(--ink); }
+.card.picked { background: var(--yolk); }
+
+/* ---------- Hand-offs / welcome ---------- */
+.handoff { background: rgba(29, 20, 48, 0.6); }
+.handoff-panel { background: var(--paper); }
+.ho-burst { background: var(--yolk); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); }
+.handoff.celebrate .ho-burst::before {
+  background: repeating-conic-gradient(from 0deg, rgba(255, 194, 58, 0.55) 0 12deg, transparent 12deg 24deg);
+  filter: none;
+}
+.ho-text, .ho-text b { color: var(--ink); }
+.loop-ring { border: 3px dashed var(--ink); box-shadow: none; }
+.loop-spark { background: var(--tomato); box-shadow: none; border: 2px solid var(--ink); }
+.loop-center, .loop-center b { color: var(--ink); font-family: var(--display); font-weight: 400; text-shadow: none; }
+.loop-node span { background: var(--card); border: 2.5px solid var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.loop-node b { color: var(--ink); font-family: var(--display); font-weight: 400; }
+.loop-steps li, .loop-steps b { color: var(--ink); }
+#btn-welcome-go { animation: none; }
+
+/* No pulsing neon anywhere. */
+.dodge-btn, .race-btn, .primary-btn, #btn-welcome-go { animation: none; }
+.home-preview, .ship-preview { background: #ffc868; }
+
+/* ---------- readability pass ---------- */
+.final-label, .gnode .g-num, .rh-intro-sub, .section-label, .cards-sub, .league-head, .ns-label, .hud-label { letter-spacing: 0.06em !important; }
+.g-lock, .track-lock { color: var(--tomato-d); font-weight: 700; }
+.gnode.current, .track-row.current { border-color: var(--ink); }
+.rh-intro-power, .rh-intro-power.ok, .rh-intro-power.low, .power-chip-rr, .power-chip-rr.ok, .power-chip-rr.low { color: var(--ink); font-weight: 700; border-radius: 10px; }
+.loop-node span, .loop-node.n1 span, .loop-node.n2 span, .loop-node.n3 span, .loop-node.n1 span, .loop-node.n3 span { border-color: var(--ink); box-shadow: 0 3px 0 var(--ink); background: var(--card); }
+.loop-node b { background: var(--paper); padding: 0 5px; border-radius: 6px; text-shadow: none; }
+.loop-center b, .loop-center { letter-spacing: 0.04em; }
+.ho-burst { border-radius: 50%; }
+.cards-sub { color: #fff !important; font-family: var(--display); -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; }

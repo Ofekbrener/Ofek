@@ -30,21 +30,30 @@ function getRenderer() {
   return shared;
 }
 
-// Opaque soft radial backdrop (additive flames need something to add onto).
+// Opaque sunburst backdrop in the UI palette (additive flames need something to add onto).
 let backdropTex = null;
 function backdrop() {
   if (backdropTex) return backdropTex;
   const c = document.createElement('canvas');
-  c.width = 256; c.height = 128;
+  c.width = 512; c.height = 256;
   const g = c.getContext('2d');
-  g.fillStyle = '#0b0f22';
-  g.fillRect(0, 0, 256, 128);
-  const r = g.createRadialGradient(128, 72, 4, 128, 72, 150);
-  r.addColorStop(0, '#26336b');
-  r.addColorStop(0.45, '#161a40');
-  r.addColorStop(1, '#0b0f22');
+  const cx = 256, cy = 150;
+  g.fillStyle = '#ffc868';
+  g.fillRect(0, 0, 512, 256);
+  g.fillStyle = '#ffd488';
+  for (let i = 0; i < 24; i += 2) {
+    const a0 = (i / 24) * Math.PI * 2, a1 = ((i + 1) / 24) * Math.PI * 2;
+    g.beginPath(); g.moveTo(cx, cy);
+    g.lineTo(cx + Math.cos(a0) * 600, cy + Math.sin(a0) * 600);
+    g.lineTo(cx + Math.cos(a1) * 600, cy + Math.sin(a1) * 600);
+    g.closePath(); g.fill();
+  }
+  const r = g.createRadialGradient(cx, cy, 10, cx, cy, 120);
+  r.addColorStop(0, 'rgba(255, 244, 220, 1)');
+  r.addColorStop(0.7, 'rgba(255, 238, 200, 0.85)');
+  r.addColorStop(1, 'rgba(255, 238, 200, 0)');
   g.fillStyle = r;
-  g.fillRect(0, 0, 256, 128);
+  g.fillRect(0, 0, 512, 256);
   backdropTex = new THREE.CanvasTexture(c);
   backdropTex.colorSpace = THREE.SRGBColorSpace;
   return backdropTex;
@@ -103,11 +112,10 @@ export class ShipPreview {
     if (!this.running) return;
     const dt = Math.min(0.05, (now - this._last) / 1000);
     this._last = now;
-    // Stop by itself once the canvas is hidden (its screen was closed).
+    // While the canvas has no size (screen fading in / hidden) just wait; stop() ends the loop.
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
-    if (!w || !h) { this.running = false; return; }
     this._raf = requestAnimationFrame(this._frame);
-    this.render(dt, w, h);
+    if (w && h) this.render(dt, w, h);
   }
 
   _frameCamera(dist, y) {

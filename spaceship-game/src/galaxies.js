@@ -16,22 +16,22 @@ export const GALAXIES = [
     id: 'coop',
     name: 'Coop Nebula',
     tagline: 'Where the feathers first flew',
-    colors: { floor: 0x3cf2ff, lane: 0xff3ca8, horizon: 0x6a2cff, bg: 0x05060f, sky: 0x8fb8ff, rim: 0xff3ca8, star: 0xbfd6ff },
+    colors: { floor: 0x8cc152, lane: 0xffd23a, horizon: 0xffc78a, bg: 0x2c6fb8, sky: 0xcfe8ff, rim: 0xffb070, star: 0xffffff },
     planet: { a: 0x2fd6c3, b: 0x1b2f7a, ring: 0xff9ad5, x: -70, y: 36, size: 30 },
     // Whole-scene look (worlds.js / environment.js / lighting.js). `style` picks
     // the floor pattern, hero backdrop and weather shape; the rest is tweened.
     world: {
       style: 0,
-      sky: { top: 0x03041a, horizon: 0x5a26c0, bottom: 0x0c0620, neb1: 0x2fd6c3, neb2: 0xff4fb0, sun: 0x8fe8ff, density: 0.55, scale: 1.0, rays: 0.0, scan: 0.0 },
-      fog: { color: 0x241448, near: 45, far: 140 },
-      floor: { ground: 0x070520, alpha: 0.55 },
-      hero: { x: 22, y: 64, size: 44, asp: 1.9, a: 0xd8362c, b: 0xffcf5a, c: 0x3cf2ff },
+      sky: { top: 0x2a5fa8, horizon: 0xffc58a, bottom: 0xf6b77a, neb1: 0xffffff, neb2: 0xffd9b0, sun: 0xfff1c0, density: 0.32, scale: 1.0, rays: 0.0, scan: 0.0 },
+      fog: { color: 0xf3c08e, near: 50, far: 150 },
+      floor: { ground: 0x4a6b2c, alpha: 0.97 },
+      hero: { x: 22, y: 64, size: 44, asp: 1.9, a: 0xd8362c, b: 0xffcf5a, c: 0xfff1c0 },
       props: [
         { kind: 'hay', count: 14, x: [5.4, 11], y: [0, 0], s: [0.85, 1.35] },
         { kind: 'fence', count: 10, x: [4.9, 6.2], y: [0, 0], s: [0.9, 1.1] },
       ],
       weather: { color: 0xfff6ea, color2: 0xffc6e8, size: 2.4, wind: [0.4, -0.5, 0], sway: 0.9, alpha: 0.8 },
-      light: { sky: 0x8fb8ff, ground: 0x3a1450, hemi: 1.4, key: 0xffffff, keyI: 2.2, rim: 0xff3ca8, rimI: 1.2 },
+      light: { sky: 0xd6ecff, ground: 0x6a8a3a, hemi: 1.5, key: 0xfff0d8, keyI: 2.4, rim: 0xffb070, rimI: 1.0 },
     },
     hazards: { rocks: 1, cluster: 0.7, wall: 0, flock: 0.8, bombers: 0.3, barrier: 0, drifter: 0, bigEgg: 0, comet: 0, laser: 0, ice: 0, well: 0 },
     speed: [18, 24],

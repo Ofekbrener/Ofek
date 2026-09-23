@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#05060f">
+  <meta name="theme-color" content="#1d1430">
   <meta name="description" content="Void Runner — a 3D endless space dodger for your phone. Drag to steer, dodge asteroids, chase near misses.">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,10 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preload" href="fonts/lilita-one.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/fredoka.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="skin.css">
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js" } }
   </script>
@@ -229,7 +232,7 @@
         </div>
         <div id="galaxy-list" class="scroll map-scroll"></div>
         <div class="btn-row">
-          <button id="btn-map-hangar" class="secondary-btn">🛠 HANGAR</button>
+          <button id="btn-map-hangar" class="secondary-btn">🛠 GARAGE</button>
           <button id="btn-map-back" class="secondary-btn">🏠 HOME</button>
         </div>
       </div>
