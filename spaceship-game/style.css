@@ -778,7 +778,7 @@ details.howto[open] summary { margin-bottom: 6px; }
 
 .hangar-panel .hangar-head { margin: 0; }
 .hangar-panel .hangar-head h2 { font-size: 22px; }
-.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
 .tab {
   padding: 9px 4px; border-radius: 12px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer;
   color: var(--dim); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
@@ -812,3 +812,16 @@ details.howto[open] summary { margin-bottom: 6px; }
   .home-toggles .toggle-btn { padding: 5px 7px; font-size: 12px; }
   .home-chips .chip { padding: 4px 7px; font-size: 11px; }
 }
+/* ---- Garage: add-ons ---- */
+.addon-pane { display: flex; flex-direction: column; gap: 6px; }
+.addon-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.addon-slot { position: relative; padding: 6px 2px; border-radius: 10px; font: inherit; font-size: 11px; font-weight: 800; color: var(--dim);
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.addon-slot span { font-size: 17px; }
+.addon-slot.active { color: var(--fg); border-color: var(--accent); background: rgba(60, 242, 255, 0.14); }
+.addon-slot i { position: absolute; top: 4px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+.addon .a-icon { font-size: 24px; line-height: 1.1; margin-bottom: 2px; }
+.hangar-panel .addon .s-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hangar-panel .tab { font-size: 13px; padding: 9px 2px; }
+@media (max-width: 400px) { .hangar-panel .tab { font-size: 11.5px; } }
+.hangar-panel .tab { white-space: nowrap; overflow: hidden; text-overflow: clip; }
