@@ -15,7 +15,7 @@ import { Input } from './input.js';
 import { AudioEngine } from './audio.js';
 import { haptics } from './haptics.js';
 import { store } from './storage.js';
-import { Progression, POWERUPS, drawCards, rankInfo } from './progression.js';
+import { Progression, POWERUPS, UPGRADES, drawCards, rankInfo, upgradeLevels } from './progression.js';
 import { HangarUI, showCards } from './hangar-ui.js';
 import { GALAXIES, QUIPS, pick } from './galaxies.js';
 import { Journey } from './journey.js';
@@ -62,6 +62,7 @@ const audio = new AudioEngine();
 const input = new Input(canvas, $('btn-left'), $('btn-right'));
 const prog = new Progression();
 ship.setSkin(prog.skin);
+ship.setUpgrades(upgradeLevels(prog));
 const race = new RaceSession(quality);
 
 // Expanding shockwave ring for score milestones.
@@ -200,7 +201,7 @@ updateMenuMeta();
 const hangarUI = new HangarUI(prog, {
   audio,
   haptics,
-  onChange: () => { ship.setSkin(prog.skin); updateMenuMeta(); },
+  onChange: () => { ship.setSkin(prog.skin); ship.setUpgrades(upgradeLevels(prog)); updateMenuMeta(); },
   onBuy: (id) => onUpgradeBought(id),
 });
 const handoff = new Handoff(audio);
@@ -324,6 +325,7 @@ function startRun(which) {
   stopWorld();
   ship.reset();
   ship.setSkin(prog.skin);
+  ship.setUpgrades(upgradeLevels(prog));
   fx.reset();
   input.reset();
   input.enabled = true;
@@ -396,6 +398,7 @@ function openHangar(from, highlight = null) {
   hangarUI.highlightId = highlight;
   hangarUI.render();
   showScreen('hangar');
+  hangarUI.preview.start();
   const target = from === 'race' || highlight ? $('race-upgrade-list') : $('upgrade-list');
   requestAnimationFrame(() => {
     const glow = highlight && target.querySelector('.ftue-glow');
@@ -406,6 +409,7 @@ function openHangar(from, highlight = null) {
 
 function closeHangar() {
   audio.click();
+  hangarUI.preview.stop();
   updateMenuMeta();
   if (state.returnTo === 'map') starMap.render();
   if (state.returnTo === 'race') raceMenu.render();
@@ -995,7 +999,7 @@ function startRace(league, track) {
   const ci = careerIndex(track.id);
   // Beginner assist: after 2 failed attempts at race 1, rivals ease off a little.
   const assist = ci === 0 && (raceFails[track.id] || 0) >= 2;
-  race.load(league, track, g, prog.raceStats, prog.skin, { careerIndex: ci, tutorial: ci === 0, assist });
+  race.load(league, track, g, prog.raceStats, prog.skin, { careerIndex: ci, tutorial: ci === 0, assist, upgrades: upgradeLevels(prog) });
   input.reset();
   input.enabled = true;
   input.raceMode = true;
@@ -1466,6 +1470,17 @@ if (DEBUG) {
   window.__game = {
     state, ship, obstacles, chickens, pickups, boss, journey, fx, input, prog,
     addCrystals(n) { prog.data.crystals += n; prog.save(); updateMenuMeta(); },
+    // Set upgrade levels directly, e.g. setUpgrades({engine: 5, shield: 3}); 'max' maxes everything.
+    setUpgrades(levels) {
+      for (const u of [...UPGRADES, ...RACE_UPGRADES]) {
+        if (levels === 'max') prog.data.upgrades[u.id] = u.max;
+        else if (levels && u.id in levels) prog.data.upgrades[u.id] = Math.min(u.max, levels[u.id] | 0);
+      }
+      prog.save();
+      ship.setUpgrades(upgradeLevels(prog));
+      hangarUI.render();
+      updateMenuMeta();
+    },
     // Jump straight into a galaxy/wave (wave 4 = boss).
     jumpTo(g, wave = 0) {
       startRun(g);

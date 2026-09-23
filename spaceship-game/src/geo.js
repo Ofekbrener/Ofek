@@ -13,11 +13,14 @@ export function mergeColored(parts) {
     if (!g.attributes.normal) g.computeVertexNormals();
     const p = g.attributes.position.array;
     const n = g.attributes.normal.array;
-    c.set(color);
+    // color === null: keep the part's own per-vertex 'color' attribute.
+    const own = color === null && g.attributes.color ? g.attributes.color.array : null;
+    if (!own) c.set(color);
     for (let i = 0; i < p.length; i += 3) {
       pos.push(p[i], p[i + 1], p[i + 2]);
       nor.push(n[i], n[i + 1], n[i + 2]);
-      col.push(c.r, c.g, c.b);
+      if (own) col.push(own[i], own[i + 1], own[i + 2]);
+      else col.push(c.r, c.g, c.b);
     }
   }
   const out = new THREE.BufferGeometry();
