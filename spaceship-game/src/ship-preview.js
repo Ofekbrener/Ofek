@@ -123,6 +123,11 @@ export class ShipPreview {
     this.camera.lookAt(0, y, 0);
   }
 
+  _frameCamera(dist, y) {
+    this.camera.position.set(0, Math.sin(this.pitch) * dist + y, Math.cos(this.pitch) * dist);
+    this.camera.lookAt(0, y, 0);
+  }
+
   render(dt = 0, w = this.canvas.clientWidth, h = this.canvas.clientHeight) {
     const renderer = getRenderer();
     if (!renderer || !w || !h) return;
