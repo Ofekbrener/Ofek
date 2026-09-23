@@ -1,6 +1,6 @@
-// Offline support: pre-cache the game shell, then serve cache-first while
-// refreshing in the background (stale-while-revalidate). Bump VERSION on release.
-const VERSION = 'void-runner-v5';
+// Offline support. Network-first so players always get the latest release when
+// online; the cache is only a fallback for offline play. Bump VERSION on release.
+const VERSION = 'void-runner-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -41,7 +41,12 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // cache: 'reload' bypasses the browser HTTP cache so we never pre-cache stale files.
+  event.waitUntil(
+    caches.open(VERSION)
+      .then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' }))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -56,15 +61,14 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   event.respondWith(
-    caches.open(VERSION).then(async (cache) => {
-      const cached = await cache.match(req, { ignoreSearch: true });
-      const network = fetch(req)
-        .then((res) => {
-          if (res && res.ok) cache.put(req, res.clone());
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    }),
+    fetch(req, { cache: 'no-cache' })
+      .then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(VERSION).then((c) => c.put(req, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(req, { ignoreSearch: true })),
   );
 });

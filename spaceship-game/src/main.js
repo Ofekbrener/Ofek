@@ -1503,6 +1503,16 @@ if (DEBUG) {
 // ---------------------------------------------------------------- PWA
 if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !params.has('nosw')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW registration failed', e));
+    // When an updated service worker takes over, reload once so the new version shows right away.
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloaded) return;
+      reloaded = true;
+      location.reload();
+    });
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+      .then((reg) => reg.update())
+      .catch((e) => console.warn('SW registration failed', e));
   });
 }
