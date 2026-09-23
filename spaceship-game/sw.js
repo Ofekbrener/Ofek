@@ -1,6 +1,6 @@
 // Offline support: pre-cache the game shell, then serve cache-first while
 // refreshing in the background (stale-while-revalidate). Bump VERSION on release.
-const VERSION = 'void-runner-v1';
+const VERSION = 'void-runner-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -24,6 +24,9 @@ const ASSETS = [
   './src/audio.js',
   './src/haptics.js',
   './src/storage.js',
+  './src/pickups.js',
+  './src/progression.js',
+  './src/hangar-ui.js',
 ];
 
 self.addEventListener('install', (event) => {

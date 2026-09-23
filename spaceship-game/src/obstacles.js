@@ -28,7 +28,7 @@ export class Obstacles {
         active: false, type: ASTEROID, x: 0, y: 0, z: 0, r: 0.6,
         w: 1, d: 0.5, baseX: 0, amp: 0, freq: 0, phase: 0,
         rx: 0, ry: 0, rz: 0, srx: 0, sry: 0, sx: 1, sy: 1, sz: 1,
-        passed: false,
+        passed: false, group: 0,
       });
     }
 
@@ -58,6 +58,10 @@ export class Obstacles {
 
     this.spawnTimer = 1.2;
     this.time = 0;
+    this.group = 0;
+    this._awarded = new Set();
+    this.pickups = null;     // set by main: crystals are placed through safe gaps
+    this.orbChance = 0;
     this._m = new THREE.Matrix4();
     this._q = new THREE.Quaternion();
     this._e = new THREE.Euler();
@@ -71,7 +75,15 @@ export class Obstacles {
     this.bars.count = 0;
     this.spawnTimer = 1.2;
     this.time = 0;
+    this._awarded.clear();
   }
+
+  // Remove everything close to the ship (used after picking a power-up).
+  clearAhead(zMin) {
+    for (const o of this.list) if (o.active && o.z > zMin) o.active = false;
+  }
+
+  destroy(o) { o.active = false; }
 
   _get() {
     for (const o of this.list) if (!o.active) return o;
@@ -81,7 +93,7 @@ export class Obstacles {
   _rock(x, z, r, amp = 0, freq = 0) {
     const o = this._get();
     if (!o) return;
-    o.active = true; o.type = ASTEROID; o.passed = false;
+    o.active = true; o.type = ASTEROID; o.passed = false; o.group = this.group;
     o.baseX = x; o.x = x; o.z = z; o.r = r;
     o.y = (Math.random() - 0.3) * 0.5;
     o.amp = amp; o.freq = freq; o.phase = Math.random() * Math.PI * 2;
@@ -95,24 +107,32 @@ export class Obstacles {
   _barrier(x0, x1, z) {
     const o = this._get();
     if (!o) return;
-    o.active = true; o.type = BARRIER; o.passed = false;
+    o.active = true; o.type = BARRIER; o.passed = false; o.group = this.group;
     o.x = o.baseX = (x0 + x1) / 2; o.z = z; o.y = 0;
     o.w = Math.abs(x1 - x0); o.d = 0.5; o.amp = 0;
   }
 
   // Pattern generator. Every pattern leaves at least one gap wide enough for the ship.
   _spawnPattern(level) {
+    this.group++;
     const H = CONFIG.halfWidth;
     const z = CONFIG.spawnZ;
     const roll = Math.random();
     const rr = () => 0.5 + Math.random() * 0.35;
+    const pk = this.pickups;
+    const orb = (x, zz) => { if (pk && Math.random() < this.orbChance) pk.spawnAt(x, zz, 1); };
 
     if (level >= 2 && roll < 0.16) {
       // Energy barrier covering one side
       const gap = 2.3;
       const gapX = (Math.random() * 2 - 1) * (H - gap / 2);
-      if (Math.random() < 0.5) this._barrier(-H - 1.2, gapX - gap / 2, z);
+      const left = Math.random() < 0.5;
+      if (left) this._barrier(-H - 1.2, gapX - gap / 2, z);
       else this._barrier(gapX + gap / 2, H + 1.2, z);
+      // Crystals lead into the open side of the barrier.
+      const openX = left ? (gapX + H) / 2 : (gapX - H) / 2;
+      if (pk) pk.spawnLine(openX, z + 3, 4);
+      orb(openX, z + 14);
       return 1.25;
     }
     if (level >= 1 && roll < 0.36) {
@@ -123,6 +143,8 @@ export class Obstacles {
         if (Math.abs(x - gapX) < gap / 2 + 0.55) continue;
         this._rock(x + (Math.random() - 0.5) * 0.2, z + (Math.random() - 0.5) * 0.8, rr());
       }
+      if (pk) pk.spawnLine(gapX, z + 3, 4);
+      orb(gapX, z - 6);
       return 1.45;
     }
     if (level >= 3 && roll < 0.55) {
@@ -140,10 +162,22 @@ export class Obstacles {
         const x = THREE.MathUtils.clamp(x0 + (Math.random() - 0.5) * 3.2, -H, H);
         this._rock(x, z - Math.random() * 5, rr());
       }
+      // Sweep of crystals on the opposite side, pulling the player across.
+      if (pk && Math.random() < 0.5) {
+        const far = x0 > 0 ? -H * 0.7 : H * 0.7;
+        pk.spawnArc(far * 0.3, far, z - 10, 5);
+      }
       return 1.0;
     }
     // Single big rock, often aimed where the player tends to be
-    this._rock((Math.random() * 2 - 1) * H, z, 0.75 + Math.random() * 0.4);
+    const bx = (Math.random() * 2 - 1) * H;
+    const br = 0.75 + Math.random() * 0.4;
+    this._rock(bx, z, br);
+    // Risky crystal hugging the rock — tempting, but tight.
+    if (pk && Math.random() < 0.45) {
+      const side = bx > 0 ? -1 : 1;
+      pk.spawnAt(bx + side * (br + 0.95), z);
+    }
     return 0.7;
   }
 
@@ -164,6 +198,7 @@ export class Obstacles {
     const R = CONFIG.shipRadius;
     const margin = CONFIG.nearMissMargin;
     let hit = null;
+    let best = null;   // at most one near-miss event per frame (the tightest)
     let rockCount = 0;
     let barCount = 0;
     const m = this._m, q = this._q, e = this._e, p = this._p, s = this._s;
@@ -197,7 +232,9 @@ export class Obstacles {
         if (!o.passed && crossed) {
           o.passed = true;
           const gap = Math.abs(dx) - reach;
-          if (!hit && gap > 0 && gap < margin) events.push({ x: o.x, z: o.z, side: Math.sign(dx), gap });
+          if (!hit && gap > 0 && gap < margin && !this._awarded.has(o.group) && (!best || gap < best.gap)) {
+            best = { x: o.x, z: o.z, side: Math.sign(dx), gap, group: o.group };
+          }
         }
 
         p.set(o.x, o.y, o.z);
@@ -217,7 +254,9 @@ export class Obstacles {
         if (!o.passed && crossed) {
           o.passed = true;
           const gap = Math.abs(dx) - R;
-          if (!hit && gap > 0 && gap < margin) events.push({ x: cx, z: o.z, side: Math.sign(shipX - cx), gap });
+          if (!hit && gap > 0 && gap < margin && !this._awarded.has(o.group) && (!best || gap < best.gap)) {
+            best = { x: cx, z: o.z, side: Math.sign(cx - shipX), gap, group: o.group };
+          }
         }
 
         p.set(o.x, 0, o.z);
@@ -225,6 +264,13 @@ export class Obstacles {
         s.set(o.w, 0.9, o.d);
         if (barCount < 16) this.bars.setMatrixAt(barCount++, m.compose(p, q, s));
       }
+    }
+
+    if (best && !hit) {
+      // One event per pattern: passing through a wall's gap counts once.
+      if (this._awarded.size > 64) this._awarded.clear();
+      this._awarded.add(best.group);
+      events.push(best);
     }
 
     this.rocks.count = rockCount;

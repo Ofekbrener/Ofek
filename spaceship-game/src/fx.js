@@ -7,7 +7,6 @@ export class FX {
     this.trauma = 0;
     this.timeScale = 1;
     this.slowTimer = 0;       // real seconds remaining at full slow-mo
-    this.slowCooldown = 0;
     this.slowTarget = 1;
     this.fovKick = 0;
     this.shakeX = 0;
@@ -22,7 +21,6 @@ export class FX {
     this.trauma = 0;
     this.timeScale = 1;
     this.slowTimer = 0;
-    this.slowCooldown = 0;
     this.slowTarget = 1;
     this.fovKick = 0;
   }
@@ -31,14 +29,11 @@ export class FX {
     this.trauma = Math.min(1, this.trauma + amount);
   }
 
-  // Returns true if slow-mo actually triggered (respects cooldown).
-  slowMo(scale = CONFIG.slowMoScale, duration = CONFIG.slowMoDuration, force = false) {
-    if (!force && this.slowCooldown > 0) return false;
+  // Time dilation. Callers decide how often this may happen (see perfect near-miss cooldown).
+  slowMo(scale = CONFIG.slowMoScale, duration = CONFIG.slowMoDuration) {
     this.slowTarget = scale;
     this.timeScale = Math.min(this.timeScale, scale + 0.15);
     this.slowTimer = duration;
-    this.slowCooldown = CONFIG.slowMoCooldown;
-    return true;
   }
 
   kickFov(amount) {
@@ -57,7 +52,6 @@ export class FX {
 
   update(realDt) {
     this.t += realDt;
-    this.slowCooldown = Math.max(0, this.slowCooldown - realDt);
 
     // Time dilation: snap into slow-mo, hold, then ease back to normal speed.
     if (this.slowTimer > 0) {

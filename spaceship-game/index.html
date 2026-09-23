@@ -39,6 +39,11 @@
           <button id="btn-pause" class="icon-btn" aria-label="Pause">❚❚</button>
         </div>
       </div>
+      <div class="hud-sub">
+        <div id="hud-crystals"><span class="gem">◆</span> <span id="hud-crystal-count">0</span></div>
+        <div id="hud-shields"></div>
+      </div>
+      <div id="hud-powers"></div>
       <div id="popups"></div>
       <div id="banner" class="hidden"></div>
       <div id="controls">
@@ -52,10 +57,15 @@
       <div class="panel">
         <h1 class="title">VOID<span>RUNNER</span></h1>
         <p class="tagline">Dodge the debris. Skim the rocks. Survive the void.</p>
+        <div class="rank-box">
+          <div class="rank-row"><span id="start-rank">Cadet</span><span class="balance"><span class="gem">◆</span> <b id="start-crystals">0</b></span></div>
+          <div class="xp-bar"><div id="start-xp-fill"></div></div>
+        </div>
         <button id="btn-start" class="primary-btn">TAP TO LAUNCH</button>
+        <button id="btn-hangar" class="secondary-btn hangar-btn">🛠 HANGAR</button>
         <div class="howto">
           <div><b>Drag</b> anywhere or hold <b>◀ ▶</b> to steer</div>
-          <div><b>Near misses</b> give bonus points &amp; slow time</div>
+          <div><b>Skim rocks</b> for bonus · collect <span class="gem">◆</span> for upgrades</div>
           <div class="desktop-only">Keyboard: <b>A / D</b> or <b>← →</b></div>
         </div>
         <div id="start-best" class="best"></div>
@@ -88,8 +98,44 @@
           <div><span>Near misses</span><b id="over-near">0</b></div>
           <div><span>Time</span><b id="over-time">0s</b></div>
         </div>
+        <div class="payout">
+          <div class="payout-row"><span>Crystals collected</span><b id="pay-collected">0</b></div>
+          <div class="payout-row"><span>Score bonus</span><b id="pay-bonus">0</b></div>
+          <div class="payout-row total"><span><span class="gem">◆</span> Earned</span><b id="pay-total">0</b></div>
+          <div class="rank-row small"><span id="over-rank">Cadet</span><span id="over-xp">+0 XP</span></div>
+          <div class="xp-bar"><div id="over-xp-fill"></div></div>
+        </div>
         <button id="btn-restart" class="primary-btn">PLAY AGAIN</button>
-        <button id="btn-menu" class="secondary-btn">MAIN MENU</button>
+        <div class="btn-row">
+          <button id="btn-over-hangar" class="secondary-btn">🛠 HANGAR</button>
+          <button id="btn-menu" class="secondary-btn">MENU</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hangar: permanent upgrades + skins -->
+    <div id="screen-hangar" class="screen hidden">
+      <div class="panel hangar-panel">
+        <div class="hangar-head">
+          <h2>HANGAR</h2>
+          <div class="balance big"><span class="gem">◆</span> <b id="hangar-crystals">0</b></div>
+        </div>
+        <div class="scroll hangar-scroll">
+          <div class="section-label">UPGRADES</div>
+          <div id="upgrade-list" class="upgrade-list"></div>
+          <div class="section-label">SHIP SKINS</div>
+          <div id="skin-list" class="skin-list"></div>
+        </div>
+        <button id="btn-hangar-back" class="primary-btn small">DONE</button>
+      </div>
+    </div>
+
+    <!-- In-run power-up choice -->
+    <div id="screen-cards" class="screen hidden">
+      <div class="cards-wrap">
+        <div id="cards-title" class="cards-title">LEVEL 2</div>
+        <div class="cards-sub">Choose a power-up</div>
+        <div id="card-list" class="card-list"></div>
       </div>
     </div>
 

@@ -9,6 +9,12 @@ export class HUD {
     this.comboEl = $('hud-combo');
     this.popups = $('popups');
     this.banner = $('banner');
+    this.crystalEl = $('hud-crystals');
+    this.crystalCount = $('hud-crystal-count');
+    this.shieldsEl = $('hud-shields');
+    this.powersEl = $('hud-powers');
+    this.activePopup = null;
+    this.shieldCount = -1;
     this.shown = -1;
     this.bannerTimer = null;
     this.bannerAnim = null;
@@ -22,7 +28,46 @@ export class HUD {
     this.setLevel(1);
     this.setCombo(1);
     this.popups.textContent = '';
+    this.activePopup = null;
     this.banner.classList.add('hidden');
+    this.setCrystals(0, false);
+    this.setShields(0);
+    this.setPowers({}, []);
+  }
+
+  setCrystals(n, pop = true) {
+    this.crystalCount.textContent = n;
+    if (pop && this.crystalEl.animate) {
+      this.crystalEl.animate(
+        [{ transform: 'scale(1.35)' }, { transform: 'scale(1)' }],
+        { duration: 220, easing: 'cubic-bezier(.2,1.6,.4,1)' },
+      );
+    }
+  }
+
+  setShields(n) {
+    if (n === this.shieldCount) return;
+    this.shieldCount = n;
+    this.shieldsEl.textContent = '';
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement('div');
+      p.className = 'shield-pip';
+      this.shieldsEl.appendChild(p);
+    }
+  }
+
+  // Small chips showing the power-ups picked this run, e.g. "💎 ×2".
+  setPowers(picked, defs) {
+    this.powersEl.textContent = '';
+    for (const d of defs) {
+      const n = picked[d.id] || 0;
+      if (!n || d.id === 'shield') continue;
+      const c = document.createElement('div');
+      c.className = 'power-chip';
+      c.textContent = n > 1 ? `${d.icon} ×${n}` : d.icon;
+      c.title = d.name;
+      this.powersEl.appendChild(c);
+    }
   }
 
   setScore(score) {
@@ -59,7 +104,10 @@ export class HUD {
 
   // Floating text that drifts up and fades, e.g. "+50 NEAR MISS".
   popup(text, xFrac = 0.5, cls = '') {
+    // Limiter: only one popup on screen — a new one replaces the old.
+    if (this.activePopup) this.activePopup.remove();
     const el = document.createElement('div');
+    this.activePopup = el;
     el.className = 'popup ' + cls;
     el.textContent = text;
     el.style.left = `${Math.min(85, Math.max(15, xFrac * 100))}%`;
@@ -73,7 +121,7 @@ export class HUD {
       ],
       { duration: 950, easing: 'ease-out' },
     );
-    a.onfinish = () => el.remove();
+    a.onfinish = () => { el.remove(); if (this.activePopup === el) this.activePopup = null; };
   }
 
   showBanner(text, ms = 1400) {

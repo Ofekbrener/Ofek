@@ -13,8 +13,23 @@ It runs in any modern browser with nothing to install. You can also add it to yo
 | Start / restart | Tap the button | `Space` / `Enter` |
 
 - **Score** goes up with distance. You get a small tick every 100 points, and every 500 points plays a chime with a banner, a shockwave and a vibration.
-- **Near misses** (passing close to a rock without touching it) give bonus points, briefly slow down time, and build a combo multiplier.
+- **Near misses** (passing close to a rock without touching it) give bonus points and build a combo multiplier. A **PERFECT** near miss (extremely close) also slows down time briefly and gives a light vibration, at most once every 4 seconds, so it stays special.
+- **Crystals** (◆) are placed along the safe paths through each pattern. Collect them to spend in the **Hangar**.
 - **Difficulty** goes up every 20 seconds: faster speed, denser patterns, rock walls with gaps, energy barriers and drifting asteroids. The music tempo and neon colors change with each level.
+
+## Progression
+
+- **Hangar** (from the start or game-over screen): spend crystals on permanent upgrades.
+  - Shield Generator: start each run with shields that absorb one hit each
+  - Crystal Magnet: pull nearby crystals toward the ship
+  - Thrusters: faster steering
+  - Score Booster: more points
+  - Focus Core: a wider PERFECT window and longer slow-mo
+  - Lucky Star: more shield orbs
+- **Ship skins:** five color schemes (Classic, Crimson, Gold Rush, Stealth, Aurora). Each one changes the hull, accents and engine trail.
+- **Pilot rank:** every run earns XP equal to its score. The rank and XP bar show on the start screen, and rank-ups are celebrated on the game-over screen.
+- **Power-ups during a run:** each level-up freezes the action and offers 3 random power-ups (Extra Shield, Crystal Rush, Overdrive, Nimble, Magnet Pulse, Slow Field, Daredevil). Pick one, then a 3-2-1 countdown clears the lane and play resumes.
+- End-of-run payout: crystals collected plus a bonus of score ÷ 50. Progress is saved in the browser's localStorage.
 
 ## Features
 
@@ -66,6 +81,9 @@ spaceship-game/
   vendor/three.module.min.js   Three.js r186, bundled locally so there's no CDN dependency
   src/
     main.js         Game loop, state machine, scoring, event wiring
+    progression.js  Save data, Hangar upgrades, skins, ranks, power-up pool
+    pickups.js      Crystals and shield orbs (pooled, magnet pull)
+    hangar-ui.js    Hangar screen and power-up card picker
     config.js       All tuning values (speed curve, spawn rates, scoring, feel)
     renderer.js     Renderer, camera framing for portrait and landscape
     ship.js         Procedural ship model and steering physics

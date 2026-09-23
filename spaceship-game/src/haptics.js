@@ -18,7 +18,12 @@ export const haptics = {
     if (v) buzz(20);
   },
   tap: () => buzz(12),
-  nearMiss: () => buzz(28),
+  // Only PERFECT near misses buzz (rate-limited by the game) — regular close
+  // calls and steering never vibrate.
+  perfect: () => buzz(22),
+  shieldBreak: () => buzz([50, 30, 70]),
+  purchase: () => buzz([15, 40, 25]),
+  card: () => buzz(18),
   milestone: () => buzz([30, 60, 30, 60, 60]),
   levelUp: () => buzz([20, 40, 20]),
   collision: () => buzz([90, 40, 180, 40, 60]),

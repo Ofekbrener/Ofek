@@ -9,10 +9,10 @@ export class Ship {
     this.group.add(this.model);
     scene.add(this.group);
 
-    const hull = new THREE.MeshStandardMaterial({ color: 0xd8e2f0, metalness: 0.55, roughness: 0.35, flatShading: true });
+    const hull = this.hullMat = new THREE.MeshStandardMaterial({ color: 0xd8e2f0, metalness: 0.55, roughness: 0.35, flatShading: true });
     const dark = new THREE.MeshStandardMaterial({ color: 0x2a3350, metalness: 0.6, roughness: 0.5, flatShading: true });
-    const accent = new THREE.MeshStandardMaterial({ color: 0xff3ca8, emissive: 0xff3ca8, emissiveIntensity: 0.6, flatShading: true });
-    const glass = new THREE.MeshStandardMaterial({ color: 0x3cf2ff, emissive: 0x1aa6c4, emissiveIntensity: 1.2, metalness: 0.2, roughness: 0.1 });
+    const accent = this.accentMat = new THREE.MeshStandardMaterial({ color: 0xff3ca8, emissive: 0xff3ca8, emissiveIntensity: 0.6, flatShading: true });
+    const glass = this.glassMat = new THREE.MeshStandardMaterial({ color: 0x3cf2ff, emissive: 0x1aa6c4, emissiveIntensity: 1.2, metalness: 0.2, roughness: 0.1 });
     this.glowMat = new THREE.MeshBasicMaterial({ color: 0x9ff8ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
 
     // Fuselage: a stretched octagonal cone.
@@ -91,6 +91,39 @@ export class Ship {
 
     this.model.scale.setScalar(0.8);
 
+    // Shield bubble: fresnel rim glow, additive.
+    this.shieldMat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uAlpha: { value: 0 }, uColor: { value: new THREE.Color(0x6fb8ff) } },
+      vertexShader: /* glsl */`
+        varying vec3 vN; varying vec3 vV; varying vec3 vP;
+        void main() {
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          vN = normalize(normalMatrix * normal);
+          vV = normalize(-mv.xyz);
+          vP = position;
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: /* glsl */`
+        uniform float uTime, uAlpha; uniform vec3 uColor;
+        varying vec3 vN; varying vec3 vV; varying vec3 vP;
+        void main() {
+          float f = pow(1.0 - abs(dot(vN, vV)), 2.5);
+          float bands = 0.5 + 0.5 * sin(vP.y * 18.0 - uTime * 6.0);
+          float a = (f * 0.9 + bands * f * 0.4 + 0.04) * uAlpha;
+          gl_FragColor = vec4(uColor * a, a);
+        }`,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    this.shield = new THREE.Mesh(new THREE.SphereGeometry(1.35, 24, 16), this.shieldMat);
+    this.shield.scale.set(1.25, 0.6, 1.2);
+    this.shield.visible = false;
+    this.group.add(this.shield);
+    this.shieldTarget = 0;
+    this.invuln = 0;
+    this.handling = 1;
+    this.trailColor = [0.45, 0.9, 1];
+    this.trailColor2 = [1, 0.4, 1];
+
     this.x = 0;
     this.vx = 0;
     this.targetX = 0;
@@ -103,23 +136,57 @@ export class Ship {
     this.x = 0;
     this.vx = 0;
     this.targetX = 0;
+    this.invuln = 0;
     this.group.position.set(0, 0, 0);
     this.group.visible = true;
+    this.model.visible = true;
   }
+
+  setSkin(skin) {
+    this.hullMat.color.setHex(skin.hull);
+    this.accentMat.color.setHex(skin.accent);
+    this.accentMat.emissive.setHex(skin.accent);
+    this.glassMat.color.setHex(skin.glass);
+    this.glassMat.emissive.setHex(skin.glass).multiplyScalar(0.55);
+    this.glowMat.color.setRGB(0.6 + skin.trail[0] * 0.4, 0.6 + skin.trail[1] * 0.4, 0.6 + skin.trail[2] * 0.4);
+    this.engineLight.color.setRGB(skin.trail[0], skin.trail[1], skin.trail[2]);
+    this.trailColor = skin.trail;
+    this.trailColor2 = skin.trail2;
+  }
+
+  // Show / hide the shield bubble (fades smoothly).
+  setShielded(on) { this.shieldTarget = on ? 1 : 0; }
 
   setTarget(x) {
     this.targetX = THREE.MathUtils.clamp(x, -CONFIG.halfWidth, CONFIG.halfWidth);
   }
 
-  update(dt, realDt, speedNorm) {
+  update(realDt, speedNorm) {
     this.time += realDt;
 
-    // Critically damped spring toward the target → smooth, responsive steering.
-    const k = CONFIG.shipSpring;
+    // Critically damped spring toward the target. It runs on REAL time so
+    // steering stays crisp even while the world is in slow motion.
+    const k = CONFIG.shipSpring * this.handling;
     const d = 2 * Math.sqrt(k);
-    this.vx += ((this.targetX - this.x) * k - this.vx * d) * dt;
-    this.x += this.vx * dt;
+    const steps = realDt > 1 / 60 ? 2 : 1;
+    const h = realDt / steps;
+    for (let i = 0; i < steps; i++) {
+      this.vx += ((this.targetX - this.x) * k - this.vx * d) * h;
+      this.x += this.vx * h;
+    }
     this.x = THREE.MathUtils.clamp(this.x, -CONFIG.halfWidth - 0.2, CONFIG.halfWidth + 0.2);
+
+    // Shield bubble fade + invulnerability blink.
+    const sm = this.shieldMat.uniforms;
+    sm.uAlpha.value += (this.shieldTarget - sm.uAlpha.value) * (1 - Math.exp(-8 * realDt));
+    sm.uTime.value += realDt;
+    this.shield.visible = sm.uAlpha.value > 0.02;
+    if (this.invuln > 0) {
+      this.invuln -= realDt;
+      this.model.visible = this.invuln <= 0 || Math.floor(this.invuln * 14) % 2 === 0;
+    } else {
+      this.model.visible = true;
+    }
 
     const bob = Math.sin(this.time * 2.2) * 0.08;
     this.group.position.set(this.x, bob, 0);

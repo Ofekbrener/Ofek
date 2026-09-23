@@ -342,8 +342,10 @@ export class AudioEngine {
     sq.connect(ws).connect(g3).connect(this.sfxBus);
   }
 
-  nearMiss(side = 1) {
+  // tier 0 = close call (soft), tier 1 = PERFECT (full whoosh + reward blip)
+  nearMiss(side = 1, tier = 1) {
     if (!this.ctx) return;
+    if (tier === 0) return this._softWhoosh(side);
     const t = this.ctx.currentTime;
     const n = this._noise(t, 0.6);
     const f = this._filter('bandpass', 400, 1.8);
@@ -366,6 +368,117 @@ export class AudioEngine {
     o.frequency.exponentialRampToValueAtTime(1760, t + 0.2);
     const g2 = this._env(t + 0.05, 0.005, 0.12, 0.2);
     o.connect(g2).connect(this.sfxBus);
+  }
+
+  _softWhoosh(side) {
+    const t = this.ctx.currentTime;
+    const n = this._noise(t, 0.3);
+    const f = this._filter('bandpass', 900, 1.2);
+    f.frequency.setValueAtTime(900, t);
+    f.frequency.exponentialRampToValueAtTime(2400, t + 0.12);
+    const g = this._env(t, 0.03, 0.22, 0.22);
+    let out = g;
+    if (this.ctx.createStereoPanner) {
+      const p = this.ctx.createStereoPanner();
+      p.pan.value = side * 0.7;
+      g.connect(p);
+      out = p;
+    }
+    n.connect(f).connect(g);
+    out.connect(this.sfxBus);
+  }
+
+  // Crystal pickup: bright glassy blip, pitch climbs with the streak.
+  pickup(streak = 0) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const scale = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+    const m = 84 + scale[Math.min(streak, scale.length - 1)];
+    const f = mtof(m);
+    const o = this._osc('triangle', f, t, 0.18);
+    const o2 = this._osc('sine', f * 2, t, 0.12);
+    const g = this._env(t, 0.002, 0.13, 0.16);
+    const g2 = this._env(t, 0.002, 0.05, 0.1);
+    o.connect(g).connect(this.sfxBus);
+    o2.connect(g2).connect(this.sfxBus);
+    g.connect(this.delay);
+  }
+
+  shieldUp() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this._osc('sine', 300, t, 0.5);
+    o.frequency.exponentialRampToValueAtTime(900, t + 0.35);
+    const o2 = this._osc('triangle', 450, t, 0.5);
+    o2.frequency.exponentialRampToValueAtTime(1350, t + 0.35);
+    const g = this._env(t, 0.02, 0.14, 0.45);
+    o.connect(g); o2.connect(g);
+    g.connect(this.sfxBus);
+    g.connect(this.delay);
+  }
+
+  shieldBreak() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    // Glassy shatter: high noise burst + falling metallic tones
+    const n = this._noise(t, 0.5);
+    const f = this._filter('highpass', 2500, 0.8);
+    const g = this._env(t, 0.001, 0.5, 0.4);
+    n.connect(f).connect(g).connect(this.sfxBus);
+    for (const [fr, d] of [[1800, 0.35], [2600, 0.3], [1200, 0.45]]) {
+      const o = this._osc('square', fr, t, d);
+      o.frequency.exponentialRampToValueAtTime(fr * 0.4, t + d);
+      const gg = this._env(t, 0.001, 0.05, d);
+      o.connect(gg).connect(this.sfxBus);
+    }
+    const b = this._osc('sine', 160, t, 0.4);
+    b.frequency.exponentialRampToValueAtTime(50, t + 0.35);
+    const gb = this._env(t, 0.002, 0.6, 0.35);
+    b.connect(gb).connect(this.sfxBus);
+  }
+
+  purchase() {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime;
+    [72, 76, 79, 84].forEach((m, i) => {
+      const t = t0 + i * 0.06;
+      const o = this._osc('square', mtof(m), t, 0.15);
+      const f = this._filter('lowpass', 3500);
+      const g = this._env(t, 0.003, 0.08, 0.14);
+      o.connect(f).connect(g).connect(this.sfxBus);
+    });
+  }
+
+  denied() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this._osc('square', 180, t, 0.2);
+    o.frequency.setValueAtTime(140, t + 0.09);
+    const f = this._filter('lowpass', 1200);
+    const g = this._env(t, 0.003, 0.08, 0.18);
+    o.connect(f).connect(g).connect(this.sfxBus);
+  }
+
+  cardSelect() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this._osc('sawtooth', 330, t, 0.45);
+    o.frequency.exponentialRampToValueAtTime(1320, t + 0.3);
+    const f = this._filter('lowpass', 800, 6);
+    f.frequency.exponentialRampToValueAtTime(6000, t + 0.3);
+    const g = this._env(t, 0.01, 0.14, 0.4);
+    o.connect(f).connect(g).connect(this.sfxBus);
+    g.connect(this.delay);
+  }
+
+  // Short riser used when a run resumes after picking a power-up.
+  countdown(final = false) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const o = this._osc('square', final ? 880 : 440, t, 0.14);
+    const f = this._filter('lowpass', 2500);
+    const g = this._env(t, 0.003, 0.1, final ? 0.25 : 0.12);
+    o.connect(f).connect(g).connect(this.sfxBus);
   }
 
   // FM bell arpeggio for score milestones.
