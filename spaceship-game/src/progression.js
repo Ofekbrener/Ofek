@@ -22,6 +22,32 @@ export const SKINS = [
   { id: 'aurora', name: 'Aurora', cost: 700, hull: 0xf2f0ff, accent: 0x9b5cff, glass: 0xff5cf0, trail: [0.7, 0.4, 1], trail2: [0.3, 1, 0.9] },
 ];
 
+// Cosmetic add-ons worn by the pod in every mode. One item per slot can be equipped.
+export const COSMETIC_SLOTS = [
+  { id: 'hat', name: 'Hats', icon: '🎩' },
+  { id: 'wings', name: 'Wings', icon: '🪽' },
+  { id: 'trail', name: 'Trails', icon: '🌈' },
+  { id: 'pet', name: 'Pets', icon: '🐣' },
+];
+export const COSMETICS = [
+  { id: 'party', slot: 'hat', name: 'Party Hat', icon: '🥳', cost: 60 },
+  { id: 'propeller', slot: 'hat', name: 'Propeller Cap', icon: '🧢', cost: 90 },
+  { id: 'chef', slot: 'hat', name: 'Chef Hat', icon: '👨‍🍳', cost: 120 },
+  { id: 'viking', slot: 'hat', name: 'Viking Horns', icon: '🪖', cost: 160 },
+  { id: 'crown', slot: 'hat', name: 'Royal Crown', icon: '👑', cost: 250 },
+  { id: 'jetfins', slot: 'wings', name: 'Jet Fins', icon: '✈️', cost: 100 },
+  { id: 'angel', slot: 'wings', name: 'Angel Wings', icon: '👼', cost: 180 },
+  { id: 'bat', slot: 'wings', name: 'Bat Wings', icon: '🦇', cost: 180 },
+  { id: 'dragon', slot: 'wings', name: 'Dragon Wings', icon: '🐉', cost: 320 },
+  { id: 'fire', slot: 'trail', name: 'Fire Trail', icon: '🔥', cost: 80, trail: [1, 0.45, 0.1], trail2: [1, 0.85, 0.2] },
+  { id: 'toxic', slot: 'trail', name: 'Toxic Trail', icon: '☢️', cost: 80, trail: [0.4, 1, 0.2], trail2: [0.8, 1, 0.3] },
+  { id: 'goldtrail', slot: 'trail', name: 'Gold Trail', icon: '✨', cost: 140, trail: [1, 0.82, 0.3], trail2: [1, 1, 0.75] },
+  { id: 'rainbow', slot: 'trail', name: 'Rainbow Trail', icon: '🌈', cost: 260, rainbow: true },
+  { id: 'chick', slot: 'pet', name: 'Baby Chick', icon: '🐥', cost: 150 },
+  { id: 'eggbot', slot: 'pet', name: 'Egg-Bot', icon: '🤖', cost: 220 },
+  { id: 'ufo', slot: 'pet', name: 'Mini UFO', icon: '🛸', cost: 300 },
+];
+
 export const POWERUPS = [
   { id: 'shield', name: 'Extra Shield', icon: '🛡️', desc: '+1 shield charge now', max: 9 },
   { id: 'rush', name: 'Drumstick Rush', icon: '🍗', desc: '+50% drumstick value', max: 4 },
@@ -54,6 +80,7 @@ export function rankInfo(xp) {
 
 const DEFAULT_SAVE = {
   v: 2, crystals: 0, upgrades: {}, skins: ['classic'], skin: 'classic', xp: 0,
+  addons: [], wear: {},
   galaxy: { unlocked: 1, stars: [0, 0, 0, 0, 0] },
   endlessBest: { wave: 0, score: 0 },
   race: { best: {} },
@@ -66,6 +93,7 @@ export const GALAXY_COUNT = 5;
 export function upgradeLevels(prog) {
   const out = {};
   for (const u of ALL_UPGRADES()) out[u.id] = prog.level(u.id);
+  out.cosmetics = { ...prog.data.wear };   // equipped add-ons ride along to Ship.setUpgrades
   return out;
 }
 
@@ -96,11 +124,16 @@ export class Progression {
       }
       if (!Array.isArray(merged.skins) || !merged.skins.includes('classic')) merged.skins = ['classic', ...(merged.skins || [])];
       if (!merged.skins.includes(merged.skin)) merged.skin = 'classic';
+      merged.addons = Array.isArray(d.addons) ? d.addons.filter((id) => COSMETICS.some((c) => c.id === id)) : [];
+      merged.wear = {};
+      for (const [slot, id] of Object.entries((d.wear && typeof d.wear === 'object') ? d.wear : {})) {
+        if (merged.addons.includes(id) && COSMETICS.find((c) => c.id === id).slot === slot) merged.wear[slot] = id;
+      }
       merged.crystals = Math.max(0, merged.crystals | 0);
       merged.xp = Math.max(0, merged.xp | 0);
       return merged;
     } catch {
-      return { ...DEFAULT_SAVE, upgrades: {}, skins: ['classic'], galaxy: { unlocked: 1, stars: [0, 0, 0, 0, 0] }, endlessBest: { wave: 0, score: 0 }, race: { best: {} }, ftue: {} };
+      return { ...DEFAULT_SAVE, addons: [], wear: {}, upgrades: {}, skins: ['classic'], galaxy: { unlocked: 1, stars: [0, 0, 0, 0, 0] }, endlessBest: { wave: 0, score: 0 }, race: { best: {} }, ftue: {} };
     }
   }
 
@@ -140,6 +173,30 @@ export class Progression {
   equipSkin(id) {
     if (!this.ownsSkin(id)) return false;
     this.data.skin = id;
+    this.save();
+    return true;
+  }
+
+  ownsAddon(id) { return this.data.addons.includes(id); }
+  wearing(id) { const c = COSMETICS.find((x) => x.id === id); return !!c && this.data.wear[c.slot] === id; }
+
+  // Buying an add-on also puts it on.
+  buyAddon(id) {
+    const c = COSMETICS.find((x) => x.id === id);
+    if (!c || this.ownsAddon(id) || this.data.crystals < c.cost) return false;
+    this.data.crystals -= c.cost;
+    this.data.addons.push(id);
+    this.data.wear[c.slot] = id;
+    this.save();
+    return true;
+  }
+
+  // Tap an owned add-on to wear it; tap the worn one to take it off.
+  toggleAddon(id) {
+    const c = COSMETICS.find((x) => x.id === id);
+    if (!c || !this.ownsAddon(id)) return false;
+    if (this.data.wear[c.slot] === id) delete this.data.wear[c.slot];
+    else this.data.wear[c.slot] = id;
     this.save();
     return true;
   }

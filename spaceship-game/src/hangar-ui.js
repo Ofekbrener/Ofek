@@ -1,4 +1,4 @@
-import { UPGRADES, SKINS, upgradeCost, upgradeLevels } from './progression.js';
+import { UPGRADES, SKINS, COSMETICS, COSMETIC_SLOTS, upgradeCost, upgradeLevels } from './progression.js';
 import { ShipPreview } from './ship-preview.js';
 import { RACE_UPGRADES } from './race/leagues.js';
 
@@ -17,6 +17,9 @@ export class HangarUI {
     this.upgradeList = $('upgrade-list');
     this.raceList = $('race-upgrade-list');
     this.skinList = $('skin-list');
+    this.addonSlots = $('addon-slots');
+    this.addonList = $('addon-list');
+    this.addonSlot = 'hat';
     this.balance = $('hangar-crystals');
     // Live 3D turntable of the pod with every purchased upgrade on it.
     this.preview = new ShipPreview($('hangar-preview'));
@@ -39,6 +42,7 @@ export class HangarUI {
     this._renderUpgrades(this.upgradeList, UPGRADES, flashId);
     this._renderUpgrades(this.raceList, RACE_UPGRADES, flashId);
     this._renderSkins(flashId);
+    this._renderAddons(flashId);
 
     this.preview.setSkin(p.skin);
     this.preview.setUpgrades(upgradeLevels(p));
@@ -121,6 +125,42 @@ export class HangarUI {
     }
   }
 }
+
+// Add-ons: slot chips (hats / wings / trails / pets) over a grid of that slot's items.
+HangarUI.prototype._renderAddons = function (flashId) {
+  const p = this.prog;
+  this.addonSlots.textContent = '';
+  for (const sl of COSMETIC_SLOTS) {
+    const b = document.createElement('button');
+    const worn = p.data.wear[sl.id];
+    b.className = 'addon-slot' + (sl.id === this.addonSlot ? ' active' : '');
+    b.innerHTML = `<span>${sl.icon}</span>${sl.name}${worn ? '<i></i>' : ''}`;
+    b.addEventListener('click', () => { this.audio.click(); this.addonSlot = sl.id; this._renderAddons(); });
+    this.addonSlots.appendChild(b);
+  }
+  this.addonList.textContent = '';
+  for (const c of COSMETICS.filter((x) => x.slot === this.addonSlot)) {
+    const owned = p.ownsAddon(c.id);
+    const worn = p.wearing(c.id);
+    const card = document.createElement('div');
+    card.className = 'skin addon' + (worn ? ' equipped' : '') + (flashId === c.id ? ' bought' : '');
+    card.innerHTML = `<div class="a-icon">${c.icon}</div><div class="s-name">${c.name}</div>`;
+    const btn = document.createElement('button');
+    btn.className = 'buy-btn' + (worn ? ' maxed' : '');
+    if (worn) btn.textContent = 'WEARING';
+    else if (owned) btn.textContent = 'WEAR';
+    else { btn.innerHTML = `🍗 ${c.cost}`; btn.disabled = p.crystals < c.cost; }
+    btn.addEventListener('click', () => {
+      const ok = owned ? p.toggleAddon(c.id) : p.buyAddon(c.id);
+      if (!ok) { this.audio.denied(); return; }
+      if (owned) this.audio.click(); else { this.audio.purchase(); this.haptics.purchase(); }
+      this.render(c.id);
+      this.onChange();
+    });
+    card.appendChild(btn);
+    this.addonList.appendChild(card);
+  }
+};
 
 // Renders the pick-1-of-3 power-up cards. Calls onPick(def) once.
 export function showCards(title, cards, onPick) {
