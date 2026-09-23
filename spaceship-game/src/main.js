@@ -23,7 +23,8 @@ import { StarMapUI, starsHTML } from './starmap-ui.js';
 import { RaceSession } from './race/race.js';
 import { TRACK_HALF } from './race/track.js';
 import { RaceMenuUI, showResults, fmtTime } from './race/race-ui.js';
-import { LEAGUES, RACE_QUIPS, ordinal } from './race/leagues.js';
+import { LEAGUES, RACE_QUIPS, RACE_UPGRADES, CAREER, careerIndex, ordinal } from './race/leagues.js';
+import { nextStep, Handoff, raceLabel, cheapestAffordableRaceUpgrade, cheapestRaceUpgrade, farmGalaxy } from './ftue.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -142,6 +143,7 @@ const screens = {
   victory: $('screen-victory'),
   race: $('screen-race'),
   raceResults: $('screen-race-results'),
+  welcome: $('screen-welcome'),
 };
 function showScreen(name) {
   for (const [k, el] of Object.entries(screens)) el.classList.toggle('hidden', k !== name);
@@ -153,14 +155,96 @@ function updateMenuMeta() {
   $('start-rank').textContent = `${r.title} · Rank ${r.rank + 1}`;
   $('start-crystals').textContent = prog.crystals.toLocaleString();
   $('start-xp-fill').style.width = `${(r.into / r.need) * 100}%`;
+  $('start-trophies').textContent = prog.trophies;
+  $('start-power').textContent = prog.shipPower;
+  renderNextStep();
 }
+
+// ---------------------------------------------------------------- FTUE
+// Next-step card on the start screen: the single next action of the core loop.
+let currentStep = null;
+function renderNextStep() {
+  currentStep = nextStep(prog);
+  $('ns-icon').textContent = currentStep.icon;
+  $('ns-title').textContent = currentStep.title;
+  $('ns-text').textContent = currentStep.text;
+  $('btn-next-step').textContent = currentStep.label;
+}
+
+// Start a race from any menu/result screen (stops a finished dodge run first).
+function goRace(league, track) {
+  audio.click();
+  if (state.mode !== 'menu' && state.mode !== 'raceResults') leaveRun();
+  startRace(league, track);
+}
+
+// Open the star map with a galaxy's briefing (or Endless) ready to launch.
+function goGalaxy(i) {
+  openMap();
+  if (i === 'endless' || i >= 0) starMap.openBriefing(i);
+}
+
+function runStep(step = nextStep(prog)) {
+  audio.unlock();
+  const a = step.action;
+  if (a.type === 'race') goRace(a.league, a.track);
+  else if (a.type === 'garage') openHangar('start', a.upgrade);
+  else if (a.type === 'galaxy') goGalaxy(a.index);
+  else if (a.type === 'endless') goGalaxy('endless');
+  else openRaceMenu();
+}
+
+const needsWelcome = () => prog.racesRun === 0 && !prog.ftueSeen('welcome');
 updateMenuMeta();
 
 const hangarUI = new HangarUI(prog, {
   audio,
   haptics,
   onChange: () => { ship.setSkin(prog.skin); updateMenuMeta(); },
+  onBuy: (id) => onUpgradeBought(id),
 });
+const handoff = new Handoff(audio);
+
+// Hand-off (c): first Race Garage purchase → point at the next race.
+function onUpgradeBought(id) {
+  if (!RACE_UPGRADES.some((u) => u.id === id) || prog.ftueSeen('upgrade')) return;
+  const r = prog.nextCareerRace;
+  if (!r) return;
+  prog.ftueMark('upgrade');
+  const n = careerIndex(r.track.id) + 1;
+  handoff.show({
+    icon: '⚡',
+    title: `RACE ${n} IS READY!`,
+    text: `Your ship is stronger — <b>${raceLabel(r.track.id)}</b> is ready!<br>⚡ Ship Power ${prog.shipPower} · Recommended ${r.track.power}`,
+    celebrate: true,
+    buttons: [
+      { label: '🏁 RACE', primary: true, onClick: () => goRace(r.league, r.track) },
+      { label: 'KEEP SHOPPING' },
+    ],
+  });
+}
+
+// Hand-off (b): first Dodge run that paid drumsticks → send the player to the Garage.
+function afterDodgeRun(earned, screen) {
+  prog.ftueMark('dodged');
+  if (earned <= 0 || prog.ftueSeen('garage')) return;
+  prog.ftueMark('garage');
+  const buy = cheapestAffordableRaceUpgrade(prog);
+  const want = buy || cheapestRaceUpgrade(prog);
+  const tip = !want ? ''
+    : buy ? `<br>Try <b>${want.u.icon} ${want.u.name}</b> (🍗 ${want.cost}) for +1 ⚡ Ship Power.`
+    : `<br>Save up 🍗 ${want.cost} for <b>${want.u.icon} ${want.u.name}</b> (you have 🍗 ${prog.crystals}).`;
+  handoff.showLater(1400, {
+    icon: '🍗',
+    title: `YOU EARNED 🍗 ${earned}`,
+    text: `Spend it in the Garage to make your ship faster.${tip}`,
+    celebrate: true,
+    buttons: [
+      { label: '🛠 GO TO GARAGE', primary: true, onClick: () => openHangar(screen, buy ? buy.u.id : null) },
+      { label: 'LATER' },
+    ],
+  }, () => !screens[screen].classList.contains('hidden'));
+}
 const starMap = new StarMapUI(prog, {
   audio,
   onLaunch: (i) => startRun(i),
@@ -303,14 +387,20 @@ function openMap() {
   showScreen('map');
 }
 
-function openHangar(from) {
+// `highlight`: race upgrade id to point at (FTUE glow); also focuses the Race Garage.
+function openHangar(from, highlight = null) {
   audio.unlock();
   audio.click();
   state.returnTo = from;
+  hangarUI.highlightId = highlight;
   hangarUI.render();
   showScreen('hangar');
-  const target = from === 'race' ? $('race-upgrade-list') : $('upgrade-list');
-  requestAnimationFrame(() => target.previousElementSibling.scrollIntoView({ block: 'start' }));
+  const target = from === 'race' || highlight ? $('race-upgrade-list') : $('upgrade-list');
+  requestAnimationFrame(() => {
+    const glow = highlight && target.querySelector('.ftue-glow');
+    if (glow) glow.scrollIntoView({ block: 'center' });
+    else target.previousElementSibling.scrollIntoView({ block: 'start' });
+  });
 }
 
 function closeHangar() {
@@ -494,6 +584,7 @@ function showVictoryScreen() {
     note.textContent = `🏆 ${GALAXIES[gi + 1].name} needs ${prog.galaxyTrophyReq(gi + 1)} race trophies (you have ${prog.trophies})`;
   }
   showScreen('victory');
+  afterDodgeRun(b.earned, 'victory');
   for (let i = 0; i < stars; i++) setTimeout(() => audio.starDing(i), 250 + i * 350);
   audio.muffleMusic(2500, 0.4);
 }
@@ -626,6 +717,7 @@ function gameOver() {
   fill.style.transition = 'none';
   fill.style.width = `${(b.before.into / b.before.need) * 100}%`;
   showScreen('over');
+  afterDodgeRun(b.earned, 'over');
 
   setTimeout(() => {
     countUp($('pay-collected'), b.collected, 500);
@@ -681,8 +773,10 @@ window.addEventListener('keydown', (e) => {
   }
   if (state.mode === 'choosing' && cardPick && ['1', '2', '3'].includes(e.key)) cardPick(Number(e.key) - 1);
   if (e.key !== ' ' && e.key !== 'Enter') return;
+  if (handoff.open) { e.preventDefault(); handoff.confirm(); return; }
   const visible = (n) => !screens[n].classList.contains('hidden');
-  if (visible('start')) { e.preventDefault(); openMap(); }
+  if (visible('welcome')) { e.preventDefault(); $('btn-welcome-go').click(); }
+  else if (visible('start')) { e.preventDefault(); runStep(); }
   else if (visible('map')) { e.preventDefault(); if (starMap.briefingOpen) $('btn-brief-go').click(); else starMap.openBriefing(starMap.suggested); }
   else if (visible('over')) { e.preventDefault(); retry(); }
   else if (visible('victory') && !$('btn-next-galaxy').classList.contains('hidden')) { e.preventDefault(); $('btn-next-galaxy').click(); }
@@ -833,13 +927,27 @@ const rhCount = $('rh-count');
 const rhMsg = $('rh-msg');
 const rhMap = $('rh-map').getContext('2d');
 const boostBtn = $('rbtn-boost');
+const itemBtn = $('rbtn-item');
+const ITEM_ICON = { missile: '🥚', shield: '🛡️', mine: '💣' };
 let raceBoost = false;
+let raceItem = false;
+const raceFails = {};
 let mapT = 0;
 let msgTimer = null;
 input._bindButton($('rbtn-left'), 'left');
 input._bindButton($('rbtn-right'), 'right');
 boostBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); raceBoost = true; boostBtn.classList.add('active'); });
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) boostBtn.addEventListener(ev, () => boostBtn.classList.remove('active'));
+itemBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); raceItem = true; });
+$('rbtn-go').addEventListener('click', () => { audio.click(); $('rh-intro').classList.add('hidden'); race.begin(); });
+$('btn-race-pause').addEventListener('click', () => { if (state.mode !== 'race') return; race.paused = true; audio.click(); $('rh-pausebox').classList.remove('hidden'); });
+$('rbtn-resume').addEventListener('click', () => { race.paused = false; audio.click(); $('rh-pausebox').classList.add('hidden'); });
+$('rbtn-quit').addEventListener('click', () => { $('rh-pausebox').classList.add('hidden'); leaveRun(); raceMenu.render(); showScreen('race'); });
+
+function setItemButton(item) {
+  itemBtn.textContent = item ? ITEM_ICON[item] : '?';
+  itemBtn.classList.toggle('ready', !!item);
+}
 
 const raceMenu = new RaceMenuUI(prog, { audio, onRace: (lg, t) => startRace(lg, t) });
 
@@ -869,6 +977,7 @@ function leaveRun() {
   ship.reset();
   ship.setShielded(false);
   input.enabled = false;
+  input.raceMode = false;
   state.mode = 'menu';
 }
 
@@ -882,20 +991,42 @@ function startRace(league, track) {
   state.raceLeague = league;
   state.raceTrack = track;
   const g = GALAXIES[track.theme];
-  race.load(league, track, g, prog.raceStats, prog.skin);
+  const ci = careerIndex(track.id);
+  // Beginner assist: after 2 failed attempts at race 1, rivals ease off a little.
+  const assist = ci === 0 && (raceFails[track.id] || 0) >= 2;
+  race.load(league, track, g, prog.raceStats, prog.skin, { careerIndex: ci, tutorial: ci === 0, assist });
   input.reset();
   input.enabled = true;
+  input.raceMode = true;
   raceBoost = false;
+  raceItem = false;
   raceHud.classList.remove('hidden');
   rhCount.classList.add('hidden');
+  $('rh-pausebox').classList.add('hidden');
   $('rh-total').textContent = `/${race.racers.length}`;
+  // Only show the controls this race has unlocked.
+  const f = race.feat;
+  boostBtn.classList.toggle('hidden', !f.has('boost'));
+  $('rh-boost-wrap').classList.toggle('hidden', !f.has('boost'));
+  itemBtn.classList.toggle('hidden', !f.has('items'));
+  setItemButton(null);
+  // "NEW mechanic" card before the countdown.
+  const power = prog.shipPower;
+  $('rh-intro-race').textContent = `RACE ${ci + 1} OF ${CAREER.length} · ${league.name.toUpperCase()}`;
+  $('rh-intro-name').textContent = track.name.toUpperCase();
+  $('rh-intro-icon').textContent = track.intro.icon;
+  $('rh-intro-title').textContent = track.intro.title;
+  $('rh-intro-text').textContent = track.intro.text + (assist ? ' (The hens are going easy on you this time.)' : '');
+  const pw = $('rh-intro-power');
+  pw.textContent = `⚡ Ship Power ${power} · Recommended ${track.power}` + (power < track.power ? ' — upgrade in the Garage!' : '');
+  pw.className = 'rh-intro-power ' + (power < track.power ? 'low' : 'ok');
+  $('rh-intro').classList.remove('hidden');
   audio.setGalaxy(g.music);
   audio.setLevel(3);
   audio.setBoss(false);
   audio.stopMusic(0.05);
   setTimeout(() => { if (state.mode === 'race') { audio.startMusic(); audio.muffleMusic(18000, 0.1); } }, 60);
   audio.startEngine();
-  raceMsg(track.name.toUpperCase(), 1800);
 }
 
 race.events = {
@@ -916,10 +1047,26 @@ race.events = {
   onBoost() { audio.missileLaunch(); haptics.tap(); race.shake = 0.35; },
   onPad() { audio.giftOpen(); },
   onBump() { audio.splat(); haptics.bossHit(); race.shake = 0.45; },
-  onCrash(egg) { audio.missileHit(); haptics.shieldBreak(); race.shake = 1; raceMsg(egg ? 'SCRAMBLED!' : 'OUCH!', 800); },
+  onCrash(kind) { audio.missileHit(); haptics.shieldBreak(); race.shake = 1; raceMsg(kind === 'egg' ? 'SCRAMBLED!' : 'OUCH!', 800); },
+  onWall(hard) {
+    if (!hard) return;
+    audio.splat(); audio.missileHit(); haptics.bossHit(); race.shake = 0.8;
+    raceMsg('WALL! STEER INTO THE CORNER', 1000);
+  },
+  onHint(text) { raceMsg(text, 1700); audio.countdown(false); },
+  onItem(item) { setItemButton(item); if (item) { audio.giftOpen(); haptics.tap(); raceMsg(`GOT ${ITEM_ICON[item]} ${item.toUpperCase()}!`, 900); } },
+  onFire() { audio.missileLaunch(); haptics.tap(); },
+  onHitRival(r) { audio.cluck(0.8, 0.25); raceMsg(`EGGED ${r.name.toUpperCase()}! 🥚`, 1000); },
+  onIncoming() { raceMsg('⚠ INCOMING EGG!', 900); audio.cluck(1.4, 0.2); },
+  onShield() { audio.shieldUp(); },
+  onShieldBlock() { audio.shieldBreak(); haptics.shieldBreak(); raceMsg('SHIELD BLOCKED IT!', 900); },
+  onMine() { audio.countdown(false); },
+  onDriftTurbo(t) { audio.missileLaunch(); haptics.tap(); raceMsg(t > 1.4 ? 'ULTRA DRIFT TURBO!' : 'DRIFT TURBO!', 800); race.shake = 0.3; },
+  onHenDrop() { audio.cluck(0.45, 0.2); },
   onOvertake(r) { audio.cluck(1.25, 0.16); raceMsg(`PASSED ${r.name.toUpperCase()}!`, 900); },
   onFinish(results, place) {
     state.mode = 'raceDone';
+    if (place > 3) raceFails[state.raceTrack.id] = (raceFails[state.raceTrack.id] || 0) + 1;
     raceMsg(place === 1 ? '🏁 YOU WIN! 🏁' : `🏁 ${ordinal(place)} PLACE`, 2000);
     if (place <= 3) { audio.victory(); haptics.bossDefeated(); } else { audio.waveClear(); haptics.waveClear(); }
     setTimeout(() => finishRace(results, place), 2200);
@@ -934,49 +1081,100 @@ function finishRace(results, place) {
   const t = state.raceTrack;
   const prize = lg.prize[place - 1] || 0;
   const openBefore = GALAXIES.map((_, i) => prog.galaxyOpen(i));
-  const leaguesBefore = LEAGUES.map((l) => prog.leagueUnlocked(l));
+  const nextDef = CAREER[careerIndex(t.id) + 1] || null;
+  const nextWasOpen = nextDef && prog.raceUnlocked(nextDef.track.id);
+  const firstTrophy = prog.trophies === 0;
   const rec = prog.recordRace(t.id, place);
   prog.bankRun(prize, prize * 4);
   updateMenuMeta();
 
-  let note = '';
-  if (rec.newTrophy) note = `🏆 New trophy! You now have ${prog.trophies}.`;
+  // Explain what the trophy did (or what a podium would have done).
+  const notes = [];
   const newGalaxy = GALAXIES.findIndex((g, i) => !openBefore[i] && prog.galaxyOpen(i));
-  if (newGalaxy >= 0) note += ` 🔓 ${GALAXIES[newGalaxy].name} is open in the Dodge journey!`;
-  const newLeague = LEAGUES.findIndex((l, i) => !leaguesBefore[i] && prog.leagueUnlocked(l));
-  if (newLeague >= 0) note += ` 🔓 ${LEAGUES[newLeague].name} unlocked!`;
-
-  // Next race: next track in this league, else first track of the next open league.
-  const ti = lg.tracks.indexOf(t);
-  let next = null;
-  if (ti < lg.tracks.length - 1) next = { lg, t: lg.tracks[ti + 1] };
-  else {
-    const li = LEAGUES.indexOf(lg);
-    if (li < LEAGUES.length - 1 && prog.leagueUnlocked(LEAGUES[li + 1])) next = { lg: LEAGUES[li + 1], t: LEAGUES[li + 1].tracks[0] };
+  if (rec.newTrophy) notes.push(`🏆 Trophy earned! You now have ${prog.trophies}.`);
+  if (newGalaxy >= 0) notes.push(`🔓 It unlocked ${GALAXIES[newGalaxy].name} (Galaxy ${newGalaxy + 1}) in the Dodge journey!`);
+  else if (rec.newTrophy) {
+    const gi = GALAXIES.findIndex((g, i) => prog.trophies < prog.galaxyTrophyReq(i));
+    if (gi >= 0) notes.push(`🏆 ${prog.galaxyTrophyReq(gi) - prog.trophies} more to unlock Galaxy ${gi + 1}: ${GALAXIES[gi].name}.`);
   }
+  const nextOpen = nextDef && prog.raceUnlocked(nextDef.track.id);
+  if (nextDef && nextOpen && !nextWasOpen) notes.push(`🔓 ${raceLabel(nextDef.track.id)} unlocked!`);
+  if (nextDef && !nextOpen) notes.push(`Finish top 3 to win a 🏆 and unlock ${raceLabel(nextDef.track.id)}.`);
+
+  // Next race: the next career race, if unlocked.
+  const next = nextOpen ? { lg: nextDef.league, t: nextDef.track } : null;
   state.nextRace = next;
   const title = place === 1 ? pick(RACE_QUIPS.win) : place <= 3 ? pick(RACE_QUIPS.podium) : pick(RACE_QUIPS.lose);
-  showResults({ results, place, prize, newTrophy: note.trim(), title, trackName: t.name, nextLabel: next ? `NEXT: ${next.t.name} ➜` : null });
+  showResults({
+    results, place, prize, newTrophy: notes.join('<br>'), title, trackName: t.name,
+    nextLabel: next ? `NEXT: ${next.t.name} ➜` : null,
+    power: { have: prog.shipPower, need: t.power },
+  });
   showScreen('raceResults');
   audio.muffleMusic(2500, 0.4);
+
+  const stillHere = () => state.mode === 'raceResults' && !screens.raceResults.classList.contains('hidden');
+  if (rec.newTrophy && firstTrophy && !prog.ftueSeen('trophy') && prog.galaxyOpen(0)) {
+    // Hand-off (a): first trophy ever → the Dodge journey.
+    prog.ftueMark('trophy');
+    handoff.showLater(700, {
+      icon: '🏆',
+      title: 'TROPHY EARNED!',
+      text: `It unlocks the <b>${GALAXIES[0].name}</b> in the Dodge Journey. Dodge the hens there to earn 🍗 drumsticks for Garage upgrades.`,
+      celebrate: true,
+      buttons: [
+        { label: '🐔 GO DODGE', primary: true, onClick: () => goGalaxy(0) },
+        { label: 'LATER' },
+      ],
+    }, stillHere);
+  } else if (place > 3 && prog.shipPower < t.power && !failHints.has(t.id)) {
+    // Hand-off (d): lost while under-powered → earn drumsticks & upgrade (once per track per session).
+    failHints.add(t.id);
+    const buy = cheapestAffordableRaceUpgrade(prog);
+    const fg = farmGalaxy(prog);
+    const buttons = [];
+    if (buy) buttons.push({ label: `🛠 UPGRADE ${buy.u.name.toUpperCase()}`, primary: true, onClick: () => openHangar('raceResults', buy.u.id) });
+    if (fg >= 0) buttons.push({ label: '🐔 EARN 🍗 IN DODGE', primary: !buy, onClick: () => goGalaxy(fg) });
+    buttons.push({ label: '↻ RETRY ANYWAY', onClick: () => goRace(lg, t) });
+    handoff.showLater(700, {
+      icon: '⚡',
+      title: 'NEED MORE POWER',
+      text: `⚡ Ship Power ${prog.shipPower} · Recommended ${t.power}.<br>Earn 🍗 in the Dodge journey and upgrade your ship in the Garage.`,
+      buttons,
+    }, stillHere);
+  }
 }
+const failHints = new Set();
 
 $('btn-race').addEventListener('click', openRaceMenu);
+$('btn-next-step').addEventListener('click', () => runStep(currentStep || nextStep(prog)));
+$('btn-map-race').addEventListener('click', () => { const r = prog.nextCareerRace; if (r) goRace(r.league, r.track); else openRaceMenu(); });
+$('btn-welcome-go').addEventListener('click', () => {
+  prog.ftueMark('welcome');
+  audio.unlock();
+  audio.click();
+  startRace(CAREER[0].league, CAREER[0].track);
+});
+// First launch: welcome + the core loop instead of the start menu.
+if (needsWelcome()) showScreen('welcome');
 $('btn-race-back').addEventListener('click', () => { audio.click(); updateMenuMeta(); showScreen('start'); });
 $('btn-race-garage').addEventListener('click', () => openHangar('race'));
 $('btn-rr-retry').addEventListener('click', () => { audio.click(); startRace(state.raceLeague, state.raceTrack); });
 $('btn-rr-next').addEventListener('click', () => { audio.click(); if (state.nextRace) startRace(state.nextRace.lg, state.nextRace.t); });
 $('btn-rr-menu').addEventListener('click', () => { leaveRun(); raceMenu.render(); showScreen('race'); });
-$('btn-race-pause').addEventListener('click', () => { leaveRun(); raceMenu.render(); showScreen('race'); });
 window.addEventListener('keydown', (e) => {
-  if (state.mode === 'race' && (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W')) { e.preventDefault(); raceBoost = true; }
+  if (state.mode !== 'race') return;
+  if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { e.preventDefault(); raceBoost = true; }
+  if (e.key === 'e' || e.key === 'E' || e.key === 'Shift') raceItem = true;
+  if (e.key === 'Enter' && race.waiting) $('rbtn-go').click();
 });
 
 function updateRace(realDt) {
-  const steerRaw = input.update(realDt, race.player ? race.player.x / TRACK_HALF * CONFIG.halfWidth : 0);
-  const steer = steerRaw / CONFIG.halfWidth;
-  race.update(realDt, state.mode === 'race' ? steer : 0, state.mode === 'race' && raceBoost);
+  const steer = state.mode === 'race' ? input.raceSteer() : 0;
+  const live = state.mode === 'race';
+  race.update(realDt, steer, live && raceBoost, live && raceItem);
   raceBoost = false;
+  raceItem = false;
   const h = race.hud;
   if (state.mode === 'race' || state.mode === 'raceDone') {
     $('rh-place').textContent = ordinal(h.place);
@@ -989,7 +1187,7 @@ function updateRace(realDt) {
     mapT -= realDt;
     if (mapT <= 0) { mapT = 0.05; race.drawMinimap(rhMap, 96); }
   }
-  audio.setEngine(Math.min(1, h.speed / 400), input.steer, 1);
+  audio.setEngine(Math.min(1, h.speed / 400), steer, 1);
   renderer.render(race.scene, race.camera);
 }
 
@@ -1277,6 +1475,28 @@ if (DEBUG) {
     unlockAll() { prog.data.galaxy.unlocked = 6; prog.save(); },
     race,
     startRace: (li, ti) => startRace(LEAGUES[li], LEAGUES[li].tracks[ti]),
+    // FTUE / core-loop hooks
+    handoff,
+    ftue: { get flags() { return prog.data.ftue; }, nextStep: () => nextStep(prog), runStep: () => runStep(), needsWelcome },
+    finishRace(place) {   // simulate the current (or first career) race ending in `place`
+      if (!state.raceTrack) { state.raceLeague = CAREER[0].league; state.raceTrack = CAREER[0].track; }
+      if (race.running) race.dispose();
+      raceHud.classList.add('hidden');
+      state.mode = 'raceDone';
+      const others = ['Nugget', 'Drumstick Dave', 'Eggatha', 'Big Bertha'];
+      const results = Array.from({ length: 5 }, (_, i) => {
+        const me = i === place - 1;
+        return { name: me ? 'You' : others.shift(), isPlayer: me, color: me ? 0x3cf2ff : 0xffd23a, time: 60 + i * 1.7, place: i + 1 };
+      });
+      finishRace(results, place);
+    },
+    endDodgeRun(drumsticks = 30, g = 0) {   // simulate a dodge run ending with drumsticks collected
+      startRun(g);
+      state.crystals = drumsticks;
+      gameOver();
+    },
+    menu: () => { handoff.hide(); leaveRun(); updateMenuMeta(); showScreen('start'); },
+    resetSave() { store.set('save', JSON.stringify({})); location.reload(); },
   };
 }
 

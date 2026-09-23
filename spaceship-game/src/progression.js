@@ -1,5 +1,5 @@
 import { store } from './storage.js';
-import { RACE_UPGRADES, LEAGUES, GALAXY_TROPHY_REQ } from './race/leagues.js';
+import { RACE_UPGRADES, LEAGUES, GALAXY_TROPHY_REQ, CAREER, careerIndex } from './race/leagues.js';
 
 // Persistent meta-progression (Hangar upgrades, skins, pilot rank) and the
 // in-run power-up pool. Everything the game needs is exposed as a flat set of
@@ -57,6 +57,7 @@ const DEFAULT_SAVE = {
   galaxy: { unlocked: 1, stars: [0, 0, 0, 0, 0] },
   endlessBest: { wave: 0, score: 0 },
   race: { best: {} },
+  ftue: {},
 };
 const ALL_UPGRADES = () => [...UPGRADES, ...RACE_UPGRADES];
 export const GALAXY_COUNT = 5;
@@ -78,13 +79,21 @@ export class Progression {
       };
       merged.endlessBest = { wave: 0, score: 0, ...(d.endlessBest || {}) };
       merged.race = { best: { ...((d.race && d.race.best) || {}) } };
+      // FTUE flags (seen hand-offs). Old saves have none: they just get the guidance once.
+      merged.ftue = { ...((d.ftue && typeof d.ftue === 'object') ? d.ftue : {}) };
+      if (raw && !d.ftue) {
+        // Pre-FTUE save: skip guidance for steps the player has clearly done already.
+        if (merged.galaxy.unlocked > 1 || merged.galaxy.stars.some((x) => x > 0)) merged.ftue.dodged = 1;
+        if (Object.values(merged.race.best).some((x) => x > 0 && x <= 3)) merged.ftue.trophy = 1;
+        if (RACE_UPGRADES.some((u) => merged.upgrades[u.id] > 0)) merged.ftue.upgrade = merged.ftue.garage = 1;
+      }
       if (!Array.isArray(merged.skins) || !merged.skins.includes('classic')) merged.skins = ['classic', ...(merged.skins || [])];
       if (!merged.skins.includes(merged.skin)) merged.skin = 'classic';
       merged.crystals = Math.max(0, merged.crystals | 0);
       merged.xp = Math.max(0, merged.xp | 0);
       return merged;
     } catch {
-      return { ...DEFAULT_SAVE, upgrades: {}, skins: ['classic'], galaxy: { unlocked: 1, stars: [0, 0, 0, 0, 0] }, endlessBest: { wave: 0, score: 0 }, race: { best: {} } };
+      return { ...DEFAULT_SAVE, upgrades: {}, skins: ['classic'], galaxy: { unlocked: 1, stars: [0, 0, 0, 0, 0] }, endlessBest: { wave: 0, score: 0 }, race: { best: {} }, ftue: {} };
     }
   }
 
@@ -181,14 +190,36 @@ export class Progression {
     this.save();
     return { newBest, newTrophy: place <= 3 && (!prev || prev > 3) };
   }
-  leagueUnlocked(lg) {
-    const u = lg.unlock;
-    if (!u) return true;
-    return this.unlocked > u.galaxies && this.leagueTrophies(u.league) >= u.trophies;
+  // Linear career: race N+1 unlocks with a podium in race N. A track the player
+  // already raced (old saves with league gating) stays unlocked.
+  raceUnlocked(trackId) {
+    const i = careerIndex(trackId);
+    if (i <= 0) return i === 0;
+    if (this.bestPlace(trackId) > 0) return true;
+    const prev = this.bestPlace(CAREER[i - 1].track.id);
+    return prev > 0 && prev <= 3;
   }
+  // A league is open when its first race is.
+  leagueUnlocked(lg) { return this.raceUnlocked(lg.tracks[0].id); }
+  // First unlocked career race without a podium yet (null when all are podiumed).
+  get nextCareerRace() {
+    for (const c of CAREER) {
+      if (!this.raceUnlocked(c.track.id)) return null;
+      const b = this.bestPlace(c.track.id);
+      if (!b || b > 3) return c;
+    }
+    return null;
+  }
+  get racesRun() { return Object.keys(this.data.race.best).length; }
+  // Ship Power = 1 + total Race Garage levels (compared to track.power).
+  get shipPower() { return 1 + RACE_UPGRADES.reduce((a, u) => a + this.level(u.id), 0); }
   // Galaxy i can be launched if its predecessor boss is beaten AND enough race trophies.
   galaxyTrophyReq(i) { return GALAXY_TROPHY_REQ[i] || 0; }
-  galaxyOpen(i) { return i < this.unlocked && this.trophies >= this.galaxyTrophyReq(i); }
+  galaxyOpen(i) { return this.trophies >= this.galaxyTrophyReq(i) && (i === 0 || i < this.unlocked); }
+
+  // ---- FTUE flags ----
+  ftueSeen(key) { return !!this.data.ftue[key]; }
+  ftueMark(key) { if (!this.data.ftue[key]) { this.data.ftue[key] = 1; this.save(); } }
 
   // Combined modifiers for a run: permanent upgrades + picked power-ups.
   modifiers(picked = {}) {

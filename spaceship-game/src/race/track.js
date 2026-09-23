@@ -55,17 +55,74 @@ export class Track {
       this.K[i] = sum / 7;
     }
 
+    // Features enabled on this track (each career race adds one).
+    const feat = (this.features = new Set(def.features || ['rocks', 'boost']));
+    const L = this.length;
+    const free = (s, gap = 14) => ![...this.pads, ...this.boxes || [], ...this.ice || [], ...this.walls || [], ...this.rollers || [], ...this.wells || []]
+      .some((o) => Math.abs(o.s - s) < gap);
+
     // Boost pads and obstacles, placed deterministically (not on the start straight).
     this.pads = [];
-    for (let i = 0; i < def.pads; i++) {
-      const s = ((i + 0.5 + (rng() - 0.5) * 0.4) / def.pads) * this.length;
+    const nPads = feat.has('boost') ? def.pads : 0;
+    for (let i = 0; i < nPads; i++) {
+      const s = ((i + 0.5 + (rng() - 0.5) * 0.4) / nPads) * this.length;
       if (s < 40) continue;
       this.pads.push({ s, x: (rng() * 2 - 1) * (TRACK_HALF - 1.6) });
     }
+    // Item boxes: rows of 3 "?" boxes.
+    this.boxes = [];
+    if (feat.has('items')) {
+      const rows = 3;
+      for (let i = 0; i < rows; i++) {
+        const s = ((i + 0.3 + rng() * 0.3) / rows) * L;
+        if (s < 60) continue;
+        for (const x of [-3.2, 0, 3.2]) this.boxes.push({ s, x, respawn: 0 });
+      }
+    }
+    // Ice slicks
+    this.ice = [];
+    if (feat.has('ice')) {
+      for (let i = 0; i < 4; i++) {
+        const s = ((i + 0.6 + rng() * 0.3) / 4) * L;
+        if (!free(s, 20)) continue;
+        this.ice.push({ s, len: 22, x: (rng() * 2 - 1) * 2.5, w: 3.4 + rng() * 1.5 });
+      }
+    }
+    // Chicanes: barriers from alternating walls forcing a slalom.
+    this.walls = [];
+    if (feat.has('chicanes')) {
+      for (let c = 0; c < 2; c++) {
+        const s0 = ((c + 0.45) / 2) * L;
+        if (!free(s0, 40)) continue;
+        for (let k = 0; k < 3; k++) {
+          const side = k % 2 ? 1 : -1;
+          this.walls.push({ s: s0 + k * 26, x0: side < 0 ? -TRACK_HALF - 1 : 1.2, x1: side < 0 ? -1.2 : TRACK_HALF + 1 });
+        }
+      }
+    }
+    // Giant eggs rolling across the track
+    this.rollers = [];
+    if (feat.has('rollingEggs')) {
+      for (let i = 0; i < 4; i++) {
+        const s = ((i + 0.2 + rng() * 0.5) / 4) * L;
+        if (!free(s, 30)) continue;
+        this.rollers.push({ s, phase: rng() * 6.28, speed: 0.7 + rng() * 0.5, r: 1.1 });
+      }
+    }
+    // Gravity wells
+    this.wells = [];
+    if (feat.has('wells')) {
+      for (let i = 0; i < 3; i++) {
+        const s = ((i + 0.7 + rng() * 0.2) / 3) * L;
+        if (!free(s, 30)) continue;
+        this.wells.push({ s, x: (rng() < 0.5 ? -1 : 1) * (1.5 + rng() * 2.5) });
+      }
+    }
+
     this.obstacles = [];
     for (let i = 0; i < def.obstacles; i++) {
       const s = 80 + ((i + rng() * 0.8) / def.obstacles) * (this.length - 100);
-      if (this.pads.some((p) => Math.abs(p.s - s) < 12)) continue;
+      if (!free(s, 12)) continue;
       const egg = rng() < 0.4;
       this.obstacles.push({ s, x: (rng() * 2 - 1) * (TRACK_HALF - 1.2), r: egg ? 0.8 : 0.7 + rng() * 0.4, egg, rot: rng() * 6 });
     }
@@ -246,12 +303,120 @@ export class Track {
     rocks.count = rc; eggs.count = ec;
     group.add(rocks, eggs);
 
+    // Ice slicks: flat translucent blue quads
+    const iceMat = new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide });
+    for (const ic of this.ice) {
+      const n = 10;
+      const ip = [], ii = [];
+      for (let k = 0; k <= n; k++) {
+        this.frame(ic.s + (k / n) * ic.len, 0, f);
+        for (const side of [-1, 1]) {
+          const p = f.p.clone().addScaledVector(f.r, ic.x + side * ic.w / 2).addScaledVector(f.u, 0.04);
+          ip.push(p.x, p.y, p.z);
+        }
+        if (k < n) { const a = k * 2; ii.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+      }
+      const g2 = new THREE.BufferGeometry();
+      g2.setAttribute('position', new THREE.Float32BufferAttribute(ip, 3));
+      g2.setIndex(ii);
+      group.add(new THREE.Mesh(g2, iceMat));
+    }
+
+    // Chicane barriers
+    if (this.walls.length) {
+      const wm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({
+        color: 0x401030, emissive: g.colors.lane, emissiveIntensity: 1.4, transparent: true, opacity: 0.9,
+      }), this.walls.length);
+      this.walls.forEach((w, i) => {
+        const cx = (w.x0 + w.x1) / 2;
+        this.frame(w.s, cx, f);
+        back.copy(f.t).negate();
+        m.makeBasis(f.r, f.u, back);
+        m.scale(sc.set(Math.abs(w.x1 - w.x0), 1.2, 0.6));
+        m.setPosition(f.p.addScaledVector(f.u, 0.6));
+        wm.setMatrixAt(i, m);
+      });
+      group.add(wm);
+    }
+
+    // Gravity wells: spinning purple rings + dark core
+    this.wellMeshes = [];
+    for (const wl of this.wells) {
+      const ringM = new THREE.Mesh(new THREE.RingGeometry(0.6, 3.2, 32), new THREE.MeshBasicMaterial({
+        color: 0xb04bff, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+      }));
+      const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), new THREE.MeshBasicMaterial({ color: 0x050008 }));
+      this.frame(wl.s, wl.x, f);
+      back.copy(f.t).negate();
+      m.makeBasis(f.r, f.u, back).setPosition(f.p.addScaledVector(f.u, 0.1));
+      ringM.quaternion.setFromRotationMatrix(m);
+      ringM.rotateX(-Math.PI / 2);
+      ringM.position.copy(f.p);
+      core.position.copy(f.p).addScaledVector(f.u, 0.5);
+      group.add(ringM, core);
+      this.wellMeshes.push(ringM);
+    }
+
+    // Rolling eggs (animated in update())
+    if (this.rollers.length) {
+      this.rollerMesh = new THREE.InstancedMesh(eggGeo, new THREE.MeshStandardMaterial({ color: 0xfff3dc, roughness: 0.35, emissive: 0x2a2418 }), this.rollers.length);
+      this.rollerMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      group.add(this.rollerMesh);
+    }
+
+    // Item boxes (animated in update())
+    if (this.boxes.length) {
+      const boxMat = new THREE.MeshStandardMaterial({ color: 0xffd35c, emissive: 0xff8a1f, emissiveIntensity: 0.9, transparent: true, opacity: 0.85, roughness: 0.3 });
+      this.boxMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), boxMat, this.boxes.length);
+      this.boxMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      group.add(this.boxMesh);
+    }
+    this._time = 0;
+    this._f2 = { p: new THREE.Vector3(), t: new THREE.Vector3(), r: new THREE.Vector3(), u: new THREE.Vector3() };
+    this._m2 = new THREE.Matrix4();
+    this._q2 = new THREE.Quaternion();
+    this._s2 = new THREE.Vector3();
+
     scene.add(group);
   }
 
+  // Current lateral position of a rolling egg.
+  rollerX(ro) {
+    return Math.sin(this._time * ro.speed + ro.phase) * (TRACK_HALF - 1.2);
+  }
+
   update(dt) {
+    this._time += dt;
     this.roadMat.uniforms.uTime.value += dt;
     this.padMat.uniforms.uTime.value += dt;
+    const f = this._f2, m = this._m2, q = this._q2, s = this._s2;
+    const back = new THREE.Vector3();
+    if (this.rollerMesh) {
+      this.rollers.forEach((ro, i) => {
+        const x = this.rollerX(ro);
+        this.frame(ro.s, x, f);
+        f.p.addScaledVector(f.u, ro.r * 0.7);
+        back.copy(f.t).negate();
+        m.makeBasis(f.r, f.u, back);
+        q.setFromRotationMatrix(m);
+        q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -x * 1.2));
+        s.setScalar(ro.r);
+        this.rollerMesh.setMatrixAt(i, m.compose(f.p, q, s));
+      });
+      this.rollerMesh.instanceMatrix.needsUpdate = true;
+    }
+    if (this.boxMesh) {
+      this.boxes.forEach((b, i) => {
+        b.respawn = Math.max(0, b.respawn - dt);
+        this.frame(b.s, b.x, f);
+        f.p.addScaledVector(f.u, 0.9 + Math.sin(this._time * 3 + i) * 0.15);
+        q.setFromEuler(new THREE.Euler(this._time * 1.3 + i, this._time * 2 + i, 0));
+        s.setScalar(b.respawn > 0 ? 0.001 : 1);
+        this.boxMesh.setMatrixAt(i, m.compose(f.p, q, s));
+      });
+      this.boxMesh.instanceMatrix.needsUpdate = true;
+    }
+    for (const w of this.wellMeshes || []) w.rotateZ(dt * 2);
   }
 
   dispose(scene) {

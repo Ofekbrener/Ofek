@@ -74,7 +74,20 @@
           <div class="rank-row"><span id="start-rank">Cadet</span><span class="balance">🍗 <b id="start-crystals">0</b></span></div>
           <div class="xp-bar"><div id="start-xp-fill"></div></div>
         </div>
-        <button id="btn-start" class="primary-btn">🐔 DODGE JOURNEY</button>
+        <div class="chip-row">
+          <span class="chip trophy-chip">🏆 <b id="start-trophies">0</b> · unlocks galaxies</span>
+          <span class="chip">⚡ Power <b id="start-power">1</b></span>
+        </div>
+        <!-- FTUE: always names the single next action of the core loop -->
+        <div id="next-step" class="next-step">
+          <div class="ns-label">NEXT STEP</div>
+          <div class="ns-row">
+            <span id="ns-icon" class="ns-icon">🏁</span>
+            <div class="ns-body"><div id="ns-title" class="ns-title">Win a podium in Race 1</div><div id="ns-text" class="ns-text"></div></div>
+          </div>
+          <button id="btn-next-step" class="primary-btn ns-btn">CONTINUE ➜</button>
+        </div>
+        <button id="btn-start" class="primary-btn dodge-btn">🐔 DODGE JOURNEY</button>
         <button id="btn-race" class="primary-btn race-btn">🏁 RACE LEAGUE</button>
         <button id="btn-hangar" class="secondary-btn hangar-btn">🛠 HANGAR &amp; GARAGE</button>
         <div class="howto">
@@ -89,6 +102,31 @@
           <button id="btn-sound" class="toggle-btn">🔊 Sound</button>
           <button id="btn-haptics" class="toggle-btn">📳 Vibration: Normal</button>
         </div>
+      </div>
+    </div>
+
+    <!-- FTUE: first launch welcome + the core loop -->
+    <div id="screen-welcome" class="screen hidden">
+      <div class="panel scroll welcome-panel">
+        <div class="final-label">VOID RUNNER</div>
+        <h2 class="welcome-title">WELCOME, PILOT</h2>
+        <p class="welcome-sub">The Space Hens are back. Here's how you beat them:</p>
+        <div class="loop" aria-label="Race, win a trophy, dodge a galaxy, earn drumsticks, upgrade, race again">
+          <div class="loop-ring"><i class="loop-spark"></i></div>
+          <div class="loop-center"><b>THE</b>LOOP</div>
+          <div class="loop-node n0"><span>🏁</span><b>Race</b></div>
+          <div class="loop-node n1"><span>🏆</span><b>Trophy</b></div>
+          <div class="loop-node n2"><span>🐔</span><b>Dodge</b></div>
+          <div class="loop-node n3"><span>🍗</span><b>Drumsticks</b></div>
+          <div class="loop-node n4"><span>🛠</span><b>Upgrade</b></div>
+        </div>
+        <ol class="loop-steps">
+          <li><b>🏁 Race</b> chicken rivals — finish top 3</li>
+          <li><b>🏆 Trophies</b> unlock Dodge galaxies</li>
+          <li><b>🐔 Dodge</b> hens &amp; eggs to earn <b>🍗 drumsticks</b></li>
+          <li><b>🛠 Upgrade</b> your racer in the Garage, then race harder tracks</li>
+        </ol>
+        <button id="btn-welcome-go" class="primary-btn">🏁 START FIRST RACE</button>
       </div>
     </div>
 
@@ -155,6 +193,10 @@
           <h2>STAR MAP</h2>
           <div class="balance big">★ <b id="map-stars">0</b><span class="dim">/15</span></div>
         </div>
+        <div id="map-hint" class="map-hint hidden">
+          <div id="map-hint-text"></div>
+          <button id="btn-map-race" class="primary-btn small race-btn">🏁 GO RACE</button>
+        </div>
         <div id="galaxy-list" class="scroll map-scroll"></div>
         <div class="btn-row">
           <button id="btn-map-hangar" class="secondary-btn">🛠 HANGAR</button>
@@ -201,6 +243,7 @@
           <h2>RACE LEAGUE</h2>
           <div class="balance big">🏆 <b id="race-trophies">0</b></div>
         </div>
+        <div id="race-power" class="race-power"></div>
         <div id="league-list" class="scroll map-scroll league-scroll"></div>
         <div class="btn-row">
           <button id="btn-race-garage" class="secondary-btn">🛠 GARAGE</button>
@@ -216,20 +259,42 @@
         <div class="rh-mid"><div id="rh-lap">LAP 1/2</div><div id="rh-time">0:00.00</div></div>
         <canvas id="rh-map" width="96" height="96"></canvas>
       </div>
+      <button id="btn-race-pause" class="icon-btn race-pause" aria-label="Pause race">❚❚</button>
       <div id="rh-count" class="hidden">3</div>
       <div id="rh-msg" class="hidden"></div>
       <div class="rh-bottom">
-        <div class="rh-steer">
-          <button id="rbtn-left" class="steer-btn small" aria-label="Steer left">◀</button>
-          <button id="rbtn-right" class="steer-btn small" aria-label="Steer right">▶</button>
+        <button id="rbtn-left" class="steer-btn" aria-label="Steer left">◀</button>
+        <div class="rh-center">
+          <div class="rh-speed"><b id="rh-speed">0</b><small>KM/H</small></div>
+          <div id="rh-draft" class="hidden">DRAFTING ⚡</div>
+          <div id="rh-boost-wrap" class="boost-meter"><div id="rh-boost-fill"></div></div>
+          <div class="rh-buttons">
+            <button id="rbtn-item" class="item-btn hidden" aria-label="Use item">?</button>
+            <button id="rbtn-boost" class="boost-btn">BOOST</button>
+          </div>
         </div>
-        <div class="rh-speed"><b id="rh-speed">0</b><small>KM/H</small><div id="rh-draft" class="hidden">DRAFTING ⚡</div></div>
-        <div class="rh-boost">
-          <div class="boost-meter"><div id="rh-boost-fill"></div></div>
-          <button id="rbtn-boost" class="boost-btn">BOOST</button>
+        <button id="rbtn-right" class="steer-btn" aria-label="Steer right">▶</button>
+      </div>
+
+      <div id="rh-intro" class="rh-overlay hidden">
+        <div class="panel scroll">
+          <div id="rh-intro-race" class="final-label">RACE 1 OF 9</div>
+          <h2 id="rh-intro-name">COOP LOOP</h2>
+          <div id="rh-intro-icon" class="rh-intro-icon">🕹️</div>
+          <div id="rh-intro-title" class="rh-intro-title">Learn to steer</div>
+          <p id="rh-intro-text" class="brief-text"></p>
+          <div id="rh-intro-power" class="rh-intro-power"></div>
+          <button id="rbtn-go" class="primary-btn">🏁 START RACE</button>
         </div>
       </div>
-      <button id="btn-race-pause" class="icon-btn race-pause" aria-label="Quit race">✕</button>
+
+      <div id="rh-pausebox" class="rh-overlay hidden">
+        <div class="panel scroll">
+          <h2>PAUSED</h2>
+          <button id="rbtn-resume" class="primary-btn">RESUME</button>
+          <button id="rbtn-quit" class="secondary-btn">QUIT RACE</button>
+        </div>
+      </div>
     </div>
 
     <!-- Race results -->
@@ -241,6 +306,7 @@
         <div id="rr-table" class="rr-table"></div>
         <div class="payout">
           <div class="payout-row total"><span>🍗 Prize</span><b id="rr-prize">0</b></div>
+          <div id="rr-power" class="rr-power hidden"></div>
           <div id="rr-note" class="unlock-note hidden"></div>
         </div>
         <button id="btn-rr-next" class="primary-btn">NEXT RACE ➜</button>
@@ -257,6 +323,16 @@
         <div id="cards-title" class="cards-title">WAVE CLEAR!</div>
         <div class="cards-sub">Choose a power-up</div>
         <div id="card-list" class="card-list"></div>
+      </div>
+    </div>
+
+    <!-- FTUE: guided hand-off modal (reusable) -->
+    <div id="handoff" class="handoff hidden">
+      <div class="panel handoff-panel">
+        <div class="ho-burst"><div id="ho-icon" class="ho-icon">🏆</div></div>
+        <h2 id="ho-title" class="ho-title">TROPHY EARNED!</h2>
+        <p id="ho-text" class="ho-text"></p>
+        <div id="ho-btns" class="ho-btns"></div>
       </div>
     </div>
 
