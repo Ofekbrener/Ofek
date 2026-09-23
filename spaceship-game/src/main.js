@@ -18,6 +18,7 @@ import { store } from './storage.js';
 import { Progression, POWERUPS, UPGRADES, drawCards, rankInfo, upgradeLevels } from './progression.js';
 import { HangarUI, showCards } from './hangar-ui.js';
 import { ShipPreview } from './ship-preview.js';
+import { installIcons } from './icons.js';
 import { GALAXIES, QUIPS, pick } from './galaxies.js';
 import { Journey } from './journey.js';
 import { StarMapUI, starsHTML } from './starmap-ui.js';
@@ -28,6 +29,7 @@ import { LEAGUES, RACE_QUIPS, RACE_UPGRADES, CAREER, careerIndex, ordinal } from
 import { nextStep, Handoff, raceLabel, cheapestAffordableRaceUpgrade, cheapestRaceUpgrade, farmGalaxy, tutorialStage, TUTORIAL_STEPS, TUTORIAL_ALLOW, TUTORIAL_HINT } from './ftue.js';
 
 const $ = (id) => document.getElementById(id);
+installIcons();   // hand-drawn SVG icons instead of emoji
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
 let quality = params.get('quality') === 'low' || params.get('quality') === 'high' ? params.get('quality') : initialQuality();
@@ -1325,6 +1327,7 @@ $('btn-welcome-go').addEventListener('click', () => {
 });
 // First launch: welcome + the core loop instead of the start menu.
 if (needsWelcome()) showScreen('welcome');
+else showScreen('start');   // also starts the Home pod preview
 $('btn-race-back').addEventListener('click', goHome);
 $('btn-rr-home').addEventListener('click', goHome);
 $('rbtn-home').addEventListener('click', goHome);

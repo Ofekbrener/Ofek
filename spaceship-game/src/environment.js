@@ -137,9 +137,15 @@ export class Environment {
           vec3 g = vec3(0.0);
           // One compiled variant per world style (defines.STYLE): no dead branches per pixel.
 #if STYLE == 0
-          {                                       // Coop: neon grid
-            float grid = max(line(vWorld.x / 2.0, 0.06), line(wz / 4.0, 0.06));
-            g = uColor * grid * 0.6;
+          {                                       // Coop: patchwork farm fields with furrows
+            vec2 cell = floor(P / vec2(4.2, 7.0));
+            float h = hash21(cell);
+            vec3 patchC = mix(uColor, uColor * vec3(1.18, 1.05, 0.62), step(0.55, h));
+            patchC = mix(patchC, uColor * vec3(0.78, 0.86, 0.7), step(0.85, h));
+            float furrow = line((vWorld.x + h * 3.0) / 0.7, 0.28);
+            float seam = max(line(vWorld.x / 4.2, 0.05), line(wz / 7.0, 0.035));
+            g = patchC * (0.62 - furrow * 0.12);
+            g = mix(g, uGround * 0.8, seam * 0.8);
           }
 #elif STYLE == 1
           {                                       // Yolk: golden hex tiles
