@@ -366,6 +366,23 @@ hapticsBtn.addEventListener('click', () => {
 });
 refreshToggles();
 
+// UI style themes (themes.css). Cycles in Settings, saved on this device.
+const THEMES = [['midnight', 'Midnight Coop'], ['arcade', 'Sunny Arcade'], ['comic', 'Comic Book'], ['retro', 'Retro Space Age'], ['void', 'Void']];
+function refreshStyleBtn() {
+  const cur = document.documentElement.dataset.theme;
+  const t = THEMES.find((x) => x[0] === cur) || THEMES[0];
+  $('btn-style').textContent = `🎨 Style: ${t[1]}`;
+}
+$('btn-style').addEventListener('click', () => {
+  audio.click();
+  const i = THEMES.findIndex((x) => x[0] === document.documentElement.dataset.theme);
+  const next = THEMES[(i + 1) % THEMES.length][0];
+  document.documentElement.dataset.theme = next;
+  store.set('theme', next);
+  refreshStyleBtn();
+});
+refreshStyleBtn();
+
 // Settings screen, including "start again as a new player".
 $('btn-settings').addEventListener('click', () => {
   audio.unlock();
