@@ -540,10 +540,10 @@ const PROP_BUILDERS = {
   fence: () => mergeParts([
     { geo: B(0.2, 1.4, 0.2).translate(0, 0.7, -1.3), color: 0xf4ece0 },
     { geo: B(0.2, 1.4, 0.2).translate(0, 0.7, 1.3), color: 0xf4ece0 },
-    { geo: B(0.08, 0.14, 2.8).translate(0, 1.05, 0), color: 0xff3ca8, glow: 1.3 },
-    { geo: B(0.08, 0.14, 2.8).translate(0, 0.55, 0), color: 0xff3ca8, glow: 1.3 },
-    { geo: T(new THREE.ConeGeometry(0.16, 0.25, 4), [1, 1, 1], [0, Math.PI / 4, 0], [0, 1.52, -1.3]), color: 0x3cf2ff, glow: 1.2 },
-    { geo: T(new THREE.ConeGeometry(0.16, 0.25, 4), [1, 1, 1], [0, Math.PI / 4, 0], [0, 1.52, 1.3]), color: 0x3cf2ff, glow: 1.2 },
+    { geo: B(0.08, 0.14, 2.8).translate(0, 1.05, 0), color: 0xffc23a, glow: 1.3 },
+    { geo: B(0.08, 0.14, 2.8).translate(0, 0.55, 0), color: 0xffc23a, glow: 1.3 },
+    { geo: T(new THREE.ConeGeometry(0.16, 0.25, 4), [1, 1, 1], [0, Math.PI / 4, 0], [0, 1.52, -1.3]), color: 0xece6d8, glow: 1.2 },
+    { geo: T(new THREE.ConeGeometry(0.16, 0.25, 4), [1, 1, 1], [0, Math.PI / 4, 0], [0, 1.52, 1.3]), color: 0xece6d8, glow: 1.2 },
   ]),
   eggshell: () => mergeParts([
     { geo: T(jitter(new THREE.SphereGeometry(1, 12, 7, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.58), 0.05), [0.85, 1.1, 0.85]), color: 0xfff1dc, glow: 0.15, smooth: true },
@@ -587,12 +587,12 @@ const PROP_BUILDERS = {
     { geo: new THREE.TorusGeometry(0.42, 0.07, 5, 14).rotateX(Math.PI / 2).translate(0, 2.2, 0), color: 0xff3cae, glow: 1.6 },
     { geo: new THREE.TorusGeometry(0.42, 0.07, 5, 14).rotateX(Math.PI / 2).translate(0, 4.0, 0), color: 0xff3cae, glow: 1.6 },
     { geo: new THREE.TorusGeometry(0.42, 0.07, 5, 14).rotateX(Math.PI / 2).translate(0, 5.8, 0), color: 0xff3cae, glow: 1.6 },
-    { geo: new THREE.IcosahedronGeometry(0.35, 1).translate(0, 7.3, 0), color: 0x5af2ff, glow: 2.0 },
+    { geo: new THREE.IcosahedronGeometry(0.35, 1).translate(0, 7.3, 0), color: 0xffc23a, glow: 2.0 },
   ]),
   block: () => mergeParts([
     { geo: B(1.4, 1.4, 1.4).translate(0, 0.7, 0), color: 0x160828 },
-    { geo: B(1.44, 0.12, 1.44).translate(0, 1.0, 0), color: 0x5af2ff, glow: 1.6 },
-    { geo: B(1.44, 0.12, 1.44).translate(0, 0.4, 0), color: 0xb04bff, glow: 1.3 },
+    { geo: B(1.44, 0.12, 1.44).translate(0, 1.0, 0), color: 0xff8a4a, glow: 1.6 },
+    { geo: B(1.44, 0.12, 1.44).translate(0, 0.4, 0), color: 0xa8321a, glow: 1.3 },
   ]),
 };
 const propCache = {};
