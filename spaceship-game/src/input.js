@@ -17,6 +17,14 @@ export class Input {
     this.dragStartTarget = 0;
     this.keys = { left: false, right: false };
     this.btn = { left: false, right: false };
+    // Tilt steering (device orientation). `tiltOn` is the player's setting;
+    // `tiltLive` turns true once the sensor actually reports angles.
+    this.tiltOn = false;
+    this.tiltLive = false;
+    this.tiltAngle = 0;     // left/right lean in degrees, relative to the screen
+    this.tiltCenter = 0;    // neutral lean captured at the start of a run / race
+    this._tiltListening = false;
+    this._onTilt = (e) => this._tilt(e);
 
     canvas.addEventListener('pointerdown', (e) => this._down(e));
     window.addEventListener('pointermove', (e) => this._move(e), { passive: true });
@@ -51,6 +59,55 @@ export class Input {
     el.addEventListener('pointercancel', off);
     el.addEventListener('lostpointercapture', off);
     el.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  // Start listening to the gyroscope. iOS needs this to run inside a tap
+  // (permission prompt); elsewhere it just adds the listener.
+  enableTilt() {
+    this.tiltOn = true;
+    if (this._tiltListening || typeof window.DeviceOrientationEvent === 'undefined') return Promise.resolve(this.tiltLive);
+    const listen = () => {
+      if (this._tiltListening) return;
+      this._tiltListening = true;
+      window.addEventListener('deviceorientation', this._onTilt);
+    };
+    const req = window.DeviceOrientationEvent.requestPermission;
+    if (typeof req === 'function') {
+      return req.call(window.DeviceOrientationEvent)
+        .then((r) => { if (r === 'granted') listen(); return r === 'granted'; })
+        .catch(() => false);
+    }
+    listen();
+    return Promise.resolve(true);
+  }
+
+  disableTilt() {
+    this.tiltOn = false;
+  }
+
+  get tiltActive() { return this.tiltOn && this.tiltLive; }
+
+  _tilt(e) {
+    if (e.gamma == null || e.beta == null) return;
+    const ang = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0;
+    const a = ((ang % 360) + 360) % 360;
+    // Lean toward the right edge of the screen = positive, in any orientation.
+    this.tiltAngle = a === 90 ? e.beta : a === 270 ? -e.beta : a === 180 ? -e.gamma : e.gamma;
+    if (!this.tiltLive) { this.tiltLive = true; this.calibrateTilt(); document.body.classList.add('tilt-live'); }
+  }
+
+  // Treat however the phone is held right now as "straight".
+  calibrateTilt() {
+    this.tiltCenter = Math.max(-20, Math.min(20, this.tiltAngle));
+  }
+
+  // -1..1 with a small dead zone; ~22° of lean is full lock.
+  tiltValue() {
+    if (!this.tiltActive) return 0;
+    const d = this.tiltAngle - this.tiltCenter;
+    const dz = 2.5, full = 22;
+    if (Math.abs(d) < dz) return 0;
+    return Math.max(-1, Math.min(1, (d - Math.sign(d) * dz) / (full - dz)));
   }
 
   _down(e) {
@@ -109,7 +166,7 @@ export class Input {
       const w = Math.max(1, window.innerWidth);
       return Math.max(-1, Math.min(1, (this.lastX - this.dragStartX) / (w * 0.16)));
     }
-    return 0;
+    return this.tiltValue();
   }
 
   update(realDt, shipX) {
@@ -129,6 +186,11 @@ export class Input {
       }
     } else {
       this.holdTime = 0;
+      // Tilt: the lean picks a spot across the field (like a steering wheel
+      // for the lane), unless a finger is dragging.
+      if (this.enabled && this.tiltActive && this.dragId === null) {
+        this.raw = clamp(this.tiltValue() * CONFIG.halfWidth * 1.1);
+      }
     }
     // Light low-pass on the target: removes touch-sampling jitter without adding lag you can feel.
     const k = 1 - Math.exp(-realDt / CONFIG.dragSmoothing);

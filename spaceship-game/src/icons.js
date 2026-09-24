@@ -51,6 +51,7 @@ const ICONS = {
   egg: `<path d="M12 3c3.8 0 6.6 6 6.6 10.4a6.6 6.6 0 0 1-13.2 0C5.4 9 8.2 3 12 3z" fill="${C.paper}"/><path d="M9.2 8.6c.6-1.4 1.4-2.4 2.3-2.9" stroke="${C.white}" stroke-width="1.4" fill="none"/>`,
   sound: `<path d="M4 9.5h3.6L12 5.5v13l-4.4-4H4z" fill="${C.white}"/><path d="M15.2 9.2a4 4 0 0 1 0 5.6M17.8 6.8a7.4 7.4 0 0 1 0 10.4" fill="none"/>`,
   mute: `<path d="M4 9.5h3.6L12 5.5v13l-4.4-4H4z" fill="${C.white}"/><path d="M15.5 9.5l5 5M20.5 9.5l-5 5" stroke="${C.tomato}" stroke-width="2.2"/>`,
+  tilt: `<rect x="8" y="3.5" width="8" height="17" rx="2" fill="${C.white}" transform="rotate(-18 12 12)"/><path d="M3.5 15.5a9 9 0 0 1 2-8.5M20.5 8.5a9 9 0 0 1-2 8.5" stroke="${C.tomato}"/><path d="M5.5 7l.4 2.6M18.5 17l-.4-2.6" stroke="${C.tomato}"/>`,
   vibe: `<rect x="8" y="3.5" width="8" height="17" rx="2" fill="${C.white}"/><path d="M11 17.4h2" /><path d="M4.6 8v8M2.4 10v4M19.4 8v8M21.6 10v4" stroke="${C.tomato}"/>`,
   map: `<path d="M3 6.2 8.6 4l6.8 2.4L21 4.2v13.6L15.4 20l-6.8-2.4L3 19.8z" fill="${C.paper}"/><path d="M8.6 4v13.6M15.4 6.4V20" fill="none"/>
     <path d="M11 11.5l1.4 1.4m0-1.4L11 12.9" stroke="${C.tomato}" stroke-width="1.6"/>`,
@@ -116,7 +117,7 @@ const ICONS = {
 const EMOJI = {
   '🍗': 'drum', '🏆': 'trophy', '🏁': 'flag', '⚡': 'bolt', '🛠': 'wrench', '🐔': 'chicken', '🏠': 'home', '🔒': 'lock',
   '🔓': 'unlock', '🛡': 'shield', '🚀': 'rocket', '🧲': 'magnet', '⚠': 'warn', '🥇': 'gold', '🥈': 'silver', '🥉': 'bronze',
-  '🔥': 'fire', '🥚': 'egg', '🔊': 'sound', '🔇': 'mute', '📳': 'vibe', '🗺': 'map', '✨': 'sparkle', '👆': 'tap',
+  '🔥': 'fire', '🥚': 'egg', '🔊': 'sound', '🔇': 'mute', '📳': 'vibe', '📱': 'tilt', '🗺': 'map', '✨': 'sparkle', '👆': 'tap',
   '🕹': 'stick', '✴': 'burst', '🌈': 'rainbow', '👑': 'crown', '🌀': 'swirl', '🎁': 'gift', '💣': 'bomb', '⚙': 'gear',
   '🗑': 'trash', '🎨': 'palette', '💎': 'gem', '🎯': 'target', '🍀': 'clover', '🎩': 'tophat', '🪽': 'wing', '🐣': 'chick',
   '🥳': 'party', '🧢': 'cap', '👨‍🍳': 'chef', '🍳': 'friedegg', '🪖': 'viking', '✈': 'jet', '👼': 'angel', '🦇': 'bat',

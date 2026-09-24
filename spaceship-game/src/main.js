@@ -372,6 +372,29 @@ hapticsBtn.addEventListener('click', () => {
 });
 refreshToggles();
 
+// Tilt steering: on by default on touch devices. iOS only grants the motion
+// sensor from inside a tap, so any tap retries until it's listening.
+const tiltBtn = $('btn-tilt');
+const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+function tiltPref() { return store.get('tilt', isTouch ? '1' : '0') === '1'; }
+function refreshTilt() {
+  const on = input.tiltOn;
+  tiltBtn.classList.toggle('off', !on);
+  tiltBtn.textContent = `📱 Tilt to steer: ${on ? 'On' : 'Off'}`;
+  document.body.classList.toggle('tilt-steer', on);
+}
+if (typeof window.DeviceOrientationEvent === 'undefined' || !isTouch) tiltBtn.classList.add('hidden');
+if (tiltPref()) input.enableTilt();
+tiltBtn.addEventListener('click', () => {
+  audio.click();
+  if (input.tiltOn) { input.disableTilt(); store.set('tilt', '0'); }
+  else { input.enableTilt(); store.set('tilt', '1'); }
+  refreshTilt();
+});
+document.addEventListener('click', () => { if (input.tiltOn && !input._tiltListening) input.enableTilt(); }, true);
+refreshTilt();
+const steerHint = (tilt, buttons) => (input.tiltActive ? tilt : buttons);
+
 // UI style themes (themes.css). Cycles in Settings, saved on this device.
 const THEMES = [['midnight', 'Midnight Coop'], ['arcade', 'Sunny Arcade'], ['comic', 'Comic Book'], ['retro', 'Retro Space Age'], ['void', 'Void']];
 function refreshStyleBtn() {
@@ -465,6 +488,7 @@ function startRun(which) {
   ship.setUpgrades(upgradeLevels(prog));
   fx.reset();
   input.reset();
+  input.calibrateTilt();
   input.enabled = true;
   hud.reset();
   hud.setPowers({}, POWERUPS);
@@ -565,6 +589,7 @@ function pauseGame() {
 function resumeGame() {
   if (state.mode !== 'paused') return;
   audio.resume();
+  input.calibrateTilt();
   audio.click();
   state.mode = 'playing';
   input.enabled = true;
@@ -580,7 +605,7 @@ function onWaveStart() {
   // Tutorial coach on the very first Dodge run.
   if (tutorialStage(prog) === 'dodge' && !journey.endless) {
     const tips = [
-      ['Drag anywhere (or hold ◀ ▶) and I\'ll swerve us around hens, eggs & rocks!', 'Grab 🍗 drumsticks! I trade them for upgrades in the Garage.'],
+      [steerHint('Tilt your phone and I\'ll swerve us around hens, eggs & rocks!', 'Drag anywhere (or hold ◀ ▶) and I\'ll swerve us around hens, eggs & rocks!'), 'Grab 🍗 drumsticks! I trade them for upgrades in the Garage.'],
       ['Blue orbs are 🛡 shields. Each one saves our feathers once!', 'Skim close past hazards for bonus points. I like it spicy 🔥'],
       ['Boss next! I\'ll do the shooting, you dodge her eggs!'],
     ][Math.min(2, lw)];
@@ -1128,7 +1153,7 @@ input._bindButton($('rbtn-right'), 'right');
 boostBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); raceBoost = true; boostBtn.classList.add('active'); });
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) boostBtn.addEventListener(ev, () => boostBtn.classList.remove('active'));
 itemBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); raceItem = true; });
-$('rbtn-go').addEventListener('click', () => { audio.click(); $('rh-intro').classList.add('hidden'); race.begin(); });
+$('rbtn-go').addEventListener('click', () => { audio.click(); input.calibrateTilt(); $('rh-intro').classList.add('hidden'); race.begin(); });
 $('btn-race-pause').addEventListener('click', () => { if (state.mode !== 'race') return; race.paused = true; audio.click(); $('rh-pausebox').classList.remove('hidden'); });
 $('rbtn-resume').addEventListener('click', () => { race.paused = false; audio.click(); $('rh-pausebox').classList.add('hidden'); });
 $('rbtn-quit').addEventListener('click', () => { $('rh-pausebox').classList.add('hidden'); leaveRun(); raceMenu.render(); showScreen('race'); });
@@ -1208,7 +1233,7 @@ function startRace(league, track) {
   $('rh-intro-name').textContent = track.name.toUpperCase();
   $('rh-intro-icon').textContent = track.intro.icon;
   $('rh-intro-title').textContent = track.intro.title;
-  $('rh-intro-text').textContent = track.intro.text + (assist ? ' (The hens are going easy on you this time.)' : '');
+  $('rh-intro-text').textContent = steerHint(track.intro.text.replace('Hold ◀ ▶ (or drag) to steer.', 'Tilt your phone to steer.'), track.intro.text) + (assist ? ' (The hens are going easy on you this time.)' : '');
   const pw = $('rh-intro-power');
   pw.textContent = `⚡ Ship Power ${power} · Recommended ${track.power}` + (power < track.power ? ' — upgrade in the Garage!' : '');
   pw.className = 'rh-intro-power ' + (power < track.power ? 'low' : 'ok');
@@ -1251,7 +1276,7 @@ race.events = {
     audio.splat(); audio.missileHit(); haptics.bossHit(); race.shake = 0.8;
     raceMsg('WALL! STEER INTO THE CORNER', 1000);
   },
-  onHint(text) { raceMsg(text, 1700); audio.countdown(false); },
+  onHint(text) { if (input.tiltActive) text = text.replace('HOLD LEFT', 'TILT LEFT').replace('HOLD RIGHT', 'TILT RIGHT'); raceMsg(text, 1700); audio.countdown(false); },
   onItem(item) { setItemButton(item); if (item) { audio.giftOpen(); haptics.tap(); raceMsg(`GOT ${ITEM_ICON[item]} ${item.toUpperCase()}!`, 900); } },
   onFire() { audio.missileLaunch(); haptics.tap(); },
   onHitRival(r) { audio.cluck(0.8, 0.25); raceMsg(`EGGED ${r.name.toUpperCase()}! 🥚`, 1000); },

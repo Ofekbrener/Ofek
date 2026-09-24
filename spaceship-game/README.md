@@ -37,6 +37,7 @@ Space hens have overrun five galaxies. Open the **Star Map**, pick a galaxy, and
 - **🎁 Gift boxes** give a random power-up: +1 shield, Mega Magnet, Double Drumsticks, or Feather Dash (invincible and smashes through hens).
 - Beating the Supreme Mother Hen unlocks **∞ Endless mode**, which cycles every galaxy with a boss every 5th wave and gets faster each loop.
 - **Vibration:** use the Off / Normal / Strong toggle on the start screen.
+- **Tilt to steer:** on phones, lean the phone left/right to steer in Dodge and Race (the arrows hide while it is on). It is calibrated to however you hold the phone when a run or race starts, and can be switched off in Settings. iOS asks for motion permission on the first tap.
 
 ## Race League: two journeys, one ship
 

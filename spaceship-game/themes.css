@@ -250,3 +250,6 @@ html[data-theme="retro"] .screen.home-screen {
   #screen-race-results .btn-row { margin-top: 8px; }
   #screen-race-results .rr-power { margin-top: 4px; }
 }
+
+/* Tilt to steer: the gyro replaces the on-screen arrows (drag still works). */
+body.tilt-steer.tilt-live .steer-btn { visibility: hidden; pointer-events: none; }
