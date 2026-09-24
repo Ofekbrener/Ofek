@@ -4,7 +4,7 @@ import { mergeColored, tf } from './geo.js';
 import { COSMETICS } from './progression.js';
 
 // Player egg-pod: a rocket-powered egg (like the chicken rivals') flown by a
-// human pilot in a helmet under a glass bubble. Points toward -Z.
+// chicken hero (Coco) under a glass bubble. Points toward -Z.
 //
 // Draw calls: hull, accent band, glass dome (skin materials, recoloured by
 // setSkin), one merged vertex-coloured mesh for the pilot + details + every
@@ -298,14 +298,22 @@ export class Ship {
       flame.push({ geo: tf(cone, { r: [Math.PI / 2, 0, 0], p: [x, y, z - FZ + len / 2] }), color: null });
     };
 
-    // ---- pilot (human, helmet + visor) ----
-    P(tf(ico(0.16, 1), { s: [1.25, 0.75, 0.95], p: [0, 0.36, -0.06] }), SUIT);           // shoulders
-    P(tf(ico(0.135, 2), { p: [0, 0.52, -0.1] }), HELMET);                                   // helmet
-    P(tf(new THREE.BoxGeometry(0.035, 0.03, 0.24), { p: [0, 0.645, -0.08] }), S.accent);   // helmet ridge
-    P(tf(cyl(0.05, 0.05, 0.05, 8), { r: [0, 0, Math.PI / 2], p: [0.135, 0.51, -0.08] }), 0x3a4460); // ear cups
-    P(tf(cyl(0.05, 0.05, 0.05, 8), { r: [0, 0, Math.PI / 2], p: [-0.135, 0.51, -0.08] }), 0x3a4460);
-    const visorGeo = () => new THREE.SphereGeometry(0.142, 14, 5, Math.PI * 1.5 - 0.95, 1.9, 1.2, 0.65);
-    P(tf(visorGeo(), { p: [0, 0.52, -0.1] }), L.focus ? 0x0d1a33 : 0xffb13c);              // gold visor (dark when focus lens glows)
+    // ---- pilot: Coco, the chicken hero (goggles + red scarf) ----
+    const FEATHER = 0xd17f36, HEAD = 0xd98a3c, COMB = 0xe8412c, BEAK = 0xffb21f;
+    P(tf(ico(0.16, 1), { s: [1.2, 0.8, 0.95], p: [0, 0.36, -0.06] }), FEATHER);            // body
+    P(tf(new THREE.TorusGeometry(0.1, 0.035, 6, 16), { r: [Math.PI / 2, 0, 0], p: [0, 0.43, -0.08] }), COMB); // scarf
+    P(tf(new THREE.BoxGeometry(0.05, 0.12, 0.03), { r: [0.3, 0, 0.2], p: [0.06, 0.37, 0.05] }), COMB);        // scarf tail
+    P(tf(ico(0.135, 2), { p: [0, 0.53, -0.1] }), HEAD);                                         // head
+    for (const [z, y, r] of [[-0.16, 0.66, 0.035], [-0.1, 0.69, 0.042], [-0.04, 0.67, 0.036]]) P(tf(ico(r, 1), { p: [0, y, z] }), COMB); // comb
+    P(tf(new THREE.ConeGeometry(0.045, 0.1, 6), { r: [-Math.PI / 2, 0, 0], p: [0, 0.5, -0.26] }), BEAK);       // beak
+    P(tf(ico(0.03, 1), { s: [0.8, 1.3, 0.8], p: [0, 0.43, -0.22] }), COMB);                     // wattle
+    for (const sd of [1, -1]) {
+      P(tf(ico(0.03, 1), { p: [sd * 0.062, 0.56, -0.2] }), 0xffffff);                             // eyes
+      P(tf(ico(0.016, 0), { p: [sd * 0.066, 0.56, -0.225] }), 0x1a1420);
+      P(tf(new THREE.TorusGeometry(0.036, 0.012, 5, 12), { r: [0.35, sd * 0.25, 0], p: [sd * 0.055, 0.635, -0.17] }), 0x5a3a24); // goggles
+      P(tf(new THREE.CircleGeometry(0.03, 10), { r: [0.35 + Math.PI, sd * 0.25, 0], p: [sd * 0.055, 0.635, -0.172] }), L.focus ? 0x0d1a33 : 0x8fd8ff);
+    }
+    P(tf(new THREE.TorusGeometry(0.128, 0.013, 5, 20), { r: [Math.PI / 2 - 0.35, 0, 0], p: [0, 0.6, -0.09] }), 0x5a3a24); // goggle strap
     // cockpit rim
     P(tf(new THREE.TorusGeometry(0.34, 0.03, 5, 24), { r: [Math.PI / 2, 0, 0], s: [0.95, 1.3, 1], p: [0, 0.3, -0.12] }), DARK);
 

@@ -19,6 +19,7 @@ import { Progression, POWERUPS, UPGRADES, drawCards, rankInfo, upgradeLevels } f
 import { HangarUI, showCards } from './hangar-ui.js';
 import { ShipPreview } from './ship-preview.js';
 import { installIcons } from './icons.js';
+import { cocoSVG, COCO } from './coco.js';
 import { GALAXIES, QUIPS, pick } from './galaxies.js';
 import { Journey } from './journey.js';
 import { StarMapUI, starsHTML } from './starmap-ui.js';
@@ -30,6 +31,9 @@ import { nextStep, Handoff, raceLabel, cheapestAffordableRaceUpgrade, cheapestRa
 
 const $ = (id) => document.getElementById(id);
 installIcons();   // hand-drawn SVG icons instead of emoji
+// Coco (the chicken hero) portraits wherever the markup asks for one.
+document.querySelectorAll('[data-coco]').forEach((el) => { el.innerHTML = cocoSVG(el.dataset.coco); });
+$('welcome-say').innerHTML = COCO.welcome;
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
 let quality = params.get('quality') === 'low' || params.get('quality') === 'high' ? params.get('quality') : initialQuality();
@@ -353,6 +357,23 @@ hapticsBtn.addEventListener('click', () => {
 });
 refreshToggles();
 
+// UI style themes (themes.css). Cycles in Settings, saved on this device.
+const THEMES = [['midnight', 'Midnight Coop'], ['arcade', 'Sunny Arcade'], ['comic', 'Comic Book'], ['retro', 'Retro Space Age'], ['void', 'Void']];
+function refreshStyleBtn() {
+  const cur = document.documentElement.dataset.theme;
+  const t = THEMES.find((x) => x[0] === cur) || THEMES[0];
+  $('btn-style').textContent = `🎨 Style: ${t[1]}`;
+}
+$('btn-style').addEventListener('click', () => {
+  audio.click();
+  const i = THEMES.findIndex((x) => x[0] === document.documentElement.dataset.theme);
+  const next = THEMES[(i + 1) % THEMES.length][0];
+  document.documentElement.dataset.theme = next;
+  store.set('theme', next);
+  refreshStyleBtn();
+});
+refreshStyleBtn();
+
 // Settings screen, including "start again as a new player".
 $('btn-settings').addEventListener('click', () => {
   audio.unlock();
@@ -544,9 +565,9 @@ function onWaveStart() {
   // Tutorial coach on the very first Dodge run.
   if (tutorialStage(prog) === 'dodge' && !journey.endless) {
     const tips = [
-      ['👆 Drag anywhere (or hold ◀ ▶) to dodge hens, eggs & rocks', '🍗 Grab drumsticks: they buy upgrades in the Garage'],
-      ['🛡 Blue orbs give shields: each one saves you from a hit', '🔥 Skim past hazards for bonus points'],
-      ['⚠ Boss next! Your pod fires by itself, you just dodge'],
+      ['Drag anywhere (or hold ◀ ▶) and I\'ll swerve us around hens, eggs & rocks!', 'Grab 🍗 drumsticks! I trade them for upgrades in the Garage.'],
+      ['Blue orbs are 🛡 shields. Each one saves our feathers once!', 'Skim close past hazards for bonus points. I like it spicy 🔥'],
+      ['Boss next! I\'ll do the shooting, you dodge her eggs!'],
     ][Math.min(2, lw)];
     tips.forEach((t, i) => setTimeout(() => { if (state.mode === 'playing') coach(t, 3600); }, 1300 + i * 4200));
   }
@@ -556,7 +577,8 @@ function onWaveStart() {
 let coachTimer = 0;
 function coach(text, ms = 3500) {
   const el = $('coach');
-  el.textContent = text;
+  el.innerHTML = `${cocoSVG('happy', 'coco coco-mini')}<span></span>`;
+  el.lastChild.textContent = text;
   el.classList.remove('hidden');
   el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
   clearTimeout(coachTimer);
@@ -627,7 +649,7 @@ function onBossIntro() {
   hud.showBoss(b.name);
   if (!prog.ftueSeen('bossTip')) {
     prog.ftueMark('bossTip');
-    setTimeout(() => { if (boss.active) coach('🚀 Your pod auto-fires at the boss. Just DODGE the eggs she lays!', 5000); }, 2600);
+    setTimeout(() => { if (boss.active) coach('I\'m firing at her automatically! You just DODGE the eggs she lays!', 5000); }, 2600);
   }
   audio.setBoss(true);
   audio.bossRoar();

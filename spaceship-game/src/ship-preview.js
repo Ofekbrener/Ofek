@@ -18,7 +18,7 @@ function getRenderer() {
   if (shared !== undefined) return shared;
   try {
     const canvas = document.createElement('canvas');
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
     renderer.setPixelRatio(1);
@@ -30,46 +30,13 @@ function getRenderer() {
   return shared;
 }
 
-// Opaque void backdrop: black space, faint stars and a dim horizon arc
-// (additive flames need something to add onto).
-let backdropTex = null;
-function backdrop() {
-  if (backdropTex) return backdropTex;
-  const c = document.createElement('canvas');
-  c.width = 512; c.height = 256;
-  const g = c.getContext('2d');
-  g.fillStyle = '#050508';
-  g.fillRect(0, 0, 512, 256);
-  let seed = 7;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 90; i++) {
-    const r = rnd() < 0.9 ? 0.7 : 1.4;
-    g.fillStyle = `rgba(236, 230, 216, ${0.25 + rnd() * 0.6})`;
-    g.beginPath(); g.arc(rnd() * 512, rnd() * 256, r, 0, Math.PI * 2); g.fill();
-  }
-  // Planet limb glowing at the bottom edge.
-  const glow = g.createRadialGradient(256, 560, 300, 256, 560, 390);
-  glow.addColorStop(0, 'rgba(255, 176, 90, 0)');
-  glow.addColorStop(0.78, 'rgba(255, 176, 90, 0.18)');
-  glow.addColorStop(0.8, 'rgba(255, 194, 58, 0.55)');
-  glow.addColorStop(0.83, 'rgba(255, 176, 90, 0.08)');
-  glow.addColorStop(1, 'rgba(255, 176, 90, 0)');
-  g.fillStyle = glow;
-  g.fillRect(0, 0, 512, 256);
-  g.fillStyle = '#0b0a10';
-  g.beginPath(); g.arc(256, 560, 318, 0, Math.PI * 2); g.fill();
-  backdropTex = new THREE.CanvasTexture(c);
-  backdropTex.colorSpace = THREE.SRGBColorSpace;
-  return backdropTex;
-}
-
 export class ShipPreview {
   constructor(canvas, { spin = 0.7, pitch = 0.32 } = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.spin = spin;
     this.scene = new THREE.Scene();
-    this.scene.background = backdrop();
+    this.scene.background = null;   // transparent: the theme's CSS backdrop shows through
     this.camera = new THREE.PerspectiveCamera(28, 2, 0.1, 50);
     this.pitch = pitch;
     this.dist = 5.7;

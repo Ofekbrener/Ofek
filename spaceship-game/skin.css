@@ -374,3 +374,40 @@ html, body { background: #030305; }
 .primary-btn, .tab.active, .trophy-chip, .buy-btn, .race-btn, .danger-btn, .mode-card, .hangar-tut, .coach, #galaxy-card, .ho-burst, .card.picked, .addon-slot.active, .item-btn.ready, .boost-btn { --icon-line: #120f16; }
 .trophy-chip { background: var(--yolk); border-color: #050408; color: #1a1420; }
 .trophy-chip b { color: #1a1420; }
+
+/* ==========================================================================
+   Coco, the chicken hero (theme-independent layout)
+   ========================================================================== */
+.coco { display: block; width: 100%; height: 100%; overflow: visible; }
+.welcome-panel { display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 400px; }
+.welcome-hero { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.coco-big { width: 170px; height: 170px; animation: cocoBob 2.4s ease-in-out infinite; }
+@keyframes cocoBob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6px) rotate(2deg); } }
+.speech {
+  position: relative; padding: 12px 14px; border-radius: 16px;
+  background: var(--speech-bg, #fffaf0); color: var(--speech-fg, #1a1420);
+  border: 3px solid var(--speech-line, #050408); box-shadow: 0 4px 0 #000;
+  font-weight: 600; line-height: 1.4; text-align: left;
+}
+.speech b { color: inherit; }
+.speech-up::before {
+  content: ''; position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+  border: 11px solid transparent; border-bottom-color: var(--speech-line, #050408); border-top: 0;
+}
+.speech-up::after {
+  content: ''; position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  border: 8px solid transparent; border-bottom-color: var(--speech-bg, #fffaf0); border-top: 0;
+}
+#welcome-say { font-size: 16px; }
+#btn-welcome-go { width: 100%; }
+.ns-row { align-items: center; }
+.ns-coco { position: relative; flex: 0 0 60px; height: 60px; }
+.ns-coco > div { width: 60px; height: 60px; }
+.ns-coco .ns-icon { position: absolute; right: -6px; bottom: -4px; width: 26px; height: 26px; flex: none; font-size: 14px; border-radius: 9px; }
+.coach { display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 12px 8px 8px; }
+.coach .coco-mini { flex: 0 0 48px; width: 48px; height: 48px; }
+.handoff-panel { position: relative; }
+.ho-coco { position: absolute; left: -14px; top: -34px; width: 84px; height: 84px; transform: rotate(-8deg); pointer-events: none; }
+.coco-line { display: flex; align-items: flex-start; gap: 8px; }
+.coco-mini-wrap { flex: 0 0 54px; height: 54px; }
+.coco-line .speech { margin: 0; font-size: 14px; }

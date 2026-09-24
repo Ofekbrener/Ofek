@@ -1,6 +1,7 @@
 import { RACE_UPGRADES, CAREER, careerIndex } from './race/leagues.js';
 import { upgradeCost } from './progression.js';
 import { GALAXIES } from './galaxies.js';
+import { cocoSVG } from './coco.js';
 
 // First-time user experience: welcome screen, guided hand-off modals and the
 // "next step" card that always names the single next action of the core loop:
@@ -141,6 +142,7 @@ export class Handoff {
     if (forced && buttons.some((b) => b.primary)) buttons = buttons.filter((b) => b.primary);
     clearTimeout(this.pending);
     $('ho-icon').textContent = icon;
+    $('ho-coco').innerHTML = cocoSVG(celebrate ? 'wow' : 'happy');
     $('ho-title').textContent = title;
     $('ho-text').innerHTML = text;
     this.el.classList.toggle('celebrate', celebrate);
