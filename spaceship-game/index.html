@@ -19,7 +19,7 @@
   <link rel="stylesheet" href="skin.css">
   <link rel="stylesheet" href="themes.css">
   <script type="importmap">
-    { "imports": { "three": "./vendor/three.module.min.js" } }
+    { "imports": { "three": "./vendor/three.module.min.js", "cannon-es": "./vendor/cannon-es.min.js" } }
   </script>
 </head>
 <body>
@@ -100,10 +100,10 @@
           <span class="mc-bar"><span id="mc-dodge-fill"></span></span>
           <span id="mc-dodge-meta" class="mc-meta">Galaxy 1/5</span>
         </button>
-        <button id="btn-rescue" class="mode-card rescue-card">
-          <span class="mc-top"><span class="mc-icon">🥚</span><span class="mc-title">RESCUE</span></span>
-          <span class="mc-bar"><span id="mc-nest-fill"></span></span>
-          <span id="mc-nest-meta" class="mc-meta">Nest 0/40</span>
+        <button id="btn-sling" class="mode-card sling-card">
+          <span class="mc-top"><span class="mc-icon">🎯</span><span class="mc-title">CATAPULT</span></span>
+          <span class="mc-bar"><span id="mc-sling-fill"></span></span>
+          <span id="mc-sling-meta" class="mc-meta">★ 0/45</span>
         </button>
         <button id="btn-hangar" class="mode-card garage-card">
           <span class="mc-top"><span class="mc-icon">🛠</span><span class="mc-title">GARAGE</span></span>
@@ -122,16 +122,61 @@
       </div>
     </div>
 
-    <!-- Egg Rescue mini-game -->
-    <div id="egg-rescue" class="egg-rescue hidden">
-      <canvas id="er-canvas"></canvas>
-      <div class="er-hud">
-        <div class="er-box"><small>EGGS</small><b id="er-score">0</b></div>
-        <div class="er-box"><small>TIME</small><b id="er-time">60</b></div>
-        <div class="er-box er-hearts" id="er-hearts">❤❤❤</div>
-        <button id="er-quit" class="icon-btn" aria-label="Quit">✕</button>
+    <!-- Coco Catapult: level select -->
+    <div id="screen-sling" class="screen hidden">
+      <div class="panel sling-panel">
+        <div class="hangar-head">
+          <h2>COCO CATAPULT</h2>
+          <div class="balance big">★ <b id="sl-stars">0</b><span class="dim">/45</span></div>
+        </div>
+        <div id="sl-worlds" class="tabs sl-worlds"></div>
+        <div id="sl-world-info" class="sl-world-info"></div>
+        <div id="sl-levels" class="sl-levels"></div>
+        <button id="btn-sl-home" class="secondary-btn">🏠 HOME</button>
       </div>
-      <div id="er-combo" class="er-combo"></div>
+    </div>
+
+    <!-- Coco Catapult: in-game HUD -->
+    <div id="sling-hud" class="sling-hud hidden">
+      <div class="sl-top">
+        <div class="er-box sl-lvl"><small id="sl-hud-world">LEVEL</small><b id="sl-hud-level">1-1</b></div>
+        <div class="er-box sl-score"><small>SCORE</small><b id="sl-hud-score">0</b></div>
+        <button id="btn-sl-pause" class="icon-btn" aria-label="Pause">❚❚</button>
+      </div>
+      <div id="sl-shots" class="sl-shots"></div>
+      <div id="sl-hint" class="sl-hint hidden"></div>
+      <div id="sl-pops"></div>
+      <div id="sl-pause" class="rh-overlay hidden">
+        <div class="panel">
+          <h2>PAUSED</h2>
+          <button id="btn-sl-resume" class="primary-btn">RESUME</button>
+          <div class="btn-row">
+            <button id="btn-sl-restart" class="secondary-btn">↻ RESTART</button>
+            <button id="btn-sl-levels" class="secondary-btn">🎯 LEVELS</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coco Catapult: level result -->
+    <div id="screen-sling-result" class="screen hidden">
+      <div class="panel sl-result">
+        <div id="slr-level" class="final-label">LEVEL 1-1</div>
+        <h2 id="slr-title" class="victory-title">LEVEL CLEAR!</h2>
+        <div id="slr-stars" class="stars-row big"></div>
+        <div class="payout">
+          <div class="payout-row"><span>Score</span><b id="slr-score">0</b></div>
+          <div class="payout-row"><span>Unused shots</span><b id="slr-bonus">0</b></div>
+          <div class="payout-row total"><span>🍗 Earned</span><b id="slr-earned">0</b></div>
+          <div id="slr-note" class="unlock-note hidden"></div>
+        </div>
+        <button id="btn-slr-next" class="primary-btn">NEXT LEVEL ➜</button>
+        <div class="btn-row">
+          <button id="btn-slr-retry" class="secondary-btn">↻ RETRY</button>
+          <button id="btn-slr-levels" class="secondary-btn">🎯 LEVELS</button>
+          <button id="btn-slr-home" class="secondary-btn home-btn" aria-label="Home">🏠</button>
+        </div>
+      </div>
     </div>
 
     <!-- Settings: sound, vibration, reset progress -->
