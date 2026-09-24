@@ -20,6 +20,7 @@ import { HangarUI, showCards } from './hangar-ui.js';
 import { ShipPreview } from './ship-preview.js';
 import { installIcons } from './icons.js';
 import { cocoSVG, COCO } from './coco.js';
+import { EggRescue, NEST_SIZE, PETS } from './egg-rescue.js';
 import { GALAXIES, QUIPS, pick } from './galaxies.js';
 import { Journey } from './journey.js';
 import { StarMapUI, starsHTML } from './starmap-ui.js';
@@ -193,6 +194,8 @@ function renderModeCards() {
   here.sky.forEach((c, i) => hs.setProperty(`--hs-${i + 1}`, c));
   here.planet.forEach((c, i) => hs.setProperty(`--hp-${i + 1}`, c));
   $('home-where').textContent = `📍 ${GALAXIES[gi].name}`;
+  $('mc-nest-fill').style.width = `${(prog.data.nest / NEST_SIZE) * 100}%`;
+  $('mc-nest-meta').textContent = `Nest ${prog.data.nest}/${NEST_SIZE}`;
   const next = prog.nextCareerRace;
   const done = CAREER.filter((c) => { const b = prog.bestPlace(c.track.id); return b && b <= 3; }).length;
   $('mc-race-name').textContent = next ? next.track.name : 'Career complete! 👑';
@@ -234,7 +237,7 @@ function renderNextStep() {
   // Tutorial: only the current step's button is live; the rest are locked.
   const stage = tutorialStage(prog);
   const allow = stage ? TUTORIAL_ALLOW[stage] : null;
-  for (const [id, key] of [['btn-start', 'dodge'], ['btn-race', 'race'], ['btn-hangar', 'garage']]) {
+  for (const [id, key] of [['btn-start', 'dodge'], ['btn-race', 'race'], ['btn-hangar', 'garage'], ['btn-rescue', 'rescue']]) {
     $(id).classList.toggle('tut-locked', !!stage && key !== allow);
     $(id).classList.toggle('tut-glow', !!stage && key === allow);
   }
@@ -1328,6 +1331,57 @@ function maybeFinishTutorial(stageBefore) {
 }
 
 $('btn-race').addEventListener('click', openRaceMenu);
+
+// ---------------------------------------------------------------- Egg Rescue
+const eggRescue = new EggRescue({ audio, haptics, onExit: (r) => endRescue(r) });
+$('btn-rescue').addEventListener('click', startRescue);
+function startRescue() {
+  audio.unlock();
+  audio.click();
+  handoff.hide();
+  showScreen(null);
+  state.mode = 'rescue';
+  eggRescue.start();
+}
+function endRescue(r) {
+  state.mode = 'menu';
+  updateMenuMeta();
+  showScreen('start');
+  if (!r) return;
+  const earned = r.score;
+  prog.bankRun(earned, earned * 3);
+  prog.data.nest += r.caught;
+  const newBest = r.score > prog.data.rescueBest;
+  if (newBest) prog.data.rescueBest = r.score;
+  // A full Nest hatches a pet add-on (or a drumstick bonus once every pet is owned).
+  let hatched = '';
+  while (prog.data.nest >= NEST_SIZE) {
+    prog.data.nest -= NEST_SIZE;
+    const pet = PETS.find((id) => !prog.ownsAddon(id));
+    if (pet) {
+      prog.data.addons.push(pet);
+      prog.data.wear.pet = pet;
+      hatched = `<br><b>🐣 The Nest hatched a new pet!</b> It's flying next to your pod now.`;
+    } else {
+      prog.data.crystals += 150;
+      hatched = '<br><b>🐣 The Nest hatched 🍗 150 bonus drumsticks!</b>';
+    }
+  }
+  prog.save();
+  ship.setUpgrades(upgradeLevels(prog));
+  homePreview.setUpgrades(upgradeLevels(prog));
+  updateMenuMeta();
+  handoff.show({
+    icon: '🥚',
+    title: r.hearts <= 0 ? 'BOOM! EGG-SPLODED' : 'EGGS RESCUED!',
+    text: `You scored <b>${r.score}</b>${newBest ? ' (new best!)' : ''} · best combo ${r.bestCombo}.<br>+🍗 ${earned} drumsticks · Nest ${prog.data.nest}/${NEST_SIZE}${hatched}`,
+    celebrate: !!hatched || newBest,
+    buttons: [
+      { label: '🥚 PLAY AGAIN', primary: true, onClick: () => startRescue() },
+      { label: '🏠 HOME' },
+    ],
+  });
+}
 $('btn-next-step').addEventListener('click', () => runStep(currentStep || nextStep(prog)));
 $('btn-map-race').addEventListener('click', () => { const r = prog.nextCareerRace; if (r) goRace(r.league, r.track); else openRaceMenu(); });
 $('btn-welcome-go').addEventListener('click', () => {
@@ -1480,6 +1534,7 @@ function frame(now) {
     renderer.render(scene, camera);
     return;
   }
+  if (state.mode === 'rescue') return;   // Egg Rescue draws on its own 2D canvas
   if (state.mode === 'race' || state.mode === 'raceDone' || state.mode === 'raceResults') {
     updateRace(realDt);
     if (DEBUG) debugEl.textContent = `fps ${perf.fps.toFixed(0)}  q:${quality}\ncalls ${renderer.info.render.calls}\n${state.mode} place ${race.playerPlace} v ${race.player ? race.player.v.toFixed(1) : '-'}`;

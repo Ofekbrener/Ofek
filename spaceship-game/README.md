@@ -31,6 +31,7 @@ Space hens have overrun five galaxies. Open the **Star Map**, pick a galaxy, and
 
 - Art direction: hand-drawn SVG icons (`src/icons.js`), shared component styles in `skin.css` and five selectable styles in `themes.css` (Settings → Style: Midnight Coop, Sunny Arcade, Comic Book, Retro Space Age, Void). Coco the chicken (`src/coco.js`) pilots the pod and guides the player.
 - Each galaxy has **4 waves** (the first galaxy has 3), with a power-up choice after each wave, and then a **boss**. In boss fights your pod **auto-fires**; your job is to dodge the eggs she lays. Crashing lets you retry from the wave (or boss) you reached.
+- **Egg Rescue** (Home → Rescue): a 60-second catching mini-game. Catch the eggs the Space Hens drop; golden eggs score big, rotten eggs and bombs hurt. Pays drumsticks and fills the Nest, which hatches a pet every 40 eggs.
 - **Tutorial:** new players are guided through one full loop (Race 1 → Dodge → Garage upgrade → Race 2) before everything unlocks.
 - Beating a boss rains drumsticks, earns **1–3 stars** (★ clear, ★★ no shield lost, ★★★ flawless and 70%+ of the drumsticks), unlocks the next galaxy, and lets you **warp through hyperspace** into it.
 - **🎁 Gift boxes** give a random power-up: +1 shield, Mega Magnet, Double Drumsticks, or Feather Dash (invincible and smashes through hens).

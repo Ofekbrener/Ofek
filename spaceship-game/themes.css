@@ -168,3 +168,36 @@ html[data-theme="retro"] .screen.home-screen {
   padding: 4px 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.35); color: #f3e6c8;
   font-family: var(--display); font-size: 13px; letter-spacing: 0.06em; white-space: nowrap; pointer-events: none;
 }
+
+/* ---------- Egg Rescue ---------- */
+.home-modes { gap: 9px; }
+.rescue-card { background: var(--paper); color: var(--ink); box-shadow: inset 0 -6px 0 #d8c69c, 0 4px 0 var(--ink); --icon-line: #1f2a3a; }
+.rescue-card .mc-title, .rescue-card .mc-meta { color: var(--ink); -webkit-text-stroke: 0; text-shadow: none; }
+.rescue-card .mc-bar > span { background: var(--tomato); }
+.egg-rescue { position: absolute; inset: 0; z-index: 20; background: #16202e; touch-action: none; }
+#er-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.er-hud {
+  position: absolute; top: calc(10px + var(--safe-top)); left: 12px; right: 12px;
+  display: flex; gap: 8px; align-items: center; pointer-events: none;
+}
+.er-box {
+  display: flex; flex-direction: column; align-items: center; min-width: 64px; padding: 4px 10px; border-radius: 14px;
+  background: var(--paper); border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); color: var(--ink);
+}
+.er-box small { font-size: 10px; letter-spacing: 0.1em; font-weight: 700; }
+.er-box b { font-family: var(--display); font-size: 22px; line-height: 1; font-weight: 400; }
+.er-hearts { color: var(--tomato); font-size: 20px; letter-spacing: 2px; justify-content: center; min-height: 44px; }
+.er-hud #er-quit { margin-left: auto; pointer-events: auto; }
+.er-combo {
+  position: absolute; top: calc(78px + var(--safe-top)); left: 0; right: 0; text-align: center; pointer-events: none;
+  font-family: var(--display); font-size: 22px; color: var(--yolk); -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill;
+}
+@media (max-height: 700px) { .home-modes .mode-card { padding: 8px 6px; } .home-modes .mc-icon { font-size: 20px; } }
+@media (max-height: 720px) {
+  .home-modes { top: calc(84px + var(--safe-top)); bottom: calc(132px + var(--safe-bottom)); gap: 7px; }
+  .home-modes .mc-name, .home-modes .mc-bar { display: none; }
+  .home-modes .mode-card { padding: 7px 6px; }
+  .home-next .ns-text { display: none; }
+  .home-where { bottom: calc(142px + var(--safe-bottom)); }
+  .home-spin-hint { display: none; }
+}

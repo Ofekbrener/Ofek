@@ -80,7 +80,7 @@ export function rankInfo(xp) {
 
 const DEFAULT_SAVE = {
   v: 2, crystals: 0, upgrades: {}, skins: ['classic'], skin: 'classic', xp: 0,
-  addons: [], wear: {},
+  addons: [], wear: {}, nest: 0, rescueBest: 0,
   galaxy: { unlocked: 1, stars: [0, 0, 0, 0, 0] },
   endlessBest: { wave: 0, score: 0 },
   race: { best: {} },
@@ -129,6 +129,8 @@ export class Progression {
       for (const [slot, id] of Object.entries((d.wear && typeof d.wear === 'object') ? d.wear : {})) {
         if (merged.addons.includes(id) && COSMETICS.find((c) => c.id === id).slot === slot) merged.wear[slot] = id;
       }
+      merged.nest = Math.max(0, merged.nest | 0);
+      merged.rescueBest = Math.max(0, merged.rescueBest | 0);
       merged.crystals = Math.max(0, merged.crystals | 0);
       merged.xp = Math.max(0, merged.xp | 0);
       return merged;
