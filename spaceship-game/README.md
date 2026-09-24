@@ -46,6 +46,7 @@ The start screen offers two journeys that feed each other:
 - **🏁 Race League**: spend those drumsticks in the **Race Garage** on Hyper Engine, Afterburners, Gravity Grip, Boost Tank and Egg-Proof Armor. Then race four chicken rivals in rocket egg-pods (Nugget, Colonel Cluck, Big Bertha, The Kentucky Flash…) on procedurally generated neon tracks.
   - **Controls:** the ship accelerates on its own, you drag (or use ◀ ▶) to steer, and you tap **BOOST** (Space / ↑ on desktop).
   - **Boost** charges from boost pads and from drafting behind rivals.
+  - **Drumsticks on track**: a few short trails of 🍗 per lap. Fly through them to add a little to your race prize (1 each; they respawn every lap).
   - **Corners** push you outward, so take the inside line; Gravity Grip reduces the drift. Rocks and giant eggs on the track spin you out.
   - **Leagues:** Rookie Roost Cup, Pro Poultry Series and Grand Hen Prix, with 3 tracks each. Podium finishes win drumstick prizes and 🏆 trophies.
 - **How they unlock each other:** galaxies 2–5 need 1 / 2 / 4 / 6 race trophies. The Pro league needs Galaxy 2 cleared plus 2 Rookie trophies, and the Grand Hen Prix needs Galaxy 4 cleared plus 2 Pro trophies.

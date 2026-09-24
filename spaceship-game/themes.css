@@ -230,3 +230,23 @@ html[data-theme="retro"] .screen.home-screen {
 .sl-result .stars-row { font-size: 46px; justify-content: center; }
 .sl-level .stars-row .off, .sl-result .stars-row .off { color: #d8c69c; -webkit-text-stroke: 1.5px #b8a276; }
 .sl-level .stars-row span:not(.off) { color: var(--yolk); -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; }
+
+/* Race: drumsticks collected on track */
+.rh-drums { font-size: 16px; font-weight: 800; color: #ffe2b0; text-shadow: 0 1px 0 rgba(0,0,0,.5); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+.rh-drums b { color: #ffd35c; font-size: 18px; }
+.rh-drums.pop { animation: rhDrumPop .35s ease-out; }
+@keyframes rhDrumPop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.rr-split { display: inline; margin-left: 6px; font-size: 11px; font-weight: 600; opacity: .65; letter-spacing: 0; }
+@media (max-height: 720px) {
+  #screen-race-results .rr-row { padding: 3px 10px; }
+  #screen-race-results .rr-table { gap: 4px; }
+  #screen-race-results .rr-place { font-size: 36px; margin: 0; }
+  #screen-race-results .final-label { margin: 0; }
+  #screen-race-results .victory-title { font-size: 26px; margin-bottom: 0; }
+  #screen-race-results .payout { padding: 8px 12px; }
+  #screen-race-results .unlock-note { font-size: 12px; margin-top: 6px; }
+  #screen-race-results .primary-btn { font-size: 17px; min-height: 0; padding-top: 10px; padding-bottom: 10px; margin-top: 8px; }
+  #screen-race-results .secondary-btn { min-height: 0; padding-top: 8px; padding-bottom: 8px; }
+  #screen-race-results .btn-row { margin-top: 8px; }
+  #screen-race-results .rr-power { margin-top: 4px; }
+}
