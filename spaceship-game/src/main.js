@@ -1186,6 +1186,7 @@ function startRace(league, track) {
   // Beginner assist: after 2 failed attempts at race 1, rivals ease off a little.
   const assist = ci === 0 && (raceFails[track.id] || 0) >= 2;
   race.load(league, track, g, prog.raceStats, prog.skin, { careerIndex: ci, tutorial: ci === 0, assist, upgrades: upgradeLevels(prog) });
+  $('rh-drums').querySelector('b').textContent = '0';
   input.reset();
   input.enabled = true;
   input.raceMode = true;
@@ -1237,6 +1238,12 @@ race.events = {
   onFinalLap() { raceMsg('FINAL LAP!', 1500); audio.setBoss(true); haptics.waveClear(); },
   onBoost() { audio.missileLaunch(); haptics.tap(); race.shake = 0.35; },
   onPad() { audio.giftOpen(); },
+  onDrum(n) {
+    audio.pickup(n % 8); haptics.tap();
+    const el = $('rh-drums');
+    el.querySelector('b').textContent = n;
+    el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+  },
   onBump() { audio.splat(); haptics.bossHit(); race.shake = 0.45; },
   onCrash(kind) { audio.missileHit(); haptics.shieldBreak(); race.shake = 1; raceMsg(kind === 'egg' ? 'SCRAMBLED!' : 'OUCH!', 800); },
   onWall(hard) {
@@ -1271,13 +1278,14 @@ function finishRace(results, place) {
   const lg = state.raceLeague;
   const t = state.raceTrack;
   const prize = lg.prize[place - 1] || 0;
+  const drums = race.drums || 0;
   const openBefore = GALAXIES.map((_, i) => prog.galaxyOpen(i));
   const nextDef = CAREER[careerIndex(t.id) + 1] || null;
   const nextWasOpen = nextDef && prog.raceUnlocked(nextDef.track.id);
   const firstTrophy = prog.trophies === 0;
   const tutBefore = tutorialStage(prog);
   const rec = prog.recordRace(t.id, place);
-  prog.bankRun(prize, prize * 4);
+  prog.bankRun(prize + drums, prize * 4);
   updateMenuMeta();
 
   // Explain what the trophy did (or what a podium would have done).
@@ -1298,7 +1306,7 @@ function finishRace(results, place) {
   state.nextRace = next;
   const title = place === 1 ? pick(RACE_QUIPS.win) : place <= 3 ? pick(RACE_QUIPS.podium) : pick(RACE_QUIPS.lose);
   showResults({
-    results, place, prize, newTrophy: notes.join('<br>'), title, trackName: t.name,
+    results, place, prize, drums, newTrophy: notes.join('<br>'), title, trackName: t.name,
     nextLabel: next ? `NEXT: ${next.t.name} ➜` : null,
     power: { have: prog.shipPower, need: t.power },
   });

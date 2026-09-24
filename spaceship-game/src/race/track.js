@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { drumstickGeometry } from '../geo.js';
 
 export const TRACK_HALF = 6;   // half width of the drivable surface
 
@@ -125,6 +126,17 @@ export class Track {
       if (!free(s, 12)) continue;
       const egg = rng() < 0.4;
       this.obstacles.push({ s, x: (rng() * 2 - 1) * (TRACK_HALF - 1.2), r: egg ? 0.8 : 0.7 + rng() * 0.4, egg, rot: rng() * 6 });
+    }
+
+    // Drumstick trails: a few short weaving lines of drumsticks to fly through.
+    // Only the player collects them; they come back every lap.
+    this.drums = [];
+    const clear = (s) => free(s, 10) && !this.obstacles.some((o) => Math.abs(o.s - s) < 6);
+    for (let i = 0; i < 3; i++) {
+      const s0 = ((i + 0.35 + rng() * 0.3) / 3) * L;
+      if (s0 < 50 || s0 + 18 > L - 10 || !clear(s0) || !clear(s0 + 16)) continue;
+      const x0 = (rng() * 2 - 1) * 2.6, sway = (rng() < 0.5 ? -1 : 1) * (0.8 + rng() * 1.2);
+      for (let k = 0; k < 5; k++) this.drums.push({ s: s0 + k * 4, x: x0 + Math.sin(k * 0.8) * sway, taken: false });
     }
   }
 
@@ -371,6 +383,14 @@ export class Track {
       this.boxMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       group.add(this.boxMesh);
     }
+    // Drumsticks (animated in update())
+    if (this.drums.length) {
+      const drumMat = new THREE.MeshStandardMaterial({ vertexColors: true, emissive: 0x5a2a08, emissiveIntensity: 1, roughness: 0.45, flatShading: true });
+      this.drumMesh = new THREE.InstancedMesh(drumstickGeometry(), drumMat, this.drums.length);
+      this.drumMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      this.drumMesh.frustumCulled = false;
+      group.add(this.drumMesh);
+    }
     this._time = 0;
     this._f2 = { p: new THREE.Vector3(), t: new THREE.Vector3(), r: new THREE.Vector3(), u: new THREE.Vector3() };
     this._m2 = new THREE.Matrix4();
@@ -415,6 +435,16 @@ export class Track {
         this.boxMesh.setMatrixAt(i, m.compose(f.p, q, s));
       });
       this.boxMesh.instanceMatrix.needsUpdate = true;
+    }
+    if (this.drumMesh) {
+      this.drums.forEach((d, i) => {
+        this.frame(d.s, d.x, f);
+        f.p.addScaledVector(f.u, 1.0 + Math.sin(this._time * 3 + i * 0.7) * 0.15);
+        q.setFromEuler(new THREE.Euler(0.4, this._time * 2.5 + i * 0.5, 0.3));
+        s.setScalar(d.taken ? 0.001 : 1.9);
+        this.drumMesh.setMatrixAt(i, m.compose(f.p, q, s));
+      });
+      this.drumMesh.instanceMatrix.needsUpdate = true;
     }
     for (const w of this.wellMeshes || []) w.rotateZ(dt * 2);
   }

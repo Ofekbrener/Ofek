@@ -175,6 +175,7 @@ export class RaceSession {
     this.track = new Track(trackDef, galaxy);
     this.track.build(this.scene);
     this.laps = trackDef.laps;
+    this.drums = 0;
     this.totalLen = this.track.length * this.laps;
     this.feat = this.track.features;
     this.difficulty = Math.min(1, Math.max(0, opts.careerIndex || 0) / 8);
@@ -575,6 +576,7 @@ export class RaceSession {
     const lap = Math.floor(Math.max(0, r.s) / L);
     if (lap > r.lap) {
       r.lap = lap;
+      if (r.isPlayer) for (const d of tr.drums) d.taken = false;
       if (r.isPlayer && lap < this.laps && e.onLap) e.onLap(lap + 1);
       if (r.isPlayer && lap === this.laps - 1 && !this.finalLapAnnounced) { this.finalLapAnnounced = true; if (e.onFinalLap) e.onFinalLap(); }
     }
@@ -592,6 +594,19 @@ export class RaceSession {
         r.energy = Math.min(1, r.energy + 0.4 * (r.isPlayer ? this.stats.charge : 1));
         r.v += 4;
         if (r.isPlayer && e.onPad) e.onPad();
+      }
+    }
+
+    // Drumsticks (player only)
+    if (r.isPlayer) {
+      for (const d of tr.drums) {
+        if (!d.taken && crossed(d.s, 0.5) && Math.abs(r.x - d.x) < 1.3) {
+          d.taken = true;
+          this.drums++;
+          this._frameOf(r, this._g);
+          this.particles.burst(this._g.p.x, this._g.p.y + 1, this._g.p.z, 10, 4, 0.4, 0.3, [[1, 0.7, 0.3], [1, 0.9, 0.5]], 2, 0);
+          if (e.onDrum) e.onDrum(this.drums);
+        }
       }
     }
 
@@ -920,6 +935,7 @@ export class RaceSession {
       item: p.item,
       drift: p.driftT,
       onIce: p.onIce,
+      drums: this.drums,
     };
   }
 }

@@ -77,7 +77,7 @@ export class RaceMenuUI {
 }
 
 // Results table after a race.
-export function showResults({ results, place, prize, newTrophy, title, trackName, nextLabel, power }) {
+export function showResults({ results, place, prize, drums = 0, newTrophy, title, trackName, nextLabel, power }) {
   $('rr-title').textContent = title;
   $('rr-track').textContent = trackName.toUpperCase();
   $('rr-place').innerHTML = `${MEDAL[place] || ''} ${ordinal(place)}`;
@@ -89,7 +89,8 @@ export function showResults({ results, place, prize, newTrophy, title, trackName
     row.innerHTML = `<span>${ordinal(r.place)}</span><span><i style="background:${hex(r.color)}"></i>${r.name}</span><span>${fmtTime(r.time)}</span>`;
     tb.appendChild(row);
   }
-  $('rr-prize').textContent = `+${prize}`;
+  $('rr-split').textContent = drums ? `${prize} prize + ${drums} on track` : '';
+  $('rr-prize').textContent = `+${prize + drums}`;
   const pw = $('rr-power');
   pw.classList.toggle('hidden', !power);
   if (power) pw.innerHTML = powerHTML(power.have, power.need);
