@@ -16,22 +16,22 @@ export const GALAXIES = [
     id: 'coop',
     name: 'Coop Nebula',
     tagline: 'Where the feathers first flew',
-    colors: { floor: 0x55683a, lane: 0xffc23a, horizon: 0x3a2a1c, bg: 0x030305, sky: 0xb8b2a6, rim: 0xffb070, star: 0xece6d8 },
+    colors: { floor: 0x7a9150, lane: 0xe8b23a, horizon: 0xe07a3a, bg: 0x16202e, sky: 0xf3e6c8, rim: 0xd9582b, star: 0xf3e6c8 },
     planet: { a: 0x2fd6c3, b: 0x1b2f7a, ring: 0xff9ad5, x: -70, y: 36, size: 30 },
     // Whole-scene look (worlds.js / environment.js / lighting.js). `style` picks
     // the floor pattern, hero backdrop and weather shape; the rest is tweened.
     world: {
       style: 0,
-      sky: { top: 0x010103, horizon: 0x3a2618, bottom: 0x040305, neb1: 0x4a3c30, neb2: 0x1c1822, sun: 0xffd9a0, density: 0.2, scale: 1.0, rays: 0.0, scan: 0.0 },
-      fog: { color: 0x07060a, near: 38, far: 128 },
-      floor: { ground: 0x0b0a0d, alpha: 0.97 },
+      sky: { top: 0x16202e, horizon: 0xe07a3a, bottom: 0x2f5358, neb1: 0xe8b23a, neb2: 0x2f7f7a, sun: 0xf3e6c8, density: 0.25, scale: 1.0, rays: 0.0, scan: 0.0 },
+      fog: { color: 0x5a3e36, near: 45, far: 140 },
+      floor: { ground: 0x223638, alpha: 0.97 },
       hero: { x: 22, y: 64, size: 44, asp: 1.9, a: 0xd8362c, b: 0xffcf5a, c: 0xfff1c0 },
       props: [
         { kind: 'hay', count: 14, x: [5.4, 11], y: [0, 0], s: [0.85, 1.35] },
         { kind: 'fence', count: 10, x: [4.9, 6.2], y: [0, 0], s: [0.9, 1.1] },
       ],
       weather: { color: 0xece6d8, color2: 0xffc23a, size: 2.2, wind: [0.4, -0.5, 0], sway: 0.9, alpha: 0.55 },
-      light: { sky: 0xa8a4b0, ground: 0x1a1612, hemi: 1.1, key: 0xfff0d8, keyI: 2.5, rim: 0xffb070, rimI: 1.6 },
+      light: { sky: 0xf3e6c8, ground: 0x2f5358, hemi: 1.35, key: 0xffe0b0, keyI: 2.4, rim: 0xd9582b, rimI: 1.4 },
     },
     hazards: { rocks: 1, cluster: 0.7, wall: 0, flock: 0.8, bombers: 0.3, barrier: 0, drifter: 0, bigEgg: 0, comet: 0, laser: 0, ice: 0, well: 0 },
     speed: [18, 24],
@@ -54,8 +54,8 @@ export const GALAXIES = [
     planet: { a: 0xffd35c, b: 0xb3541e, ring: 0xfff1c9, x: 80, y: 30, size: 36 },
     world: {
       style: 1,
-      sky: { top: 0x030201, horizon: 0x9a5214, bottom: 0x080402, neb1: 0xffd35c, neb2: 0xff6a2f, sun: 0xffe08a, density: 0.38, scale: 0.8, rays: 1.0, scan: 0.0 },
-      fog: { color: 0x160a03, near: 38, far: 130 },
+      sky: { top: 0x1a2436, horizon: 0xe8a23a, bottom: 0x3a2a1a, neb1: 0xffd35c, neb2: 0xff6a2f, sun: 0xffe08a, density: 0.38, scale: 0.8, rays: 1.0, scan: 0.0 },
+      fog: { color: 0x6a4a2a, near: 40, far: 135 },
       floor: { ground: 0x201004, alpha: 0.6 },
       hero: { x: 14, y: 60, size: 46, asp: 1.8, a: 0xffc21f, b: 0xff7a14, c: 0xffe9b0 },
       props: [
@@ -84,8 +84,8 @@ export const GALAXIES = [
     planet: { a: 0xff7a2f, b: 0x5a0e0e, ring: 0xffd23a, x: -85, y: 26, size: 40 },
     world: {
       style: 2,
-      sky: { top: 0x020000, horizon: 0xa8260c, bottom: 0x070101, neb1: 0x5a140a, neb2: 0xff5a1f, sun: 0xff8a2a, density: 0.72, scale: 1.3, rays: 0.0, scan: 0.0 },
-      fog: { color: 0x140302, near: 32, far: 120 },
+      sky: { top: 0x1a1c2a, horizon: 0xd9582b, bottom: 0x2a1410, neb1: 0x5a140a, neb2: 0xff5a1f, sun: 0xff8a2a, density: 0.72, scale: 1.3, rays: 0.0, scan: 0.0 },
+      fog: { color: 0x4a2418, near: 32, far: 120 },
       floor: { ground: 0x0c0302, alpha: 0.7 },
       hero: { x: 12, y: 62, size: 44, asp: 1.8, a: 0xff8a1f, b: 0xc8200a, c: 0xffd23a },
       props: [
@@ -114,9 +114,9 @@ export const GALAXIES = [
     planet: { a: 0xd8f6ff, b: 0x2a5bbf, ring: 0xaee9ff, x: 70, y: 40, size: 34 },
     world: {
       style: 3,
-      sky: { top: 0x010204, horizon: 0x1c3a64, bottom: 0x03070e, neb1: 0x7ae8ff, neb2: 0x9a7bff, sun: 0xc9f6ff, density: 0.3, scale: 0.9, rays: 0.0, scan: 0.0 },
-      fog: { color: 0x060d18, near: 40, far: 140 },
-      floor: { ground: 0x0a1420, alpha: 0.75 },
+      sky: { top: 0x14243a, horizon: 0x7fb8b0, bottom: 0x2a4a5a, neb1: 0x7ae8ff, neb2: 0x9a7bff, sun: 0xc9f6ff, density: 0.3, scale: 0.9, rays: 0.0, scan: 0.0 },
+      fog: { color: 0x3a5e66, near: 40, far: 140 },
+      floor: { ground: 0x1c3440, alpha: 0.75 },
       hero: { x: 0, y: 66, size: 50, asp: 2.4, a: 0x4dffb0, b: 0xa77bff, c: 0x9fe6ff },
       props: [
         { kind: 'spire', count: 14, x: [6, 14], y: [0, 0], s: [0.8, 1.6] },
@@ -144,8 +144,8 @@ export const GALAXIES = [
     planet: { a: 0xff4fa0, b: 0x2a0a4a, ring: 0xffd35c, x: -60, y: 44, size: 48 },
     world: {
       style: 4,
-      sky: { top: 0x020101, horizon: 0x6a140a, bottom: 0x050202, neb1: 0x3a0a08, neb2: 0xa8321a, sun: 0xff8a4a, density: 0.6, scale: 1.1, rays: 0.0, scan: 1.0 },
-      fog: { color: 0x120303, near: 40, far: 130 },
+      sky: { top: 0x14141f, horizon: 0xb8421c, bottom: 0x2a1418, neb1: 0x3a0a08, neb2: 0xa8321a, sun: 0xff8a4a, density: 0.6, scale: 1.1, rays: 0.0, scan: 1.0 },
+      fog: { color: 0x4a1e1a, near: 40, far: 130 },
       floor: { ground: 0x070202, alpha: 0.75 },
       hero: { x: 10, y: 66, size: 54, asp: 1.7, a: 0xa8321a, b: 0xff8a4a, c: 0xffc23a },
       props: [

@@ -1,92 +1,21 @@
 /* ==========================================================================
-   Selectable UI themes (Settings → Style). skin.css holds the shared component
-   shapes; each theme re-points the tokens and adds its own signature details.
-   html[data-theme] beats the :root defaults in skin.css.
+   Retro Space Age: the game's art direction. A 1960s space poster in mustard,
+   burnt orange and teal on warm cream, with pill buttons and racing stripes.
+   skin.css holds the shared component shapes; this file re-points its tokens.
    ========================================================================== */
 
-@font-face { font-family: 'Bangers'; src: url(fonts/bangers.woff2) format('woff2'); font-display: swap; }
 @font-face { font-family: 'Righteous'; src: url(fonts/righteous.woff2) format('woff2'); font-display: swap; }
-
-/* ---------- shared light-theme plumbing ---------- */
-html[data-theme="arcade"], html[data-theme="comic"], html[data-theme="retro"] {
+html[data-theme="retro"] {
   --icon-line: #231a2c;
   --speech-bg: #ffffff;
   --speech-fg: #231a2c;
   --speech-line: #231a2c;
 }
-html[data-theme="arcade"] .steer-btn, html[data-theme="comic"] .steer-btn, html[data-theme="retro"] .steer-btn,
-html[data-theme="arcade"] .icon-btn, html[data-theme="comic"] .icon-btn, html[data-theme="retro"] .icon-btn,
-html[data-theme="arcade"] #rh-map, html[data-theme="comic"] #rh-map, html[data-theme="retro"] #rh-map {
+html[data-theme="retro"] .steer-btn,
+html[data-theme="retro"] .icon-btn,
+html[data-theme="retro"] #rh-map {
   background: var(--card); color: var(--text); border-color: var(--line); box-shadow: 0 4px 0 var(--ink);
 }
-
-/* ==========================================================================
-   A · SUNNY ARCADE: cream paper, chunky ink outlines, yolk buttons
-   ========================================================================== */
-html[data-theme="arcade"] {
-  --ink: #2a1c33; --line: #2a1c33; --text: #2a1c33; --text-soft: #5a4a66;
-  --paper: #fff4dc; --paper-2: #ffe8bf; --card: #fffaf0;
-  --yolk: #ffc23a; --yolk-d: #d98a0f; --tomato: #ef4a36; --tomato-d: #b3281c;
-  --teal: #1fb5a3; --teal-d: #10796d; --sky: #5cc3ff; --sky-d: #2a84c4;
-  --display: 'Lilita One', 'Fredoka', system-ui, sans-serif;
-}
-html[data-theme="arcade"] body { background: #1d1430; }
-html[data-theme="arcade"] .screen { background: rgba(29, 20, 48, 0.5); }
-html[data-theme="arcade"] .panel { box-shadow: 0 7px 0 var(--ink); }
-html[data-theme="arcade"] .ship-preview, html[data-theme="arcade"] .home-preview { border-color: var(--line); }
-html[data-theme="arcade"] .pip { background: #e3d5b8; }
-html[data-theme="arcade"] .pip.on { background: var(--grass); }
-html[data-theme="arcade"] .next-step.tutorial, html[data-theme="arcade"] .gnode.current, html[data-theme="arcade"] .skin.equipped { background: #fff1c2; }
-html[data-theme="arcade"] .rr-place, html[data-theme="arcade"] .victory-title, html[data-theme="arcade"] .over-title,
-html[data-theme="arcade"] .ho-title, html[data-theme="arcade"] .welcome-title { color: var(--tomato); }
-
-/* ==========================================================================
-   B · COMIC BOOK: white panels, heavy black ink, halftone dots, primaries,
-   slanted headlines and speech-bubble cards
-   ========================================================================== */
-html[data-theme="comic"] {
-  --ink: #111111; --line: #111111; --text: #111111; --text-soft: #3d3d3d;
-  --paper: #ffffff; --paper-2: #fff3a8; --card: #ffffff;
-  --yolk: #ffd400; --yolk-d: #c9a400; --tomato: #ff2e3b; --tomato-d: #b3121c;
-  --teal: #1e6bff; --teal-d: #0d3fa8; --sky: #1e9bff; --sky-d: #0d62b0;
-  --display: 'Bangers', 'Lilita One', system-ui, sans-serif;
-}
-html[data-theme="comic"] body { background: #111; }
-html[data-theme="comic"] .screen {
-  background:
-    radial-gradient(circle, rgba(255, 212, 0, 0.35) 1.6px, transparent 2px) 0 0 / 11px 11px,
-    rgba(17, 17, 17, 0.62);
-}
-html[data-theme="comic"] .panel { border-width: 4px; border-radius: 6px; box-shadow: 8px 8px 0 var(--ink); }
-html[data-theme="comic"] .primary-btn, html[data-theme="comic"] .secondary-btn, html[data-theme="comic"] .tab,
-html[data-theme="comic"] .buy-btn, html[data-theme="comic"] .mode-card, html[data-theme="comic"] .next-step,
-html[data-theme="comic"] .upgrade, html[data-theme="comic"] .skin, html[data-theme="comic"] .chip,
-html[data-theme="comic"] .gnode, html[data-theme="comic"] .ship-preview, html[data-theme="comic"] .toggle-btn,
-html[data-theme="comic"] .setting-row, html[data-theme="comic"] .addon-slot, html[data-theme="comic"] .speech { border-radius: 4px; }
-html[data-theme="comic"] .primary-btn, html[data-theme="comic"] .race-btn, html[data-theme="comic"] .danger-btn { box-shadow: 5px 5px 0 var(--ink); letter-spacing: 0.06em; font-size: 24px; }
-html[data-theme="comic"] .secondary-btn, html[data-theme="comic"] .buy-btn, html[data-theme="comic"] .tab { box-shadow: 4px 4px 0 var(--ink); letter-spacing: 0.05em; }
-html[data-theme="comic"] .primary-btn:active, html[data-theme="comic"] .secondary-btn:active { transform: translate(4px, 4px); box-shadow: 1px 1px 0 var(--ink); }
-html[data-theme="comic"] h2, html[data-theme="comic"] .home-title, html[data-theme="comic"] .ns-title,
-html[data-theme="comic"] .rr-place, html[data-theme="comic"] .victory-title, html[data-theme="comic"] .over-title,
-html[data-theme="comic"] .ho-title, html[data-theme="comic"] .mc-title { letter-spacing: 0.05em; transform: skew(-6deg) rotate(-2deg); display: inline-block; }
-html[data-theme="comic"] .home-title span, html[data-theme="comic"] .rr-place, html[data-theme="comic"] .victory-title,
-html[data-theme="comic"] .over-title, html[data-theme="comic"] .ho-title { color: var(--tomato); -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; text-shadow: 3px 3px 0 var(--ink); }
-html[data-theme="comic"] .ship-preview, html[data-theme="comic"] .home-preview {
-  background: radial-gradient(circle, #ffe45c 1.8px, transparent 2.2px) 0 0 / 10px 10px, #ffd400;
-  border-width: 4px;
-}
-html[data-theme="comic"] .dodge-card { background: var(--sky) radial-gradient(circle, rgba(255, 255, 255, 0.28) 1.5px, transparent 2px) 0 0 / 9px 9px; }
-html[data-theme="comic"] .race-card { background: var(--tomato) radial-gradient(circle, rgba(255, 255, 255, 0.28) 1.5px, transparent 2px) 0 0 / 9px 9px; }
-html[data-theme="comic"] .next-step, html[data-theme="comic"] .next-step.tutorial { background: #fff; }
-html[data-theme="comic"] .pip { background: #eee; }
-html[data-theme="comic"] .pip.on { background: var(--tomato); }
-html[data-theme="comic"] .next-step.tutorial, html[data-theme="comic"] .gnode.current, html[data-theme="comic"] .skin.equipped { background: #fff3a8; }
-html[data-theme="comic"] .coach, html[data-theme="comic"] .hangar-tut { border-radius: 4px; box-shadow: 5px 5px 0 var(--ink); }
-
-/* ==========================================================================
-   C · RETRO SPACE AGE: 1960s space poster, mustard / burnt orange / teal
-   on warm cream, pill buttons and racing stripes
-   ========================================================================== */
 html[data-theme="retro"] {
   --ink: #1f2a3a; --line: #1f2a3a; --text: #1f2a3a; --text-soft: #4f5b6b;
   --paper: #f3e6c8; --paper-2: #ead7ac; --card: #faf1dc;
@@ -100,82 +29,135 @@ html[data-theme="retro"] .panel {
   border-radius: 28px; border-width: 3px; box-shadow: 0 0 0 5px var(--paper), 0 0 0 8px var(--line), 0 10px 0 5px rgba(0, 0, 0, 0.35);
   background: linear-gradient(transparent 0 0), var(--paper);
 }
-html[data-theme="retro"] .primary-btn, html[data-theme="retro"] .secondary-btn, html[data-theme="retro"] .race-btn,
+html[data-theme="retro"] .primary-btn,
+html[data-theme="retro"] .secondary-btn,
+html[data-theme="retro"] .race-btn,
 html[data-theme="retro"] .danger-btn { border-radius: 999px; }
-html[data-theme="retro"] .primary-btn, html[data-theme="retro"] .race-btn {
+html[data-theme="retro"] .primary-btn,
+html[data-theme="retro"] .race-btn {
   background-image: linear-gradient(90deg, transparent 0 8%, rgba(255, 255, 255, 0.35) 8% 11%, transparent 11% 14%, rgba(255, 255, 255, 0.35) 14% 17%, transparent 17%);
 }
-html[data-theme="retro"] h2, html[data-theme="retro"] .home-title, html[data-theme="retro"] .ns-title,
-html[data-theme="retro"] .mc-title, html[data-theme="retro"] .primary-btn, html[data-theme="retro"] .secondary-btn,
-html[data-theme="retro"] .tab, html[data-theme="retro"] .buy-btn { letter-spacing: 0.04em; text-transform: uppercase; }
+html[data-theme="retro"] h2,
+html[data-theme="retro"] .home-title,
+html[data-theme="retro"] .ns-title,
+html[data-theme="retro"] .mc-title,
+html[data-theme="retro"] .primary-btn,
+html[data-theme="retro"] .secondary-btn,
+html[data-theme="retro"] .tab,
+html[data-theme="retro"] .buy-btn { letter-spacing: 0.04em; text-transform: uppercase; }
 html[data-theme="retro"] .home-title { transform: none; }
 html[data-theme="retro"] .home-title span { color: var(--tomato); }
 html[data-theme="retro"] .mode-card { border-radius: 22px; }
 html[data-theme="retro"] .dodge-card { background: var(--teal); box-shadow: inset 0 -6px 0 var(--teal-d), 0 4px 0 var(--ink); }
 html[data-theme="retro"] .race-card { background: var(--tomato); }
-html[data-theme="retro"] .ship-preview, html[data-theme="retro"] .home-preview {
+html[data-theme="retro"] .ship-preview,
+html[data-theme="retro"] .home-preview {
   background: radial-gradient(circle at 50% 120%, #e8b23a 0 34%, #d9582b 34.5% 44%, #2f7f7a 44.5% 56%, #1f2a3a 56.5%);
   border-radius: 22px;
 }
 html[data-theme="retro"] .pip { background: #e2d2ac; }
 html[data-theme="retro"] .pip.on { background: var(--tomato); }
-html[data-theme="retro"] .next-step.tutorial, html[data-theme="retro"] .gnode.current, html[data-theme="retro"] .skin.equipped { background: #f7e2a8; }
-html[data-theme="retro"] .rr-place, html[data-theme="retro"] .victory-title, html[data-theme="retro"] .over-title,
+html[data-theme="retro"] .next-step.tutorial,
+html[data-theme="retro"] .gnode.current,
+html[data-theme="retro"] .skin.equipped { background: #f7e2a8; }
+html[data-theme="retro"] .rr-place,
+html[data-theme="retro"] .victory-title,
+html[data-theme="retro"] .over-title,
 html[data-theme="retro"] .ho-title { color: var(--tomato); -webkit-text-stroke: 0; text-shadow: 3px 3px 0 var(--yolk); }
-
-/* ==========================================================================
-   D · MIDNIGHT COOP: deep navy night, soft rounded panels, warm lantern light
-   ========================================================================== */
-html[data-theme="midnight"] {
-  --ink: #070b14; --line: #2c3a58; --text: #f3ead8; --text-soft: #9fb0cc;
-  --paper: #141d31; --paper-2: #1c2842; --card: #1a2540;
-  --yolk: #ffb347; --yolk-d: #d9822a; --tomato: #ff6b4a; --tomato-d: #c2402a;
-  --teal: #3fb8a0; --teal-d: #247a69; --sky: #4a86d9; --sky-d: #2e5ea6;
-  --display: 'Lilita One', 'Fredoka', system-ui, sans-serif;
-  --icon-line: #0b1020;
-  --speech-bg: #fff6e4; --speech-fg: #1a1420; --speech-line: #0b1020;
-}
-html[data-theme="midnight"] body { background: #070b14; }
-html[data-theme="midnight"] .screen { background: radial-gradient(ellipse at 50% 0%, rgba(255, 179, 71, 0.08), rgba(7, 11, 20, 0.8) 60%); }
-html[data-theme="midnight"] .panel { border-width: 2px; border-radius: 24px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 179, 71, 0.06) inset; }
-html[data-theme="midnight"] .primary-btn { box-shadow: inset 0 -5px 0 var(--yolk-d), 0 6px 18px rgba(255, 179, 71, 0.25); border-color: #0b1020; }
-html[data-theme="midnight"] .secondary-btn, html[data-theme="midnight"] .tab, html[data-theme="midnight"] .toggle-btn,
-html[data-theme="midnight"] .setting-row, html[data-theme="midnight"] .addon-slot { border-width: 2px; box-shadow: 0 3px 0 var(--ink); }
-html[data-theme="midnight"] .upgrade, html[data-theme="midnight"] .skin, html[data-theme="midnight"] .gnode,
-html[data-theme="midnight"] .next-step, html[data-theme="midnight"] .chip { border-width: 2px; border-color: var(--line); }
-html[data-theme="midnight"] .tab.active, html[data-theme="midnight"] .buy-btn, html[data-theme="midnight"] .mode-card { border-color: #0b1020; }
-html[data-theme="midnight"] .ship-preview, html[data-theme="midnight"] .home-preview {
-  background: radial-gradient(circle at 50% 110%, rgba(255, 179, 71, 0.35), transparent 55%), #0b1222; border-color: var(--line);
-}
-html[data-theme="midnight"] .icon-btn, html[data-theme="midnight"] .steer-btn, html[data-theme="midnight"] #rh-map {
-  background: rgba(20, 29, 49, 0.9); color: var(--text); border-color: var(--line); box-shadow: 0 4px 0 var(--ink);
-}
-html[data-theme="midnight"] .pip { background: #25324f; }
-html[data-theme="midnight"] .pip.on { background: var(--yolk); }
-html[data-theme="midnight"] .next-step.tutorial, html[data-theme="midnight"] .gnode.current, html[data-theme="midnight"] .skin.equipped { background: #2a2a2e; }
-html[data-theme="midnight"] .rr-place, html[data-theme="midnight"] .victory-title, html[data-theme="midnight"] .over-title,
-html[data-theme="midnight"] .ho-title { color: var(--yolk); -webkit-text-stroke: 0; text-shadow: 0 0 18px rgba(255, 179, 71, 0.35); }
-html[data-theme="midnight"] .home-title span { color: var(--yolk); }
-
-/* ---------- light themes: dark text inside the ship-preview star field isn't used ---------- */
-html[data-theme="arcade"] .ns-icon, html[data-theme="comic"] .ns-icon, html[data-theme="retro"] .ns-icon { background: var(--paper-2); }
-html[data-theme="arcade"] .ship-preview, html[data-theme="arcade"] .home-preview {
-  background: radial-gradient(circle at 50% 60%, #fff1cf 0 22%, transparent 42%), repeating-conic-gradient(from 0deg at 50% 60%, #ffd488 0 7.5deg, #ffc868 7.5deg 15deg);
-}
-html[data-theme="void"] .ship-preview, html[data-theme="void"] .home-preview {
-  background: radial-gradient(circle at 50% 135%, #0b0a10 0 52%, rgba(255, 194, 58, 0.55) 52.6%, rgba(255, 176, 90, 0.08) 55%, transparent 60%),
-    radial-gradient(1px 1px at 20% 30%, #ece6d8, transparent), radial-gradient(1px 1px at 70% 20%, #ece6d8, transparent),
-    radial-gradient(1px 1px at 40% 60%, #ece6d8, transparent), radial-gradient(1px 1px at 85% 55%, #ece6d8, transparent), #050508;
-}
-
-/* light themes: result rows, power chips and hand-off Coco */
-html[data-theme="arcade"] .rh-intro-power, html[data-theme="comic"] .rh-intro-power, html[data-theme="retro"] .rh-intro-power,
-html[data-theme="arcade"] .power-chip-rr, html[data-theme="comic"] .power-chip-rr, html[data-theme="retro"] .power-chip-rr { background: var(--card); color: var(--text); }
-html[data-theme="arcade"] .rh-intro-power.ok, html[data-theme="comic"] .rh-intro-power.ok, html[data-theme="retro"] .rh-intro-power.ok,
-html[data-theme="arcade"] .power-chip-rr.ok, html[data-theme="comic"] .power-chip-rr.ok, html[data-theme="retro"] .power-chip-rr.ok { background: #dde9c4; }
-html[data-theme="arcade"] .rh-intro-power.low, html[data-theme="comic"] .rh-intro-power.low, html[data-theme="retro"] .rh-intro-power.low,
-html[data-theme="arcade"] .power-chip-rr.low, html[data-theme="comic"] .power-chip-rr.low, html[data-theme="retro"] .power-chip-rr.low { background: #f6d3c2; }
-html[data-theme="arcade"] .rr-row.me, html[data-theme="comic"] .rr-row.me { background: #fff1c2; color: var(--text); }
+html[data-theme="retro"] .ns-icon { background: var(--paper-2); }
+html[data-theme="retro"] .rh-intro-power,
+html[data-theme="retro"] .power-chip-rr { background: var(--card); color: var(--text); }
+html[data-theme="retro"] .rh-intro-power.ok,
+html[data-theme="retro"] .power-chip-rr.ok { background: #dde9c4; }
+html[data-theme="retro"] .rh-intro-power.low,
+html[data-theme="retro"] .power-chip-rr.low { background: #f6d3c2; }
 html[data-theme="retro"] .rr-row.me { background: #f7e2a8; color: var(--text); }
 .handoff-panel { overflow: visible !important; }
 .ho-coco { top: -26px; left: -8px; }
+
+/* ==========================================================================
+   Home: the pod big in the middle, modes on the right, resources top-right,
+   Coco's next step along the bottom.
+   ========================================================================== */
+html[data-theme="retro"] .screen.home-screen {
+  display: block; padding: 0;
+  background:
+    radial-gradient(circle at 7% 12%, rgba(243, 230, 200, 0.8) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 23% 31%, rgba(243, 230, 200, 0.5) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 41% 9%, rgba(243, 230, 200, 0.7) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 58% 22%, rgba(243, 230, 200, 0.45) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 76% 14%, rgba(243, 230, 200, 0.8) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 91% 33%, rgba(243, 230, 200, 0.5) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 14% 47%, rgba(243, 230, 200, 0.4) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 35% 58%, rgba(243, 230, 200, 0.7) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 66% 44%, rgba(243, 230, 200, 0.5) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 84% 62%, rgba(243, 230, 200, 0.6) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 9% 73%, rgba(243, 230, 200, 0.45) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 49% 38%, rgba(243, 230, 200, 0.35) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 29% 80%, rgba(243, 230, 200, 0.5) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 72% 78%, rgba(243, 230, 200, 0.4) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 95% 50%, rgba(243, 230, 200, 0.55) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 52% 68%, rgba(243, 230, 200, 0.6) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 18% 24%, rgba(243, 230, 200, 0.35) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 62% 6%, rgba(243, 230, 200, 0.5) 0 1.2px, transparent 1.8px),
+
+    radial-gradient(circle at 38% 122%, #e8b23a 0 24%, #d9582b 24.3% 31%, #2f7f7a 31.3% 38%, transparent 38.3%),
+    linear-gradient(180deg, #16202e 0%, #22364a 55%, #2f5358 100%);
+}
+.home-stage { position: absolute; left: 0; right: 118px; top: calc(96px + var(--safe-top)); bottom: calc(150px + var(--safe-bottom)); width: auto; height: auto; }
+.home-top {
+  position: absolute; top: calc(12px + var(--safe-top)); left: 14px; right: 12px;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; z-index: 2;
+}
+.home-brand { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.home-screen .home-title { font-size: 26px; color: #f3e6c8; text-align: left; transform: none; white-space: nowrap; letter-spacing: 0.04em; }
+.home-screen .home-title span { color: var(--yolk); display: inline; font-size: inherit; }
+.home-rank { color: #f3e6c8; font-weight: 700; font-size: 12px; letter-spacing: 0.04em; }
+.home-rank b { color: #f3e6c8; }
+.home-screen .home-xp { width: 140px; height: 5px; background: rgba(243, 230, 200, 0.15); border: 1.5px solid #f3e6c8; }
+.home-screen .home-xp > div { background: var(--yolk); }
+.home-res { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+.res-chip { padding: 5px 10px; font-size: 14px; white-space: nowrap; background: var(--card); }
+.home-screen .settings-btn { padding: 4px 9px; font-size: 18px; }
+.home-modes {
+  position: absolute; right: 12px; top: calc(96px + var(--safe-top)); bottom: calc(150px + var(--safe-bottom));
+  width: 106px; display: flex; flex-direction: column; justify-content: center; gap: 12px; z-index: 2;
+}
+.home-modes .mode-card { width: 100%; padding: 12px 8px 10px; gap: 3px; border-radius: 20px; }
+.home-modes .mc-top { flex-direction: column; gap: 2px; }
+.home-modes .mc-icon { font-size: 26px; }
+.home-modes .mc-title { font-size: 15px; }
+.home-modes .mc-name { font-size: 11px; white-space: normal; line-height: 1.15; }
+.home-modes .mc-meta { font-size: 10px; }
+.garage-card { background: var(--yolk); box-shadow: inset 0 -6px 0 var(--yolk-d), 0 4px 0 var(--ink); --icon-line: #1f2a3a; }
+.garage-card .mc-title { color: var(--ink); -webkit-text-stroke: 0; text-shadow: none; }
+.garage-card .mc-name { color: var(--ink); text-shadow: none; }
+.home-spin-hint {
+  position: absolute; left: calc((100% - 118px) / 2); bottom: calc(160px + var(--safe-bottom)); transform: translateX(-50%);
+  color: rgba(243, 230, 200, 0.75); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; pointer-events: none; white-space: nowrap;
+}
+.home-next {
+  position: absolute; left: 12px; right: 12px; bottom: calc(14px + var(--safe-bottom)); z-index: 2;
+  padding: 10px 12px; border-radius: 22px;
+}
+.home-next .ns-row { margin: 0; gap: 10px; align-items: center; }
+.home-next .ns-body { flex: 1; min-width: 0; }
+.home-next .ns-title { font-size: 14px; line-height: 1.2; }
+.home-next .ns-text { font-size: 11px; }
+.home-next .ns-btn { flex: none; width: auto; padding: 10px 14px; min-height: 0; font-size: 15px; }
+@media (max-height: 640px) {
+  .home-next .ns-text { display: none; }
+  .home-modes .mc-name, .home-modes .mc-bar { display: none; }
+}
+
+/* ---------- Welcome: starburst behind Coco ---------- */
+.welcome-hero .coco-big {
+  background: repeating-conic-gradient(from 0deg at 50% 55%, #e8b23a 0 10deg, #f3e6c8 10deg 20deg);
+  border-radius: 50%; border: 3px solid var(--ink); box-shadow: 0 0 0 5px var(--paper), 0 0 0 8px var(--ink);
+  padding: 10px;
+}
+/* A canvas is a replaced element: left/right/top/bottom alone won't size it. */
+.home-stage {
+  width: calc(100% - 118px);
+  height: calc(100% - 246px - var(--safe-top) - var(--safe-bottom));
+}

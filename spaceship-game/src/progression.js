@@ -15,7 +15,7 @@ export const UPGRADES = [
 ];
 
 export const SKINS = [
-  { id: 'classic', name: 'Classic', cost: 0, hull: 0xd8e2f0, accent: 0xff3ca8, glass: 0x3cf2ff, trail: [0.45, 0.9, 1], trail2: [1, 0.4, 1] },
+  { id: 'classic', name: 'Classic', cost: 0, hull: 0xeae2d0, accent: 0xd9582b, glass: 0x7fd3d0, trail: [0.45, 0.9, 1], trail2: [1, 0.4, 1] },
   { id: 'crimson', name: 'Crimson', cost: 150, hull: 0xb3243a, accent: 0xffb13c, glass: 0xffd35c, trail: [1, 0.45, 0.2], trail2: [1, 0.85, 0.3] },
   { id: 'gold', name: 'Gold Rush', cost: 300, hull: 0xe8c15a, accent: 0xffffff, glass: 0x7af0ff, trail: [1, 0.85, 0.35], trail2: [1, 1, 0.8] },
   { id: 'stealth', name: 'Stealth', cost: 450, hull: 0x2a2f3d, accent: 0x5dff8a, glass: 0x5dff8a, trail: [0.35, 1, 0.5], trail2: [0.8, 1, 0.8] },
