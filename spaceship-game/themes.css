@@ -167,3 +167,15 @@ html[data-theme="void"] .ship-preview, html[data-theme="void"] .home-preview {
     radial-gradient(1px 1px at 20% 30%, #ece6d8, transparent), radial-gradient(1px 1px at 70% 20%, #ece6d8, transparent),
     radial-gradient(1px 1px at 40% 60%, #ece6d8, transparent), radial-gradient(1px 1px at 85% 55%, #ece6d8, transparent), #050508;
 }
+
+/* light themes: result rows, power chips and hand-off Coco */
+html[data-theme="arcade"] .rh-intro-power, html[data-theme="comic"] .rh-intro-power, html[data-theme="retro"] .rh-intro-power,
+html[data-theme="arcade"] .power-chip-rr, html[data-theme="comic"] .power-chip-rr, html[data-theme="retro"] .power-chip-rr { background: var(--card); color: var(--text); }
+html[data-theme="arcade"] .rh-intro-power.ok, html[data-theme="comic"] .rh-intro-power.ok, html[data-theme="retro"] .rh-intro-power.ok,
+html[data-theme="arcade"] .power-chip-rr.ok, html[data-theme="comic"] .power-chip-rr.ok, html[data-theme="retro"] .power-chip-rr.ok { background: #dde9c4; }
+html[data-theme="arcade"] .rh-intro-power.low, html[data-theme="comic"] .rh-intro-power.low, html[data-theme="retro"] .rh-intro-power.low,
+html[data-theme="arcade"] .power-chip-rr.low, html[data-theme="comic"] .power-chip-rr.low, html[data-theme="retro"] .power-chip-rr.low { background: #f6d3c2; }
+html[data-theme="arcade"] .rr-row.me, html[data-theme="comic"] .rr-row.me { background: #fff1c2; color: var(--text); }
+html[data-theme="retro"] .rr-row.me { background: #f7e2a8; color: var(--text); }
+.handoff-panel { overflow: visible !important; }
+.ho-coco { top: -26px; left: -8px; }
