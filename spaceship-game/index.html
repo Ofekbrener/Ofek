@@ -17,6 +17,15 @@
   <link rel="preload" href="fonts/fredoka.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="skin.css">
+  <link rel="stylesheet" href="themes.css">
+  <script>
+    // Apply the saved UI theme before first paint (?theme= overrides, for previews).
+    (function () {
+      var t = null;
+      try { t = new URLSearchParams(location.search).get('theme') || localStorage.getItem('voidrunner:theme'); } catch (e) {}
+      document.documentElement.dataset.theme = t || 'midnight';
+    })();
+  </script>
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js" } }
   </script>
@@ -88,7 +97,7 @@
         <!-- FTUE: always names the single next action of the core loop -->
         <div id="next-step" class="next-step">
           <div class="ns-row">
-            <span id="ns-icon" class="ns-icon">🏁</span>
+            <div class="ns-coco"><div data-coco="happy"></div><span id="ns-icon" class="ns-icon">🏁</span></div>
             <div class="ns-body"><div class="ns-label">NEXT STEP</div><div id="ns-title" class="ns-title">Win a podium in Race 1</div><div id="ns-text" class="ns-text"></div></div>
           </div>
           <button id="btn-next-step" class="primary-btn ns-btn">CONTINUE ➜</button>
@@ -118,6 +127,7 @@
         <h2>SETTINGS</h2>
         <button id="btn-sound" class="toggle-btn setting-row">🔊 Sound: On</button>
         <button id="btn-haptics" class="toggle-btn setting-row">📳 Vibration: Normal</button>
+        <button id="btn-style" class="toggle-btn setting-row">🎨 Style: Midnight Coop</button>
         <button id="btn-reset" class="toggle-btn setting-row danger-row">🗑 Reset progress</button>
         <div id="reset-confirm" class="reset-confirm hidden">
           <p><b>Start again as a new player?</b><br>This deletes all drumsticks, trophies, galaxies, upgrades, skins and add-ons on this device. It can't be undone.</p>
@@ -130,26 +140,13 @@
 
     <!-- FTUE: first launch welcome + the core loop -->
     <div id="screen-welcome" class="screen hidden">
-      <div class="panel scroll welcome-panel">
-        <div class="final-label">VOID RUNNER</div>
-        <h2 class="welcome-title">WELCOME, PILOT</h2>
-        <p class="welcome-sub">The Space Hens are back. Here's how you beat them:</p>
-        <div class="loop" aria-label="Race, win a trophy, dodge a galaxy, earn drumsticks, upgrade, race again">
-          <div class="loop-ring"><i class="loop-spark"></i></div>
-          <div class="loop-center"><b>THE</b>LOOP</div>
-          <div class="loop-node n0"><span>🏁</span><b>Race</b></div>
-          <div class="loop-node n1"><span>🏆</span><b>Trophy</b></div>
-          <div class="loop-node n2"><span>🐔</span><b>Dodge</b></div>
-          <div class="loop-node n3"><span>🍗</span><b>Drumsticks</b></div>
-          <div class="loop-node n4"><span>🛠</span><b>Upgrade</b></div>
+      <div class="panel welcome-panel">
+        <h1 class="title home-title">VOID <span>RUNNER</span></h1>
+        <div class="welcome-hero">
+          <div class="coco-big" data-coco="happy"></div>
+          <div class="speech speech-up"><p id="welcome-say"></p></div>
         </div>
-        <ol class="loop-steps">
-          <li><b>🏁 Race</b> chicken rivals — finish top 3</li>
-          <li><b>🏆 Trophies</b> unlock Dodge galaxies</li>
-          <li><b>🐔 Dodge</b> hens &amp; eggs to earn <b>🍗 drumsticks</b></li>
-          <li><b>🛠 Upgrade</b> your racer in the Garage, then race harder tracks</li>
-        </ol>
-        <button id="btn-welcome-go" class="primary-btn">🏁 START FIRST RACE</button>
+        <button id="btn-welcome-go" class="primary-btn">🏁 LET'S FLY!</button>
       </div>
     </div>
 
@@ -316,7 +313,7 @@
           <h2 id="rh-intro-name">COOP LOOP</h2>
           <div id="rh-intro-icon" class="rh-intro-icon">🕹️</div>
           <div id="rh-intro-title" class="rh-intro-title">Learn to steer</div>
-          <p id="rh-intro-text" class="brief-text"></p>
+          <div class="coco-line"><div class="coco-mini-wrap" data-coco="wink"></div><p id="rh-intro-text" class="brief-text speech"></p></div>
           <div id="rh-intro-power" class="rh-intro-power"></div>
           <button id="rbtn-go" class="primary-btn">🏁 START RACE</button>
         </div>
@@ -365,6 +362,7 @@
     <!-- FTUE: guided hand-off modal (reusable) -->
     <div id="handoff" class="handoff hidden">
       <div class="panel handoff-panel">
+        <div id="ho-coco" class="ho-coco" data-coco="wow"></div>
         <div class="ho-burst"><div id="ho-icon" class="ho-icon">🏆</div></div>
         <h2 id="ho-title" class="ho-title">TROPHY EARNED!</h2>
         <p id="ho-text" class="ho-text"></p>
