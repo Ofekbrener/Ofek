@@ -187,6 +187,12 @@ function renderModeCards() {
   $('mc-dodge-name').textContent = open ? GALAXIES[gi].name : '🔒 Locked';
   $('mc-dodge-meta').textContent = open ? `Galaxy ${gi + 1}/${n} · ★ ${prog.totalStars}` : 'Needs 🏆 1 from a race';
   $('mc-dodge-fill').style.width = `${(Math.min(n, prog.unlocked - 1) / n) * 100}%`;
+  // Home backdrop takes on the colours of the galaxy you're currently in.
+  const here = GALAXIES[gi].home;
+  const hs = $('screen-start').style;
+  here.sky.forEach((c, i) => hs.setProperty(`--hs-${i + 1}`, c));
+  here.planet.forEach((c, i) => hs.setProperty(`--hp-${i + 1}`, c));
+  $('home-where').textContent = `📍 ${GALAXIES[gi].name}`;
   const next = prog.nextCareerRace;
   const done = CAREER.filter((c) => { const b = prog.bestPlace(c.track.id); return b && b <= 3; }).length;
   $('mc-race-name').textContent = next ? next.track.name : 'Career complete! 👑';

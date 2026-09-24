@@ -14,6 +14,8 @@
 export const GALAXIES = [
   {
     id: 'coop',
+    // Home-screen backdrop while this is your current galaxy: sky gradient + the planet rising at the bottom.
+    home: { sky: ['#16202e', '#22364a', '#2f5358'], planet: ['#e8b23a', '#8f2a1c', '#c8412c'] },
     name: 'Coop Nebula',
     tagline: 'Where the feathers first flew',
     colors: { floor: 0x7a9150, lane: 0xe8b23a, horizon: 0xe07a3a, bg: 0x16202e, sky: 0xf3e6c8, rim: 0xd9582b, star: 0xf3e6c8 },
@@ -48,6 +50,7 @@ export const GALAXIES = [
   },
   {
     id: 'yolk',
+    home: { sky: ['#2a1a0e', '#6a3e14', '#c8781e'], planet: ['#ffd35c', '#f0a02a', '#b3541e'] },
     name: 'Yolk Belt',
     tagline: 'An asteroid field, sunny side up',
     colors: { floor: 0xffc23c, lane: 0xff6a3c, horizon: 0xff8a1f, bg: 0x0d0804, sky: 0xffd9a0, rim: 0xff7a2f, star: 0xffe2b0 },
@@ -78,6 +81,7 @@ export const GALAXIES = [
   },
   {
     id: 'pan',
+    home: { sky: ['#1a0c0c', '#4a1812', '#8a2a14'], planet: ['#ff7a2f', '#d9401a', '#5a0e0e'] },
     name: 'Frying-Pan Cluster',
     tagline: 'Things are heating up',
     colors: { floor: 0xff5a2c, lane: 0xffd23a, horizon: 0xff2a1f, bg: 0x100504, sky: 0xffb08f, rim: 0xff3c1f, star: 0xffc2a8 },
@@ -108,6 +112,7 @@ export const GALAXIES = [
   },
   {
     id: 'frost',
+    home: { sky: ['#0c1a2e', '#1c3e62', '#3a7ea0'], planet: ['#d8f6ff', '#8fd0f0', '#2a5bbf'] },
     name: 'Frostfeather Expanse',
     tagline: 'Chill out... or get frozen',
     colors: { floor: 0x7ae8ff, lane: 0xc9f6ff, horizon: 0x3c7bff, bg: 0x040a12, sky: 0xd4f3ff, rim: 0x7a9bff, star: 0xe4f6ff },
@@ -138,6 +143,7 @@ export const GALAXIES = [
   },
   {
     id: 'core',
+    home: { sky: ['#1a0e1e', '#3e1430', '#7a2438'], planet: ['#ff8a4a', '#d9582b', '#6a1a2a'] },
     name: 'Omelette Core',
     tagline: 'The heart of the hen empire',
     colors: { floor: 0xd8452a, lane: 0xffc23a, horizon: 0x7a1a10, bg: 0x030101, sky: 0xffc8b0, rim: 0xff5a2a, star: 0xece6d8 },

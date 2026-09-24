@@ -1,6 +1,6 @@
 // Offline support. Network-first so players always get the latest release when
 // online; the cache is only a fallback for offline play. Bump VERSION on release.
-const VERSION = 'void-runner-v14';
+const VERSION = 'void-runner-v15';
 const ASSETS = [
   './',
   './index.html',

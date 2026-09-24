@@ -101,8 +101,8 @@ html[data-theme="retro"] .screen.home-screen {
     radial-gradient(circle at 18% 24%, rgba(243, 230, 200, 0.35) 0 1.2px, transparent 1.8px),
     radial-gradient(circle at 62% 6%, rgba(243, 230, 200, 0.5) 0 1.2px, transparent 1.8px),
 
-    radial-gradient(circle at 38% 122%, #e8b23a 0 24%, #d9582b 24.3% 31%, #2f7f7a 31.3% 38%, transparent 38.3%),
-    linear-gradient(180deg, #16202e 0%, #22364a 55%, #2f5358 100%);
+    radial-gradient(circle at 38% 122%, var(--hp-1, #e8b23a) 0 24%, var(--hp-2, #d9582b) 24.3% 31%, var(--hp-3, #2f7f7a) 31.3% 38%, transparent 38.3%),
+    linear-gradient(180deg, var(--hs-1, #16202e) 0%, var(--hs-2, #22364a) 55%, var(--hs-3, #2f5358) 100%);
 }
 .home-stage { position: absolute; left: 0; right: 118px; top: calc(96px + var(--safe-top)); bottom: calc(150px + var(--safe-bottom)); width: auto; height: auto; }
 .home-top {
@@ -160,4 +160,11 @@ html[data-theme="retro"] .screen.home-screen {
 .home-stage {
   width: calc(100% - 118px);
   height: calc(100% - 246px - var(--safe-top) - var(--safe-bottom));
+}
+
+/* where you are: galaxy name over the planet */
+.home-where {
+  position: absolute; left: calc((100% - 118px) / 2); bottom: calc(182px + var(--safe-bottom)); transform: translateX(-50%);
+  padding: 4px 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.35); color: #f3e6c8;
+  font-family: var(--display); font-size: 13px; letter-spacing: 0.06em; white-space: nowrap; pointer-events: none;
 }
