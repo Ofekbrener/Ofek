@@ -133,7 +133,7 @@ export function iconSVG(id) { return svgUse(id); }
 
 function injectSprite() {
   const syms = Object.entries(ICONS).map(([id, body]) =>
-    `<symbol id="i-${id}" viewBox="0 0 24 24"><g stroke="${INK}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">${body}</g></symbol>`).join('');
+    `<symbol id="i-${id}" viewBox="0 0 24 24"><g style="stroke: var(--icon-line, ${INK})" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">${body}</g></symbol>`).join('');
   const holder = document.createElement('div');
   holder.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
   holder.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg">${syms}</svg>`;
