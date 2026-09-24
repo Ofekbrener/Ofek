@@ -19,7 +19,7 @@
   <link rel="stylesheet" href="skin.css">
   <link rel="stylesheet" href="themes.css">
   <script type="importmap">
-    { "imports": { "three": "./vendor/three.module.min.js" } }
+    { "imports": { "three": "./vendor/three.module.min.js", "cannon-es": "./vendor/cannon-es.min.js" } }
   </script>
 </head>
 <body>
@@ -83,6 +83,98 @@
           <span class="chip res-chip">🍗 <b id="start-crystals">0</b></span>
           <span class="chip res-chip trophy-chip">🏆 <b id="start-trophies">0</b></span>
           <button id="btn-settings" class="toggle-btn settings-btn" aria-label="Settings">⚙</button>
+        </div>
+      </div>
+      <span id="start-best" class="hidden"></span>
+      <!-- Modes on the right -->
+      <div class="home-modes">
+        <button id="btn-race" class="mode-card race-card">
+          <span class="mc-top"><span class="mc-icon">🏁</span><span class="mc-title">RACE</span></span>
+          <span id="mc-race-name" class="mc-name">Coop Loop</span>
+          <span class="mc-bar"><span id="mc-race-fill"></span></span>
+          <span id="mc-race-meta" class="mc-meta">Race 1/9</span>
+        </button>
+        <button id="btn-start" class="mode-card dodge-card">
+          <span class="mc-top"><span class="mc-icon">🐔</span><span class="mc-title">DODGE</span></span>
+          <span id="mc-dodge-name" class="mc-name">Coop Nebula</span>
+          <span class="mc-bar"><span id="mc-dodge-fill"></span></span>
+          <span id="mc-dodge-meta" class="mc-meta">Galaxy 1/5</span>
+        </button>
+        <button id="btn-sling" class="mode-card sling-card">
+          <span class="mc-top"><span class="mc-icon">🎯</span><span class="mc-title">CATAPULT</span></span>
+          <span class="mc-bar"><span id="mc-sling-fill"></span></span>
+          <span id="mc-sling-meta" class="mc-meta">★ 0/45</span>
+        </button>
+        <button id="btn-hangar" class="mode-card garage-card">
+          <span class="mc-top"><span class="mc-icon">🛠</span><span class="mc-title">GARAGE</span></span>
+          <span class="mc-name">Upgrades &amp; style</span>
+        </button>
+      </div>
+      <div id="home-where" class="home-where">📍 Coop Nebula</div>
+      <div class="home-spin-hint">↔ drag to spin</div>
+      <!-- Coco names the single next action of the core loop -->
+      <div id="next-step" class="next-step home-next">
+        <div class="ns-row">
+          <div class="ns-coco"><div data-coco="happy"></div><span id="ns-icon" class="ns-icon">🏁</span></div>
+          <div class="ns-body"><div class="ns-label">NEXT STEP</div><div id="ns-title" class="ns-title">Win a podium in Race 1</div><div id="ns-text" class="ns-text"></div></div>
+          <button id="btn-next-step" class="primary-btn ns-btn">GO ➜</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coco Catapult: level select -->
+    <div id="screen-sling" class="screen hidden">
+      <div class="panel sling-panel">
+        <div class="hangar-head">
+          <h2>COCO CATAPULT</h2>
+          <div class="balance big">★ <b id="sl-stars">0</b><span class="dim">/45</span></div>
+        </div>
+        <div id="sl-worlds" class="tabs sl-worlds"></div>
+        <div id="sl-world-info" class="sl-world-info"></div>
+        <div id="sl-levels" class="sl-levels"></div>
+        <button id="btn-sl-home" class="secondary-btn">🏠 HOME</button>
+      </div>
+    </div>
+
+    <!-- Coco Catapult: in-game HUD -->
+    <div id="sling-hud" class="sling-hud hidden">
+      <div class="sl-top">
+        <div class="er-box sl-lvl"><small id="sl-hud-world">LEVEL</small><b id="sl-hud-level">1-1</b></div>
+        <div class="er-box sl-score"><small>SCORE</small><b id="sl-hud-score">0</b></div>
+        <button id="btn-sl-pause" class="icon-btn" aria-label="Pause">❚❚</button>
+      </div>
+      <div id="sl-shots" class="sl-shots"></div>
+      <div id="sl-hint" class="sl-hint hidden"></div>
+      <div id="sl-pops"></div>
+      <div id="sl-pause" class="rh-overlay hidden">
+        <div class="panel">
+          <h2>PAUSED</h2>
+          <button id="btn-sl-resume" class="primary-btn">RESUME</button>
+          <div class="btn-row">
+            <button id="btn-sl-restart" class="secondary-btn">↻ RESTART</button>
+            <button id="btn-sl-levels" class="secondary-btn">🎯 LEVELS</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coco Catapult: level result -->
+    <div id="screen-sling-result" class="screen hidden">
+      <div class="panel sl-result">
+        <div id="slr-level" class="final-label">LEVEL 1-1</div>
+        <h2 id="slr-title" class="victory-title">LEVEL CLEAR!</h2>
+        <div id="slr-stars" class="stars-row big"></div>
+        <div class="payout">
+          <div class="payout-row"><span>Score</span><b id="slr-score">0</b></div>
+          <div class="payout-row"><span>Unused shots</span><b id="slr-bonus">0</b></div>
+          <div class="payout-row total"><span>🍗 Earned</span><b id="slr-earned">0</b></div>
+          <div id="slr-note" class="unlock-note hidden"></div>
+        </div>
+        <button id="btn-slr-next" class="primary-btn">NEXT LEVEL ➜</button>
+        <div class="btn-row">
+          <button id="btn-slr-retry" class="secondary-btn">↻ RETRY</button>
+          <button id="btn-slr-levels" class="secondary-btn">🎯 LEVELS</button>
+          <button id="btn-slr-home" class="secondary-btn home-btn" aria-label="Home">🏠</button>
         </div>
       </div>
       <span id="start-best" class="hidden"></span>

@@ -15,12 +15,13 @@ import { Input } from './input.js';
 import { AudioEngine } from './audio.js';
 import { haptics } from './haptics.js';
 import { store } from './storage.js';
-import { Progression, POWERUPS, UPGRADES, drawCards, rankInfo, upgradeLevels } from './progression.js';
+import { Progression, POWERUPS, UPGRADES, COSMETICS, drawCards, rankInfo, upgradeLevels } from './progression.js';
 import { HangarUI, showCards } from './hangar-ui.js';
 import { ShipPreview } from './ship-preview.js';
 import { installIcons } from './icons.js';
 import { cocoSVG, COCO } from './coco.js';
-import { EggRescue, NEST_SIZE, PETS } from './egg-rescue.js';
+import { SlingSession } from './sling/sling.js';
+import { WORLDS, levelId } from './sling/levels.js';
 import { GALAXIES, QUIPS, pick } from './galaxies.js';
 import { Journey } from './journey.js';
 import { StarMapUI, starsHTML } from './starmap-ui.js';
@@ -56,6 +57,8 @@ scene.background = new THREE.Color(0x05060f);   // own copy: themes tween it
 const lighting = new Lighting(scene);
 const env = new Environment(scene, quality === 'high' ? CONFIG.starsHigh : CONFIG.starsLow);
 const particles = new Particles(scene, quality === 'high' ? CONFIG.particlesHigh : CONFIG.particlesLow);
+const sling = new SlingSession(quality);   // Coco Catapult mini-game (own scene)
+const SLING_MAX_STARS = WORLDS.reduce((a, w) => a + w.levels.length * 3, 0);
 const ship = new Ship(scene);
 const obstacles = new Obstacles(scene, CONFIG.maxObstacles, particles);
 const pickups = new Pickups(scene, CONFIG.maxPickups);
@@ -153,6 +156,8 @@ const screens = {
   race: $('screen-race'),
   raceResults: $('screen-race-results'),
   welcome: $('screen-welcome'),
+  sling: $('screen-sling'),
+  slingResult: $('screen-sling-result'),
   settings: $('screen-settings'),
 };
 // Home screen turntable: your pod with every upgrade you own.
@@ -194,8 +199,9 @@ function renderModeCards() {
   here.sky.forEach((c, i) => hs.setProperty(`--hs-${i + 1}`, c));
   here.planet.forEach((c, i) => hs.setProperty(`--hp-${i + 1}`, c));
   $('home-where').textContent = `📍 ${GALAXIES[gi].name}`;
-  $('mc-nest-fill').style.width = `${(prog.data.nest / NEST_SIZE) * 100}%`;
-  $('mc-nest-meta').textContent = `Nest ${prog.data.nest}/${NEST_SIZE}`;
+  const slStars = slingStarsTotal();
+  $('mc-sling-fill').style.width = `${(slStars / SLING_MAX_STARS) * 100}%`;
+  $('mc-sling-meta').textContent = `★ ${slStars}/${SLING_MAX_STARS}`;
   const next = prog.nextCareerRace;
   const done = CAREER.filter((c) => { const b = prog.bestPlace(c.track.id); return b && b <= 3; }).length;
   $('mc-race-name').textContent = next ? next.track.name : 'Career complete! 👑';
@@ -237,7 +243,7 @@ function renderNextStep() {
   // Tutorial: only the current step's button is live; the rest are locked.
   const stage = tutorialStage(prog);
   const allow = stage ? TUTORIAL_ALLOW[stage] : null;
-  for (const [id, key] of [['btn-start', 'dodge'], ['btn-race', 'race'], ['btn-hangar', 'garage'], ['btn-rescue', 'rescue']]) {
+  for (const [id, key] of [['btn-start', 'dodge'], ['btn-race', 'race'], ['btn-hangar', 'garage'], ['btn-sling', 'sling']]) {
     $(id).classList.toggle('tut-locked', !!stage && key !== allow);
     $(id).classList.toggle('tut-glow', !!stage && key === allow);
   }
@@ -1152,6 +1158,7 @@ function openRaceMenu() {
 // Stop whatever is running (dodge run or race) and return to menu state.
 function leaveRun() {
   $('coach').classList.add('hidden');
+  if (state.mode === 'sling' || sling.active) leaveSling();
   audio.stopMusic();
   audio.stopEngine();
   hud.show(false);
@@ -1348,57 +1355,197 @@ function maybeFinishTutorial(stageBefore) {
 }
 
 $('btn-race').addEventListener('click', openRaceMenu);
+// ---------------------------------------------------------------- Coco Catapult
+const slingHud = $('sling-hud');
+let slingSel = { w: 0, l: 0 };
+function slingData() {
+  if (!prog.data.sling || typeof prog.data.sling !== 'object') prog.data.sling = { stars: {}, best: {}, rewards: [] };
+  const d = prog.data.sling;
+  d.stars = d.stars || {}; d.best = d.best || {}; d.rewards = d.rewards || [];
+  return d;
+}
+function slingStarsTotal() { return Object.values(slingData().stars).reduce((a, b) => a + b, 0); }
+function slingWorldDone(w) { const d = slingData(); return WORLDS[w].levels.every((_, l) => (d.stars[levelId(w, l)] || 0) > 0); }
+function slingWorldOpen(w) { return w === 0 || slingWorldDone(w - 1); }
+function slingLevelOpen(w, l) { return slingWorldOpen(w) && (l === 0 || (slingData().stars[levelId(w, l - 1)] || 0) > 0); }
+const addonName = (id) => { const c = COSMETICS.find((x) => x.id === id); return c ? `${c.icon} ${c.name}` : id; };
 
-// ---------------------------------------------------------------- Egg Rescue
-const eggRescue = new EggRescue({ audio, haptics, onExit: (r) => endRescue(r) });
-$('btn-rescue').addEventListener('click', startRescue);
-function startRescue() {
+function openSlingMenu(world = null) {
+  audio.unlock();
+  audio.click();
+  if (state.mode !== 'menu') leaveRun();
+  if (world !== null) slingSel.w = world;
+  else { let w = 0; while (w < WORLDS.length - 1 && slingWorldDone(w)) w++; slingSel.w = w; }
+  renderSlingMenu();
+  showScreen('sling');
+}
+function renderSlingMenu() {
+  const d = slingData();
+  $('sl-stars').textContent = slingStarsTotal();
+  const tabs = $('sl-worlds');
+  tabs.textContent = '';
+  WORLDS.forEach((W, w) => {
+    const b = document.createElement('button');
+    const open = slingWorldOpen(w);
+    b.className = 'tab' + (w === slingSel.w ? ' active' : '') + (open ? '' : ' locked');
+    b.textContent = open ? W.name.split(' ')[0] : '🔒';
+    b.addEventListener('click', () => { if (!open) { audio.denied(); return; } audio.click(); slingSel.w = w; renderSlingMenu(); });
+    tabs.appendChild(b);
+  });
+  const W = WORLDS[slingSel.w];
+  const got = d.rewards.includes(W.reward);
+  $('sl-world-info').innerHTML = `<b>${W.name}</b> · clear every level to win <b>${addonName(W.reward)}</b>${got ? ' ✅' : ''}`;
+  const grid = $('sl-levels');
+  grid.textContent = '';
+  W.levels.forEach((L, l) => {
+    const id = levelId(slingSel.w, l);
+    const open = slingLevelOpen(slingSel.w, l);
+    const st = d.stars[id] || 0;
+    const b = document.createElement('button');
+    b.className = 'sl-level' + (open ? '' : ' locked') + (L.boss ? ' boss' : '');
+    b.innerHTML = `<span class="sl-num">${open ? id : '🔒'}</span><span class="sl-name">${L.name}</span><span class="stars-row">${starsHTML(st)}</span>`;
+    b.addEventListener('click', () => { if (!open) { audio.denied(); return; } startSling(slingSel.w, l); });
+    grid.appendChild(b);
+  });
+}
+
+function slingShots() {
+  const el = $('sl-shots');
+  el.innerHTML = Array.from({ length: sling.shotsLeft }, () => `<span class="sl-shot">${cocoSVG('happy')}</span>`).join('');
+}
+function slingHint(text, ms = 3200) {
+  const el = $('sl-hint');
+  if (!text) { el.classList.add('hidden'); return; }
+  el.innerHTML = `${cocoSVG('happy', 'coco coco-mini')}<span></span>`;
+  el.lastChild.textContent = text;
+  el.classList.remove('hidden');
+  clearTimeout(slingHint.t);
+  if (ms) slingHint.t = setTimeout(() => el.classList.add('hidden'), ms);
+}
+
+function startSling(w, l) {
   audio.unlock();
   audio.click();
   handoff.hide();
+  if (state.mode !== 'menu' && state.mode !== 'sling') leaveRun();
   showScreen(null);
-  state.mode = 'rescue';
-  eggRescue.start();
+  hud.show(false);
+  state.mode = 'sling';
+  slingSel = { w, l };
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  sling.load(w, l, { skin: prog.skin, upgrades: upgradeLevels(prog) });
+  sling.paused = false;
+  slingHud.classList.remove('hidden');
+  $('sl-pause').classList.add('hidden');
+  $('sl-hud-world').textContent = WORLDS[w].name.split(' ')[0].toUpperCase();
+  $('sl-hud-level').textContent = levelId(w, l);
+  $('sl-hud-score').textContent = '0';
+  slingShots();
+  const def = WORLDS[w].levels[l];
+  slingHint(`${def.name}! Take out every hen. Clear it in ${def.par} shot${def.par > 1 ? 's' : ''} for ★★★`, 3000);
+  audio.startMusic();
+  audio.setGalaxy(GALAXIES[WORLDS[w].galaxy].music);
+  audio.setBoss(!!def.boss);
 }
-function endRescue(r) {
-  state.mode = 'menu';
-  updateMenuMeta();
-  showScreen('start');
-  if (!r) return;
-  const earned = r.score;
-  prog.bankRun(earned, earned * 3);
-  prog.data.nest += r.caught;
-  const newBest = r.score > prog.data.rescueBest;
-  if (newBest) prog.data.rescueBest = r.score;
-  // A full Nest hatches a pet add-on (or a drumstick bonus once every pet is owned).
-  let hatched = '';
-  while (prog.data.nest >= NEST_SIZE) {
-    prog.data.nest -= NEST_SIZE;
-    const pet = PETS.find((id) => !prog.ownsAddon(id));
-    if (pet) {
-      prog.data.addons.push(pet);
-      prog.data.wear.pet = pet;
-      hatched = `<br><b>🐣 The Nest hatched a new pet!</b> It's flying next to your pod now.`;
-    } else {
-      prog.data.crystals += 150;
-      hatched = '<br><b>🐣 The Nest hatched 🍗 150 bonus drumsticks!</b>';
-    }
+function leaveSling() {
+  sling.dispose();
+  slingHud.classList.add('hidden');
+  renderer.shadowMap.enabled = false;
+  audio.stopMusic();
+}
+
+sling.events = {
+  onAim() {
+    const first = !prog.ftueSeen('slingAim');
+    if (first) slingHint('Drag DOWN anywhere to pull me back, left/right to aim. Let go to launch!', 0);
+  },
+  onGrab() { audio.countdown(false); haptics.tap(); },
+  onLaunch() {
+    audio.missileLaunch(); haptics.tap(); slingShots();
+    if (!prog.ftueSeen('slingAim')) { prog.ftueMark('slingAim'); slingHint('Tap while I\'m flying for a DIVE boost!', 2600); }
+    else slingHint(null);
+  },
+  onDash() { audio.pickup(6); haptics.perfect(); sling.kick(0.2); },
+  onFirstHit() { sling.kick(0.35); },
+  onImpact(kind, k) { if (kind === 'hen') audio.cluck(1.3, 0.2); else audio.softHit(); if (k > 0.5) haptics.tap(); },
+  onBreak(m) { if (m === 'ice') audio.splat(); else audio.collision(); },
+  onHen(type, left) {
+    audio.missileHit(); haptics.bossHit(); sling.kick(type === 'boss' ? 0.8 : 0.4);
+    if (left === 0) slingHint('Every hen is down! 🎉', 1600);
+  },
+  onScore(total, pts, at) {
+    $('sl-hud-score').textContent = total.toLocaleString();
+    if (!at) return;
+    const el = document.createElement('div');
+    el.className = 'sl-pop' + (pts >= 5000 ? ' big' : '');
+    el.textContent = pts.toLocaleString();
+    el.style.left = `${at.x}px`; el.style.top = `${at.y}px`;
+    $('sl-pops').appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+  },
+  onEnd(r) { setTimeout(() => showSlingResult(r), r.won ? 1100 : 600); },
+};
+
+function showSlingResult(r) {
+  if (state.mode !== 'sling') return;
+  const d = slingData();
+  const id = r.def.id;
+  const prevStars = d.stars[id] || 0;
+  const newStars = Math.max(0, r.stars - prevStars);
+  const earned = r.won ? newStars * 25 + Math.round(r.score / 2000) : 0;
+  if (r.won) {
+    d.stars[id] = Math.max(prevStars, r.stars);
+    d.best[id] = Math.max(d.best[id] || 0, r.score);
   }
+  let note = '';
+  const w = r.def.world;
+  if (r.won && slingWorldDone(w) && !d.rewards.includes(WORLDS[w].reward)) {
+    d.rewards.push(WORLDS[w].reward);
+    const reward = WORLDS[w].reward;
+    if (!prog.ownsAddon(reward)) {
+      prog.data.addons.push(reward);
+      const c = COSMETICS.find((x) => x.id === reward);
+      prog.data.wear[c.slot] = reward;
+      note = `🏆 World cleared! You won <b>${addonName(reward)}</b>. Your pod is wearing it now.`;
+    } else { prog.data.crystals += 200; note = '🏆 World cleared! +🍗 200 bonus drumsticks.'; }
+    if (w + 1 < WORLDS.length) note += `<br>🔓 ${WORLDS[w + 1].name} unlocked!`;
+  }
+  prog.bankRun(earned, Math.round(r.score / 400));
   prog.save();
   ship.setUpgrades(upgradeLevels(prog));
-  homePreview.setUpgrades(upgradeLevels(prog));
   updateMenuMeta();
-  handoff.show({
-    icon: '🥚',
-    title: r.hearts <= 0 ? 'BOOM! EGG-SPLODED' : 'EGGS RESCUED!',
-    text: `You scored <b>${r.score}</b>${newBest ? ' (new best!)' : ''} · best combo ${r.bestCombo}.<br>+🍗 ${earned} drumsticks · Nest ${prog.data.nest}/${NEST_SIZE}${hatched}`,
-    celebrate: !!hatched || newBest,
-    buttons: [
-      { label: '🥚 PLAY AGAIN', primary: true, onClick: () => startRescue() },
-      { label: '🏠 HOME' },
-    ],
-  });
+
+  $('slr-level').textContent = `LEVEL ${id} · ${r.def.name.toUpperCase()}`;
+  $('slr-title').textContent = r.won ? (r.stars === 3 ? 'EGG-CELLENT!' : 'LEVEL CLEAR!') : 'OUT OF SHOTS';
+  $('slr-stars').innerHTML = starsHTML(r.stars, 3, true);
+  $('slr-score').textContent = r.score.toLocaleString();
+  $('slr-bonus').textContent = r.bonus ? `+${r.bonus.toLocaleString()}` : '0';
+  $('slr-earned').textContent = r.won ? `+${earned}` : '0';
+  $('slr-note').innerHTML = note;
+  $('slr-note').classList.toggle('hidden', !note);
+  const next = r.def.index + 1 < WORLDS[w].levels.length ? [w, r.def.index + 1] : (w + 1 < WORLDS.length && slingWorldOpen(w + 1) ? [w + 1, 0] : null);
+  $('btn-slr-next').classList.toggle('hidden', !r.won || !next);
+  $('btn-slr-next').onclick = () => next && startSling(next[0], next[1]);
+  slingHud.classList.add('hidden');
+  showScreen('slingResult');
+  if (r.won) {
+    audio.victory(); haptics.waveClear();
+    for (let i = 0; i < r.stars; i++) setTimeout(() => audio.starDing(i), 400 + i * 350);
+  } else audio.denied();
 }
+
+$('btn-sling').addEventListener('click', () => openSlingMenu());
+$('btn-sl-home').addEventListener('click', goHome);
+$('btn-sl-pause').addEventListener('click', () => { audio.click(); sling.paused = true; $('sl-pause').classList.remove('hidden'); });
+$('btn-sl-resume').addEventListener('click', () => { audio.click(); sling.paused = false; $('sl-pause').classList.add('hidden'); });
+$('btn-sl-restart').addEventListener('click', () => startSling(slingSel.w, slingSel.l));
+$('btn-sl-levels').addEventListener('click', () => { leaveSling(); state.mode = 'menu'; openSlingMenu(slingSel.w); });
+$('btn-slr-retry').addEventListener('click', () => startSling(slingSel.w, slingSel.l));
+$('btn-slr-levels').addEventListener('click', () => { leaveSling(); state.mode = 'menu'; openSlingMenu(slingSel.w); });
+$('btn-slr-home').addEventListener('click', goHome);
+
+
 $('btn-next-step').addEventListener('click', () => runStep(currentStep || nextStep(prog)));
 $('btn-map-race').addEventListener('click', () => { const r = prog.nextCareerRace; if (r) goRace(r.league, r.track); else openRaceMenu(); });
 $('btn-welcome-go').addEventListener('click', () => {
@@ -1551,7 +1698,11 @@ function frame(now) {
     renderer.render(scene, camera);
     return;
   }
-  if (state.mode === 'rescue') return;   // Egg Rescue draws on its own 2D canvas
+  if (state.mode === 'sling') {
+    sling.update(realDt);
+    renderer.render(sling.scene, sling.camera);
+    return;
+  }
   if (state.mode === 'race' || state.mode === 'raceDone' || state.mode === 'raceResults') {
     updateRace(realDt);
     if (DEBUG) debugEl.textContent = `fps ${perf.fps.toFixed(0)}  q:${quality}\ncalls ${renderer.info.render.calls}\n${state.mode} place ${race.playerPlace} v ${race.player ? race.player.v.toFixed(1) : '-'}`;
@@ -1765,6 +1916,7 @@ if (DEBUG) {
       gameOver();
     },
     menu: () => { handoff.hide(); leaveRun(); updateMenuMeta(); showScreen('start'); },
+    sling, startSling: (w, l) => startSling(w, l), slingData: () => slingData(),
     resetSave() { store.set('save', JSON.stringify({})); location.reload(); },
   };
 }
