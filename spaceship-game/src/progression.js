@@ -15,7 +15,7 @@ export const UPGRADES = [
 ];
 
 export const SKINS = [
-  { id: 'classic', name: 'Classic', cost: 0, hull: 0xd8e2f0, accent: 0xff3ca8, glass: 0x3cf2ff, trail: [0.45, 0.9, 1], trail2: [1, 0.4, 1] },
+  { id: 'classic', name: 'Classic', cost: 0, hull: 0xeae2d0, accent: 0xd9582b, glass: 0x7fd3d0, trail: [0.45, 0.9, 1], trail2: [1, 0.4, 1] },
   { id: 'crimson', name: 'Crimson', cost: 150, hull: 0xb3243a, accent: 0xffb13c, glass: 0xffd35c, trail: [1, 0.45, 0.2], trail2: [1, 0.85, 0.3] },
   { id: 'gold', name: 'Gold Rush', cost: 300, hull: 0xe8c15a, accent: 0xffffff, glass: 0x7af0ff, trail: [1, 0.85, 0.35], trail2: [1, 1, 0.8] },
   { id: 'stealth', name: 'Stealth', cost: 450, hull: 0x2a2f3d, accent: 0x5dff8a, glass: 0x5dff8a, trail: [0.35, 1, 0.5], trail2: [0.8, 1, 0.8] },
@@ -80,7 +80,7 @@ export function rankInfo(xp) {
 
 const DEFAULT_SAVE = {
   v: 2, crystals: 0, upgrades: {}, skins: ['classic'], skin: 'classic', xp: 0,
-  addons: [], wear: {},
+  addons: [], wear: {}, nest: 0, rescueBest: 0,
   galaxy: { unlocked: 1, stars: [0, 0, 0, 0, 0] },
   endlessBest: { wave: 0, score: 0 },
   race: { best: {} },
@@ -129,6 +129,8 @@ export class Progression {
       for (const [slot, id] of Object.entries((d.wear && typeof d.wear === 'object') ? d.wear : {})) {
         if (merged.addons.includes(id) && COSMETICS.find((c) => c.id === id).slot === slot) merged.wear[slot] = id;
       }
+      merged.nest = Math.max(0, merged.nest | 0);
+      merged.rescueBest = Math.max(0, merged.rescueBest | 0);
       merged.crystals = Math.max(0, merged.crystals | 0);
       merged.xp = Math.max(0, merged.xp | 0);
       return merged;

@@ -31,7 +31,8 @@ function getRenderer() {
 }
 
 export class ShipPreview {
-  constructor(canvas, { spin = 0.7, pitch = 0.32 } = {}) {
+  // drag: the player can spin the pod with a finger. zoom: >1 frames the pod larger.
+  constructor(canvas, { spin = 0.7, pitch = 0.32, drag = false, zoom = 1 } = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.spin = spin;
@@ -58,6 +59,34 @@ export class ShipPreview {
     this._raf = 0;
     this._last = 0;
     this._frame = this._frame.bind(this);
+    this.zoom = zoom;
+    this.spinVel = 0;       // extra spin from a flick, decays back to the idle turntable
+    this.dragging = false;
+    if (drag) this._enableDrag();
+  }
+
+  // Drag horizontally to turn the pod; a flick keeps it spinning for a moment.
+  _enableDrag() {
+    const c = this.canvas;
+    c.style.touchAction = 'none';
+    let lastX = 0, lastT = 0;
+    c.addEventListener('pointerdown', (e) => {
+      this.dragging = true; lastX = e.clientX; lastT = performance.now();
+      this.spinVel = 0;
+      c.setPointerCapture(e.pointerId);
+    });
+    c.addEventListener('pointermove', (e) => {
+      if (!this.dragging) return;
+      const now = performance.now();
+      const dx = e.clientX - lastX;
+      const d = dx * 0.012;
+      this.angle += d;
+      this.spinVel = d / Math.max(0.008, (now - lastT) / 1000);
+      lastX = e.clientX; lastT = now;
+    });
+    const end = () => { this.dragging = false; this.spinVel = Math.max(-12, Math.min(12, this.spinVel)); };
+    c.addEventListener('pointerup', end);
+    c.addEventListener('pointercancel', end);
   }
 
   setSkin(skin) { this.ship.setSkin(skin); }
@@ -112,7 +141,9 @@ export class ShipPreview {
     const ship = this.ship;
     // Zoom out when add-ons (wings, pet, hat) make the pod bigger, so nothing is clipped.
     const c = ship.cosmetics || {};
-    const want = c.wings || c.pet ? 8.4 : c.hat ? 6.6 : 5.7;
+    // Framing was tuned for a wide (2:1) preview; tall canvases pull the camera back to keep the pod whole.
+    const fit = Math.max(1, 1.12 / Math.max(0.3, this.camera.aspect));
+    const want = (c.wings || c.pet ? 8.4 : c.hat ? 6.6 : 5.7) * fit / this.zoom;
     const k = dt > 0 ? 1 - Math.exp(-dt * 6) : 1;
     this.dist += (want - this.dist) * k;
     this._frameCamera(this.dist, c.hat || c.pet ? 0.35 : 0.05);
@@ -126,7 +157,10 @@ export class ShipPreview {
       spinK = 1 + 6 * Math.exp(-e * 4);
       if (e > 1.2) this.popT = -1;
     }
-    this.angle += dt * this.spin * spinK;
+    if (!this.dragging) {
+      this.spinVel *= Math.exp(-dt * 2.5);
+      this.angle += dt * (this.spin * spinK + this.spinVel);
+    }
     ship.group.rotation.y = this.angle;
     ship.group.position.set(0, Math.sin(ship.time * 2) * 0.06, 0);
     ship.group.scale.setScalar(s);

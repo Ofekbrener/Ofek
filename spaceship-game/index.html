@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="retro">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -18,14 +18,6 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="skin.css">
   <link rel="stylesheet" href="themes.css">
-  <script>
-    // Apply the saved UI theme before first paint (?theme= overrides, for previews).
-    (function () {
-      var t = null;
-      try { t = new URLSearchParams(location.search).get('theme') || localStorage.getItem('voidrunner:theme'); } catch (e) {}
-      document.documentElement.dataset.theme = t || 'midnight';
-    })();
-  </script>
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js" } }
   </script>
@@ -78,47 +70,68 @@
     </div>
 
     <!-- Start screen -->
-    <div id="screen-start" class="screen">
-      <div class="panel home-panel">
-        <div class="home-head">
+    <div id="screen-start" class="screen home-screen">
+      <!-- Your pod, big in the middle: drag to spin it. It wears every upgrade and add-on you own. -->
+      <canvas id="home-preview" class="home-stage" aria-label="Your ship, drag to spin"></canvas>
+      <div class="home-top">
+        <div class="home-brand">
           <h1 class="title home-title">VOID <span>RUNNER</span></h1>
+          <div class="home-rank"><b id="start-rank">Cadet</b> · <span class="home-power">⚡ <b id="start-power">1</b></span></div>
+          <div class="xp-bar home-xp"><div id="start-xp-fill"></div></div>
+        </div>
+        <div class="home-res">
+          <span class="chip res-chip">🍗 <b id="start-crystals">0</b></span>
+          <span class="chip res-chip trophy-chip">🏆 <b id="start-trophies">0</b></span>
           <button id="btn-settings" class="toggle-btn settings-btn" aria-label="Settings">⚙</button>
         </div>
-        <!-- Home: your pod on a turntable, wearing every upgrade you own (fills the free space) -->
-        <canvas id="home-preview" class="ship-preview home-preview" aria-label="Your ship"></canvas>
-        <div class="chip-row home-chips">
-          <span class="chip">🍗 <b id="start-crystals">0</b></span>
-          <span class="chip trophy-chip">🏆 <b id="start-trophies">0</b></span>
-          <span class="chip">⚡ <b id="start-power">1</b></span>
-          <span class="chip rank-chip"><b id="start-rank">Cadet</b></span>
-        </div>
-        <div class="xp-bar home-xp"><div id="start-xp-fill"></div></div>
-        <span id="start-best" class="hidden"></span>
-        <!-- FTUE: always names the single next action of the core loop -->
-        <div id="next-step" class="next-step">
-          <div class="ns-row">
-            <div class="ns-coco"><div data-coco="happy"></div><span id="ns-icon" class="ns-icon">🏁</span></div>
-            <div class="ns-body"><div class="ns-label">NEXT STEP</div><div id="ns-title" class="ns-title">Win a podium in Race 1</div><div id="ns-text" class="ns-text"></div></div>
-          </div>
-          <button id="btn-next-step" class="primary-btn ns-btn">CONTINUE ➜</button>
-        </div>
-        <!-- The two journeys -->
-        <div class="mode-grid">
-          <button id="btn-start" class="mode-card dodge-card">
-            <span class="mc-top"><span class="mc-icon">🐔</span><span class="mc-title">DODGE</span></span>
-            <span id="mc-dodge-name" class="mc-name">Coop Nebula</span>
-            <span class="mc-bar"><span id="mc-dodge-fill"></span></span>
-            <span id="mc-dodge-meta" class="mc-meta">Galaxy 1/5</span>
-          </button>
-          <button id="btn-race" class="mode-card race-card">
-            <span class="mc-top"><span class="mc-icon">🏁</span><span class="mc-title">RACE</span></span>
-            <span id="mc-race-name" class="mc-name">Coop Loop</span>
-            <span class="mc-bar"><span id="mc-race-fill"></span></span>
-            <span id="mc-race-meta" class="mc-meta">Race 1/9</span>
-          </button>
-        </div>
-        <button id="btn-hangar" class="secondary-btn hangar-btn">🛠 GARAGE</button>
       </div>
+      <span id="start-best" class="hidden"></span>
+      <!-- Modes on the right -->
+      <div class="home-modes">
+        <button id="btn-race" class="mode-card race-card">
+          <span class="mc-top"><span class="mc-icon">🏁</span><span class="mc-title">RACE</span></span>
+          <span id="mc-race-name" class="mc-name">Coop Loop</span>
+          <span class="mc-bar"><span id="mc-race-fill"></span></span>
+          <span id="mc-race-meta" class="mc-meta">Race 1/9</span>
+        </button>
+        <button id="btn-start" class="mode-card dodge-card">
+          <span class="mc-top"><span class="mc-icon">🐔</span><span class="mc-title">DODGE</span></span>
+          <span id="mc-dodge-name" class="mc-name">Coop Nebula</span>
+          <span class="mc-bar"><span id="mc-dodge-fill"></span></span>
+          <span id="mc-dodge-meta" class="mc-meta">Galaxy 1/5</span>
+        </button>
+        <button id="btn-rescue" class="mode-card rescue-card">
+          <span class="mc-top"><span class="mc-icon">🥚</span><span class="mc-title">RESCUE</span></span>
+          <span class="mc-bar"><span id="mc-nest-fill"></span></span>
+          <span id="mc-nest-meta" class="mc-meta">Nest 0/40</span>
+        </button>
+        <button id="btn-hangar" class="mode-card garage-card">
+          <span class="mc-top"><span class="mc-icon">🛠</span><span class="mc-title">GARAGE</span></span>
+          <span class="mc-name">Upgrades &amp; style</span>
+        </button>
+      </div>
+      <div id="home-where" class="home-where">📍 Coop Nebula</div>
+      <div class="home-spin-hint">↔ drag to spin</div>
+      <!-- Coco names the single next action of the core loop -->
+      <div id="next-step" class="next-step home-next">
+        <div class="ns-row">
+          <div class="ns-coco"><div data-coco="happy"></div><span id="ns-icon" class="ns-icon">🏁</span></div>
+          <div class="ns-body"><div class="ns-label">NEXT STEP</div><div id="ns-title" class="ns-title">Win a podium in Race 1</div><div id="ns-text" class="ns-text"></div></div>
+          <button id="btn-next-step" class="primary-btn ns-btn">GO ➜</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Egg Rescue mini-game -->
+    <div id="egg-rescue" class="egg-rescue hidden">
+      <canvas id="er-canvas"></canvas>
+      <div class="er-hud">
+        <div class="er-box"><small>EGGS</small><b id="er-score">0</b></div>
+        <div class="er-box"><small>TIME</small><b id="er-time">60</b></div>
+        <div class="er-box er-hearts" id="er-hearts">❤❤❤</div>
+        <button id="er-quit" class="icon-btn" aria-label="Quit">✕</button>
+      </div>
+      <div id="er-combo" class="er-combo"></div>
     </div>
 
     <!-- Settings: sound, vibration, reset progress -->
