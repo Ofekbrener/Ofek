@@ -89,12 +89,13 @@ const W2 = [
     b.hen('hen', 0, y, -25);
   } },
   { name: 'Drawbridge', shots: 4, par: 2, build(b) {
+    let top = 0;
     for (const x of [-2.4, 2.4]) {
       const y = b.frame('stone', x, 0, -24, 2.2); b.hen('hen', x, 0, -24);
-      b.frame('wood', x, y, -24, 2.2, 1.5);
+      top = b.frame('wood', x, y, -24, 2.2, 1.5);
       b.hen('helmet', x, y, -24);
     }
-    const bridge = b.slab('wood', 0, 1.8 + 0.45 + 1.5, -24, 7.2);
+    const bridge = b.slab('wood', 0, top, -24, 7.2);
     b.hen('hen', 0, bridge, -24);
   } },
   { name: 'The Eggsecutioner', shots: 4, par: 3, boss: true, build(b) {

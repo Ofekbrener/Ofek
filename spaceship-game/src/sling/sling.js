@@ -391,6 +391,9 @@ export class SlingSession {
   _kill(e) {
     e.dead = true;
     this.world.removeBody(e.body);
+    // Sleeping bodies aren't woken when their support disappears; without this,
+    // hens and slabs resting on a destroyed block would hang in mid-air.
+    for (const o of this.entities) if (!o.dead && o.body.sleepState) o.body.wakeUp();
     this.scene.remove(e.mesh);
     const p = e.body.position;
     if (e.kind === 'hen') {
@@ -533,6 +536,11 @@ export class SlingSession {
         if (!e.dead && e.kind === 'hen' && e.body.position.y < -3) this._kill(e);
       }
       this.entities = this.entities.filter((e) => e.body.world);
+      // A support knocked out from under a sleeping piece doesn't wake it
+      // either, so while anything is tumbling keep the whole level awake.
+      if (this.armed && this.entities.some((e) => e.body.sleepState === 0 && e.body.velocity.lengthSquared() > 1)) {
+        for (const e of this.entities) if (e.body.sleepState) e.body.wakeUp();
+      }
       for (const e of this.entities) this._sync(e);
       this._updateState(dt);
     }
