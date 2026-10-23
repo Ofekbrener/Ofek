@@ -23,6 +23,7 @@ const glowArrowMat = toon(0xffe066, { emissive: 0xc08000 });
 const shellGeo = new THREE.SphereGeometry(0.14, 10, 8);
 const shellMat = toon(0x5fae3e);
 const orbGeo = new THREE.SphereGeometry(0.2, 14, 10);
+const enemyOrbMat = new THREE.MeshBasicMaterial({ color: 0xc060ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
 const orbMat = new THREE.MeshBasicMaterial({ color: 0x8fd8ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
 const starGeo = (() => {
   const s = new THREE.Shape();
@@ -48,6 +49,7 @@ export function createCombat(fx) {
   let basic = 0, lock = 0, invuln = 0;
   const cooldowns = {};
   const pending = []; // { delay, mob, dmg, i, mesh?, trail?, heavy }
+  const enemyShots = []; // { mesh, mob, target, life }
 
   function inRange(player, mobs, range) {
     return mobs.filter(m => m.alive && Math.hypot(m.position.x - player.position.x, m.position.z - player.position.z) <= range + m.radius)
@@ -205,8 +207,29 @@ export function createCombat(fx) {
         }
       }
 
-      // contact damage (Dark Sight hides you from monsters)
+      // monster orbs: fly 14 m/s to where the player was; hit if still close
       const { player, character, map } = ctx;
+      for (let k = enemyShots.length - 1; k >= 0; k--) {
+        const e = enemyShots[k];
+        e.life -= dt;
+        const d = e.target.clone().sub(e.mesh.position), dist = d.length(), step = 14 * dt;
+        fx.particles.burst(e.mesh.position, { count: 1, color: 0xc060ff, shape: 'dot', speed: 0.2, up: 0, size: 0.6, life: 0.25, gravity: 0, additive: true });
+        if (dist > step && e.life > 0) { e.mesh.position.addScaledVector(d, step / dist); continue; }
+        e.mesh.removeFromParent(); enemyShots.splice(k, 1);
+        fx.particles.burst(e.mesh.position, { count: 10, color: [0xc060ff, 0xffffff], speed: 3, up: 1, size: 0.35, life: 0.35, gravity: 2, additive: true });
+        const near = e.mesh.position.distanceTo(player.position.clone().setY(player.position.y + 1)) < 1.2;
+        if (near && invuln <= 0 && character.hp > 0 && !modifiers(character, ctx.now()).hidden) {
+          const amount = Math.max(1, Math.round(e.mob.def.atk * (0.85 + Math.random() * 0.3)));
+          character.hp = Math.max(0, character.hp - amount);
+          invuln = INVULN;
+          fx.damage(player.position, 2.0, amount, false, 0, true);
+          player.model.hit();
+          fx.flash('#c060ff', 0.25);
+          ctx.sfx?.('hurt');
+        }
+      }
+
+      // contact damage (Dark Sight hides you from monsters)
       if (invuln > 0 || character.hp <= 0 || modifiers(character, ctx.now()).hidden) return;
       for (const m of map.mobs ?? []) {
         if (!m.alive) continue;
@@ -226,7 +249,18 @@ export function createCombat(fx) {
       }
     },
 
+    /** A monster's magic orb flying at where the player stands now. */
+    enemyShot(ctx, mob) {
+      const mesh = new THREE.Mesh(orbGeo, enemyOrbMat);
+      mesh.position.copy(mob.position); mesh.position.y += mob.model.height * 0.6;
+      ctx.map.scene.add(mesh);
+      enemyShots.push({ mesh, mob, target: ctx.player.position.clone().setY(ctx.player.position.y + 1), life: 2 });
+      ctx.sfx?.('bolt');
+    },
+
     reset() {
+      for (const e of enemyShots) e.mesh.removeFromParent();
+      enemyShots.length = 0;
       for (const p of pending) p.mesh?.removeFromParent();
       pending.length = 0; basic = 0; lock = 0;
     },

@@ -123,11 +123,11 @@ function instanced(geo, mat, transforms, color) {
   return im;
 }
 
-export function grassTufts(points) {
+export function grassTufts(points, color = 0x4fa83c) {
   const geo = new THREE.ConeGeometry(0.08, 0.35, 4); geo.translate(0, 0.17, 0);
   const g = new THREE.Group();
   const off = [[0, 0], [0.09, 0.04], [-0.08, 0.05]];
-  for (const [ox, oz] of off) g.add(instanced(geo, toon(0x4fa83c), points.map(p => ({ x: p.x + ox, y: p.y, z: p.z + oz, ry: p.ry, s: p.s }))));
+  for (const [ox, oz] of off) g.add(instanced(geo, toon(color), points.map(p => ({ x: p.x + ox, y: p.y, z: p.z + oz, ry: p.ry, s: p.s }))));
   return g;
 }
 
@@ -222,11 +222,12 @@ export function portal() {
 // --------------------------------------------------------------- landscape
 
 /** Ground plane with a painted texture: grass noise plus dirt paths drawn by `paint`. */
-export function paintedGround(size, key, paint) {
+/** theme (optional): { ground, grassDark, grassLight } colours. */
+export function paintedGround(size, key, paint, theme = {}) {
   const tex = canvasTexture(key, 1024, 1024, (c, w, h) => {
-    c.fillStyle = '#7fcf52'; c.fillRect(0, 0, w, h);
+    c.fillStyle = theme.ground ?? '#7fcf52'; c.fillRect(0, 0, w, h);
     for (let i = 0; i < 2600; i++) {
-      c.fillStyle = Math.random() < 0.5 ? 'rgba(90,170,60,.35)' : 'rgba(170,230,110,.3)';
+      c.fillStyle = Math.random() < 0.5 ? (theme.grassDark ?? 'rgba(90,170,60,.35)') : (theme.grassLight ?? 'rgba(170,230,110,.3)');
       const x = Math.random() * w, y = Math.random() * h, r = 2 + Math.random() * 6;
       c.beginPath(); c.ellipse(x, y, r, r * 0.6, Math.random() * 3, 0, Math.PI * 2); c.fill();
     }
@@ -241,11 +242,18 @@ export function paintedGround(size, key, paint) {
 }
 
 /** Draws a soft dirt path through world points on a paintedGround canvas. */
-export function dirtPath(c, toPx, pxPerM, pts, width) {
+export function dirtPath(c, toPx, pxPerM, pts, width, fill = '#d8b07a', edge = '#b88a52') {
   c.lineCap = c.lineJoin = 'round';
-  for (const [col, wMul] of [['#b88a52', 1.15], ['#d8b07a', 1]]) {
+  for (const [col, wMul] of [[edge, 1.15], [fill, 1]]) {
     c.strokeStyle = col; c.lineWidth = width * pxPerM * wMul;
     c.beginPath(); pts.forEach(([x, z], i) => { const [px, py] = toPx(x, z); i ? c.lineTo(px, py) : c.moveTo(px, py); }); c.stroke();
+  }
+  // a few flat stones along the path
+  c.fillStyle = 'rgba(150,140,120,.55)';
+  for (let i = 1; i < pts.length; i++) for (let k = 0; k < 6; k++) {
+    const u = Math.random(), [ax, az] = pts[i - 1], [bx, bz] = pts[i];
+    const [px, py] = toPx(ax + (bx - ax) * u + (Math.random() - 0.5) * width * 0.6, az + (bz - az) * u + (Math.random() - 0.5) * width * 0.6);
+    c.beginPath(); c.ellipse(px, py, 3 + Math.random() * 4, 2 + Math.random() * 3, Math.random() * 3, 0, Math.PI * 2); c.fill();
   }
 }
 
@@ -256,7 +264,7 @@ export function dirtDisc(c, toPx, pxPerM, x, z, r) {
 }
 
 /** Smooth round hill. Returns the mesh and a heightFn for walking on it. */
-export function hill(x, z, r, h) {
+export function hill(x, z, r, h, color = '#7fcf52') {
   const geo = new THREE.CircleGeometry(r, 48, 0, Math.PI * 2);
   geo.rotateX(-Math.PI / 2);
   const P = geo.attributes.position;
@@ -269,7 +277,7 @@ export function hill(x, z, r, h) {
   }
   dome.computeVertexNormals();
   P.needsUpdate = true;
-  const mesh = new THREE.Mesh(dome, toon(0x7fcf52));
+  const mesh = new THREE.Mesh(dome, toon(new THREE.Color(color)));
   mesh.position.set(x, 0, z);
   mesh.receiveShadow = true;
   const heightFn = (px, pz) => { const d = Math.hypot(px - x, pz - z) / r; return d < 1 ? h * (1 - d * d) : null; };

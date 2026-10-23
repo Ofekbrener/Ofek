@@ -206,6 +206,16 @@ export function createFx(root, camera, engine) {
 
     flash,
 
+    /** Big centred banner, e.g. QUEST COMPLETE. */
+    banner(title, sub = '') {
+      const el = document.createElement('div');
+      el.className = 'levelup banner';
+      el.innerHTML = `${title}<small>${sub}</small>`;
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 2600);
+      flash('#fff3b0', 0.4);
+    },
+
     /** Per frame: HP bars over hurt mobs, transients, particles, combo timer. */
     update(dt, mobs) {
       const seen = new Set();

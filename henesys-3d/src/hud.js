@@ -17,7 +17,7 @@ export function createHud(root, { onReset, onToggle, settings }) {
     </div>
     <div class="gauge exp"><i id="h-exp"></i><span id="h-expt"></span></div>
     <div class="topbar">
-      <div class="mapcol"><div class="mapname" id="h-map"></div><div class="buffs" id="h-buffs"></div></div>
+      <div class="mapcol"><div class="mapname" id="h-map"></div><div class="buffs" id="h-buffs"></div><div class="quests" id="h-quests"></div></div>
       <div class="mesos"><span class="coin"></span><b id="h-mesos">0</b></div>
       <button class="ui gear" id="h-gear" aria-label="Settings">⚙</button>
     </div>
@@ -78,6 +78,11 @@ export function createHud(root, { onReset, onToggle, settings }) {
           b.style.setProperty('--cd', s.cooldown ? Math.min(1, left / s.cooldown) : 0);
           b.classList.toggle('nomp', c.mp < s.mp);
         }
+      });
+      // quest tracker
+      const qs = extra.quests ?? [];
+      set('quests', qs.map(q => q.id + q.count + q.status).join(), () => {
+        $('h-quests').innerHTML = qs.map(q => `<div class="q${q.status === 'ready' ? ' ready' : ''}">${q.goal.label} <b>${Math.min(q.count, q.goal.count)}/${q.goal.count}</b>${q.status === 'ready' ? ' ✓' : ''}</div>`).join('');
       });
       // buff icons with seconds left
       const buffs = extra.buffs ?? [];

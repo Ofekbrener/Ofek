@@ -19,6 +19,13 @@ On a computer: WASD moves, Space jumps, J attacks, K and L use skills, 1 and 2 d
 
 Progress is saved on the phone (localStorage) after every kill and pickup, on every map change, when you leave the page, and every 15 seconds. A returning player goes straight back into the game. To start over, open Settings and tap New character. Add the page to the home screen and it runs full screen and offline.
 
+## Maps and quests
+
+- Henesys connects to the Pig Farm (south gate) and Hunting Ground I (east gate).
+- Hunting Ground I leads to Hunting Ground II, which leads to the Skeleton Ruins.
+- NPCs with a yellow `!` have a quest. A green `?` means you can turn one in.
+- The six quests are Snail Hunt, Shells for Mia, Mushroom Caps, Pig Trouble, Green Spores and Bones of the Ruins.
+
 ## Monsters
 
 Kills pay 4x the classic EXP, so level 10 takes about 10 minutes. Each zone holds up to 8 monsters (20 in total), and a monster respawns 4 seconds after it dies.

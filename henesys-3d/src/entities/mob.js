@@ -52,6 +52,14 @@ export class Mob {
       const fromStart = Math.hypot(this.position.x - this.leashFrom.x, this.position.z - this.leashFrom.z);
       const toPlayer = Math.hypot(player.position.x - this.position.x, player.position.z - this.position.z);
       if (fromStart > LEASH || toPlayer > LEASH + 5 || player.dead || player.hidden) { this.state = 'wander'; this.goal = null; this.leashFrom = null; }
+      else if (this.def.ranged && toPlayer < 9) {
+        // casters stand and shoot: face the player, fire every 2.4 s
+        const want = Math.atan2(player.position.x - this.position.x, player.position.z - this.position.z);
+        let dy = want - this.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+        this.yaw += dy * (1 - Math.exp(-8 * dt));
+        this.shootCd = (this.shootCd ?? 1) - dt;
+        if (this.shootCd <= 0) { this.shootCd = 2.4; this.wantsShot = true; this.model.lunge?.(); }
+      }
       else if (toPlayer > this.radius + 0.3) { tx = player.position.x; tz = player.position.z; sp = speed * 1.6; }
     }
     if (this.state === 'wander') {

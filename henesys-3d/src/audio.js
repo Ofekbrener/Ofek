@@ -48,12 +48,57 @@ const SOUNDS = {
     [1047, 1319, 1568].forEach(f => tone('sine', f, f, 0.9, 0.18, 0.5));
   },
   portal: () => tone('sine', 300, 1200, 0.45, 0.3),
+  bolt: () => { tone('sine', 900, 300, 0.25, 0.3); noise(0.25, 2000, 600, 0.15, 3); },
+  step: () => noise(0.05, 900, 500, 0.08, 1),
+  land: () => tone('sine', 140, 70, 0.1, 0.3),
   potion: () => { tone('sine', 500, 900, 0.15, 0.3); tone('sine', 700, 1200, 0.15, 0.2, 0.08); },
 };
 const VIBES = { hurt: 60, levelup: [40, 60, 40, 60, 80], hit: 12, crit: 30, heavy: 25 };
 
+// Recorded sounds (assets/sfx, listed in index.json) win over the synthesised
+// ones above. Each play gets a small random pitch so repeats do not sound robotic.
+const samples = {};
+const GAIN = { step: 0.35, ambience: 0.22, land: 0.6 };
+let ambienceNode = null;
+
+export async function loadSamples(base = 'assets/sfx/') {
+  try {
+    const names = await (await fetch(base + 'index.json')).json();
+    await Promise.all(names.map(async n => {
+      try { samples[n] = await (await fetch(base + n + '.mp3')).arrayBuffer(); } catch { /* keep the synth version */ }
+    }));
+  } catch { /* no recorded sounds: synth only */ }
+}
+
+function decoded(name) {
+  const s = samples[name];
+  if (!s || s instanceof AudioBuffer) return Promise.resolve(s);
+  if (s.then) return s;
+  // decode lazily, once the AudioContext exists
+  samples[name] = ctx.decodeAudioData(s.slice(0)).then(b => (samples[name] = b), () => { delete samples[name]; return null; });
+  return samples[name];
+}
+
+function playSample(name, { loop = false, rate = 1 + (Math.random() - 0.5) * 0.12 } = {}) {
+  const buf = samples[name];
+  if (!(buf instanceof AudioBuffer)) { decoded(name); return null; }
+  const src = ctx.createBufferSource(), g = ctx.createGain();
+  src.buffer = buf; src.loop = loop; src.playbackRate.value = loop ? 1 : rate;
+  g.gain.value = GAIN[name] ?? 0.8;
+  src.connect(g); g.connect(master); src.start();
+  return { src, g };
+}
+
+/** Background nature loop for field maps; call with false in town or when muted. */
+export function ambience(on) {
+  if (!ctx || ctx.state !== 'running') return;
+  if (on && opts.sound && !ambienceNode) ambienceNode = playSample('ambience', { loop: true });
+  if ((!on || !opts.sound) && ambienceNode) { ambienceNode.g.gain.setTargetAtTime(0, ctx.currentTime, 0.4); const n = ambienceNode; setTimeout(() => n.src.stop(), 1500); ambienceNode = null; }
+}
+
 export function sfx(name) {
   if (opts.vibration && VIBES[name] && navigator.vibrate) { try { navigator.vibrate(VIBES[name]); } catch { /* unsupported */ } }
   if (!opts.sound || !ensure() || ctx.state !== 'running') return;
+  if (name in samples) { decoded(name); if (playSample(name)) return; }
   SOUNDS[name]?.();
 }

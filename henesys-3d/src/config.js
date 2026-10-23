@@ -14,7 +14,7 @@ export const MOBS = {
   hornyMushroom:  { name: 'Horny Mushroom',  level: 22, hp: 450,  exp: 11, atk: 48, speed: 1.8, mesos: [25, 55],   drops: [{ item: 'red', chance: 0.12 }, { item: 'blue', chance: 0.1 }] },
   skeletonMinion: { name: 'Skeleton Minion', level: 25, hp: 900,  exp: 15, atk: 60, speed: 1.8, mesos: [40, 80],   drops: [{ item: 'red', chance: 0.12 }, { item: 'blue', chance: 0.1 }] },
   skeletonWarrior:{ name: 'Skeleton Warrior',level: 28, hp: 1300, exp: 20, atk: 75, speed: 1.6, mesos: [55, 110],  drops: [{ item: 'red', chance: 0.15 }, { item: 'blue', chance: 0.1 }] },
-  skeletonMage:   { name: 'Skeleton Mage',   level: 30, hp: 1100, exp: 23, atk: 70, speed: 1.4, mesos: [60, 120],  drops: [{ item: 'red', chance: 0.12 }, { item: 'blue', chance: 0.15 }] },
+  skeletonMage:   { name: 'Skeleton Mage',   level: 30, hp: 1100, exp: 23, atk: 70, speed: 1.4, ranged: true, mesos: [60, 120],  drops: [{ item: 'red', chance: 0.12 }, { item: 'blue', chance: 0.15 }] },
 };
 
 export const MAX_LEVEL = 30;

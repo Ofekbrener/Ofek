@@ -3,13 +3,13 @@ import * as THREE from 'three';
 import { createEngine } from './engine.js';
 import { createInput } from './input.js';
 import { Player } from './entities/player.js';
-import { newCharacter, advance, gainExp, deathPenalty, killExp } from './rules/stats.js';
+import { newCharacter, advance, gainExp, deathPenalty, killExp, canAdvance } from './rules/stats.js';
 import { rollDrops } from './rules/drops.js';
 import { Spawner } from './rules/spawner.js';
 import { JOBS, MOBS } from './config.js';
 import { loadKayKit, buildHero } from './assets/kaykit.js';
 import { buildHenesys } from './world/henesys.js';
-import { buildHuntingGround } from './world/hunting-ground.js';
+import { buildMap, FIELD_IDS } from './world/maps.js';
 import { buildMob } from './assets/mobs.js';
 import { disposeObject } from './assets/toon.js';
 import { Mob } from './entities/mob.js';
@@ -22,8 +22,9 @@ import { createHud } from './hud.js';
 import { showTitle } from './title.js';
 import { EXP_TABLE } from './config.js';
 import { load, save, clear, loadSettings, saveSettings } from './storage.js';
-import { sfx, configureAudio } from './audio.js';
+import { sfx, configureAudio, loadSamples, ambience } from './audio.js';
 import { modifiers, activeBuffs } from './rules/buffs.js';
+import { QUESTS, questStatus, acceptQuest, onMobKilled, completeQuest, availableQuests, activeQuests } from './rules/quests.js';
 import { dialogOpen } from './dialog.js';
 import { TALK_RANGE } from './entities/npc.js';
 
@@ -55,6 +56,46 @@ const game = {
     if (ch.level === 10 && ch.job === 'beginner') hud.toast('Level 10! Visit Athena Pierce or Dances with Balrog in Henesys to choose a job.', 6000);
   },
 };
+
+// ------------------------------------------------------------------ quests
+const JOB_NPCS = ['athena', 'balrog', 'grendel', 'darklord'];
+const NPC_NAMES = { stan: 'Chief Stan', mia: 'Mia', athena: 'Athena Pierce', balrog: 'Dances with Balrog', grendel: 'Grendel', darklord: 'Dark Lord' };
+game.quests = {
+  marker(npc) {
+    const qs = availableQuests(game.character, npc);
+    return qs.some(q => q.status === 'ready') ? '?' : qs.some(q => q.status === 'available') ? '!' : '';
+  },
+  /** A quest dialog for this NPC if it has one to offer or take back, else null. */
+  dialog(npc) {
+    // a job instructor offers the job change before any quest
+    if (JOB_NPCS.includes(npc) && canAdvance(game.character)) return null;
+    const qs = availableQuests(game.character, npc);
+    const q = qs.find(x => x.status === 'ready') ?? qs.find(x => x.status === 'available') ?? qs.find(x => x.status === 'active');
+    if (!q) return null;
+    const g = q.goal;
+    if (q.status === 'available') return { lines: [`[${q.name}]`, q.text, `Reward: ${rewardText(q.reward)}.`], choices: [{ label: 'Accept', onPick: () => acceptQuestUI(q.id) }] };
+    if (q.status === 'active') return { lines: [`[${q.name}] ${g.label}: ${game.character.quests[q.id].count}/${g.count}.`, 'Come back when you are done.'] };
+    return { lines: [`[${q.name}]`, q.done], choices: [{ label: 'Complete', onPick: () => turnIn(q.id) }] };
+  },
+};
+const rewardText = r => [r.exp && `${r.exp} EXP`, r.mesos && `${r.mesos} mesos`, ...Object.entries(r.potions ?? {}).map(([k, n]) => `${n} ${k === 'red' ? 'Red' : 'Blue'} Potions`)].filter(Boolean).join(', ');
+function acceptQuestUI(id) {
+  if (!acceptQuest(game.character, id)) return false;
+  hud.toast(`New quest: ${QUESTS[id].name}. ${QUESTS[id].goal.label} 0/${QUESTS[id].goal.count}.`, 3500);
+  sfx('buff'); persist();
+  return true;
+}
+function turnIn(id) {
+  const before = game.character.level;
+  const r = completeQuest(game.character, id);
+  if (!r.ok) return false;
+  fx.banner('QUEST COMPLETE', QUESTS[id].name);
+  hud.toast(`Reward: ${rewardText(QUESTS[id].reward)}`, 4000);
+  sfx('levelup');
+  if (game.character.level > before) { fx.levelUp(map.scene, player); player.model.cheer?.(); game.onLevelUp?.(); }
+  persist();
+  return true;
+}
 
 const hud = createHud(app, {
   settings,
@@ -89,7 +130,7 @@ async function die() {
   enterMap('henesys');
 }
 
-const builders = { henesys: () => buildHenesys(game), hunting: buildHuntingGround };
+const builders = { henesys: () => buildHenesys(game), ...Object.fromEntries(FIELD_IDS.map(id => [id, () => buildMap(id)])) };
 const maps = {};
 let map = null;
 
@@ -145,6 +186,11 @@ const ctx = {
   onKill(mob) {
     const ch = game.character;
     const before = ch.level;
+    for (const d of onMobKilled(ch, mob.id)) fx.text(mob.position, 1.6, d.item, 'gain quest');
+    for (const q of activeQuests(ch)) if (q.status === 'ready' && !q.announced) {
+      hud.toast(`${q.name}: done! Return to ${NPC_NAMES[q.npc]}.`, 4000);
+      ch.quests[q.id].announced = true;
+    }
     const exp = killExp(mob.id);
     gainExp(ch, exp);
     fx.text(player.position, 2.3, `+${exp} EXP`, 'gain');
@@ -171,6 +217,7 @@ function updateMobs(dt, t) {
   for (let i = map.mobs.length - 1; i >= 0; i--) {
     const m = map.mobs[i];
     m.update(dt, t, player, map);
+    if (m.wantsShot) { m.wantsShot = false; if (m.alive) combat.enemyShot(ctx, m); }
     if (m.removable) { m.object3d.removeFromParent(); disposeObject(m.object3d); map.mobs.splice(i, 1); }
   }
   for (let i = map.drops.length - 1; i >= 0; i--) {
@@ -204,7 +251,7 @@ function handleCombatInput(dt) {
   if (input.pressed('attack') || input.held('attack')) combat.tryAttack(ctx);
 }
 
-let dustT = 0;
+let dustT = 0, wasOnGround = true;
 engine.onFrame((dt, t, realDt) => {
   if (!player) return;
   input.poll();
@@ -228,7 +275,7 @@ engine.onFrame((dt, t, realDt) => {
   const mods = modifiers(game.character, game.time);
   player.speedMod = mods.speed;
   player.setHidden?.(mods.hidden);
-  hud.update(game.character, { buffs: activeBuffs(game.character, game.time), cooldown: id => combat.cooldownLeft(id, game.time) });
+  hud.update(game.character, { quests: activeQuests(game.character), buffs: activeBuffs(game.character, game.time), cooldown: id => combat.cooldownLeft(id, game.time) });
   saveTimer += dt;
   if (saveTimer > SAVE_EVERY) { saveTimer = 0; persist(); }
   const mag = Math.hypot(input.move.x, input.move.y);
@@ -239,7 +286,10 @@ engine.onFrame((dt, t, realDt) => {
   player.updateCamera(engine.camera, input, dt, map.occluders);
   fx.applyShake(engine.camera, realDt);
   dustT -= dt;
-  if (player.onGround && player.speed > 0.5 && dustT <= 0) { dustT = 0.28; fx.dust(player.position); }
+  if (player.onGround && player.speed > 0.5 && dustT <= 0) { dustT = 0.3 / player.speedMod; fx.dust(player.position); sfx('step'); }
+  if (player.onGround && !wasOnGround) sfx('land');
+  wasOnGround = player.onGround;
+  ambience(!!map.zones && settings.sound);
 });
 
 engine.start();
@@ -269,6 +319,7 @@ async function loadAssets() {
 async function boot() {
   input.scheme = settings.controls ?? 'classic';
   await loadAssets();
+  loadSamples();
   // A returning player goes straight back in; a new character needs Settings > Reset progress.
   const saved = load();
   const pick = saved ? { continue: true } : await showTitle(app);
@@ -293,6 +344,10 @@ window.__game = {
   get player() { return player; }, get map() { return map; },
   /** Test hook: jump straight to a level. */
   skillIds: () => JOBS[game.character.job].skills,
+  questsFrom: npc => availableQuests(game.character, npc),
+  acceptQuest: id => acceptQuestUI(id),
+  turnInQuest: id => turnIn(id),
+  questStatus: id => questStatus(game.character, id),
   activeBuffIds: () => activeBuffs(game.character, game.time).map(b => b.id),
   /** Test hook: a fresh level-1 beginner with the same look. */
   resetCharacterForTest() {

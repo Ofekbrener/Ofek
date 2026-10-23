@@ -184,3 +184,10 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #5fb4f5; col
 .buff b { color: #ffe066; }
 .buff.b-rage { box-shadow: inset 0 0 0 2px #ff4a3a; } .buff.b-focus { box-shadow: inset 0 0 0 2px #ffd23f; }
 .buff.b-haste { box-shadow: inset 0 0 0 2px #5ad1ff; } .buff.b-darkSight { box-shadow: inset 0 0 0 2px #8a5ad8; }
+.quests { display: grid; gap: 3px; }
+.quests .q { font: 600 12px var(--body); color: #fff; background: rgba(20,14,8,.62); border-radius: 8px; padding: 2px 8px; width: fit-content; }
+.quests .q b { color: #ffe066; }
+.quests .q.ready { box-shadow: inset 0 0 0 2px #7cf05a; }
+.gain.quest { color: #9fe8ff; }
+.levelup.banner { font-size: 36px; text-align: center; }
+.levelup.banner small { display: block; font-size: 18px; -webkit-text-stroke: 1px #5a2400; }

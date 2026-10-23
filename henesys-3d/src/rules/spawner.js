@@ -11,6 +11,7 @@ export class Spawner {
     this.alive = zones.map(() => 0);
     this.timers = zones.map(() => []);
     this.filled = false;
+    this.picks = zones.map(() => 0); // cycle through each zone's monsters so every kind appears
   }
 
   count(zone) { return this.alive[zone]; }
@@ -25,7 +26,7 @@ export class Spawner {
     const z = this.zones[zone], a = z.area, r = this.rng;
     this.alive[zone]++;
     return {
-      mobId: z.mobIds[Math.floor(r() * z.mobIds.length)],
+      mobId: z.mobIds[this.picks[zone]++ % z.mobIds.length],
       zone,
       x: a.x + (r() - 0.5) * a.w,
       z: a.z + (r() - 0.5) * a.d,
@@ -37,7 +38,11 @@ export class Spawner {
     const room = zone => this.alive[zone] < ZONE_CAP && this.total() < TOTAL_CAP;
     if (!this.filled) {
       this.filled = true;
-      this.zones.forEach((_, i) => { while (room(i)) out.push(this.#spawn(i)); });
+      // round-robin so the far zones are not starved by the total cap
+      for (let added = true; added;) {
+        added = false;
+        this.zones.forEach((_, i) => { if (room(i)) { out.push(this.#spawn(i)); added = true; } });
+      }
       return out;
     }
     this.timers.forEach((list, i) => {

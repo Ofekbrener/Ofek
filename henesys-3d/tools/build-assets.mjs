@@ -115,6 +115,8 @@ async function main() {
   const extra = path.join(HERE, 'sfx-src');
   if (fs.existsSync(extra)) for (const f of fs.readdirSync(extra)) if (f.endsWith('.mp3')) fs.copyFileSync(path.join(extra, f), path.join(OUT, 'sfx', f));
 
+  fs.writeFileSync(path.join(OUT, 'sfx', 'index.json'), JSON.stringify(fs.readdirSync(path.join(OUT, 'sfx')).filter(f => f.endsWith('.mp3')).map(f => f.replace('.mp3', '')).sort()));
+
   const hex = fetchPack(PACKS.hex, 'hex');
   for (const list of Object.values(PROPS)) for (const n of list) {
     const file = findFile(hex, `${n}.gltf`);

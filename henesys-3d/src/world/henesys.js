@@ -9,7 +9,7 @@ import { canAdvance } from '../rules/stats.js';
 
 const HALF = 30;
 
-/** game: { character, advance(job) } — read at talk time, so dialogs follow progress. */
+/** game: { character, advance(job), quests } — read at talk time, so dialogs follow progress. */
 export function buildHenesys(game) {
   const scene = new THREE.Scene();
   const { sun } = addDaylight(scene);
@@ -30,6 +30,7 @@ export function buildHenesys(game) {
     dirtPath(c, toPx, ppm, [[0, 0], [-1, -8], [0, -16]], 3);
     dirtPath(c, toPx, ppm, [[0, 0], [-10, 6], [-17, 9]], 2.4);
     dirtPath(c, toPx, ppm, [[0, 0], [9, 9], [13, 14]], 2.4);
+    dirtPath(c, toPx, ppm, [[2, 8], [2, 18], [0, 31]], 2.8);
   }));
 
   // north hill with the Bowman Instructional School
@@ -72,7 +73,8 @@ export function buildHenesys(game) {
   }
 
   // fence around the town, open at the east gate
-  for (const path of [[[HALF, 4], [HALF, HALF], [-HALF, HALF], [-HALF, -HALF], [HALF, -HALF], [HALF, -4]]]) {
+  // open at the east gate (Hunting Ground) and the south gate (Pig Farm)
+  for (const path of [[[HALF, 4], [HALF, HALF], [4, HALF]], [[-4, HALF], [-HALF, HALF], [-HALF, -HALF], [HALF, -HALF], [HALF, -4]]]) {
     const f = fence(path); scene.add(f.object3d); colliders.push(...f.colliders);
   }
   const gateSign = signpost('Hunting Ground');
@@ -90,11 +92,14 @@ export function buildHenesys(game) {
   }
   scene.add(grassTufts(grass), flowers(flowerPts));
 
-  // portal at the east gate
-  const gate = portal();
-  gate.object3d.position.set(28, 0, 0);
-  scene.add(gate.object3d);
-  animated.push({ animate: (t, cam) => gate.animate(t, cam) });
+  // portals at the east gate and the south gate
+  for (const [x, z] of [[28, 0], [0, 27.5]]) {
+    const gate = portal();
+    gate.object3d.position.set(x, 0, z);
+    scene.add(gate.object3d);
+    animated.push({ animate: (t, cam) => gate.animate(t, cam) });
+  }
+  place(signpost('Pig Farm'), 4.5, 25, Math.PI);
 
   // NPCs
   const c = () => game.character;
@@ -134,6 +139,7 @@ export function buildHenesys(game) {
     return { lines: [...intro, `Come back when you reach level 10. You are level ${ch.level} now.`] };
   }
   for (const n of npcs) {
+    n.quests = game.quests ?? null;
     n.object3d.position.y = h.heightFn(n.position.x, n.position.z) ?? 0;
     scene.add(n.object3d);
     colliders.push({ type: 'circle', x: n.position.x, z: n.position.z, r: 0.45 });
@@ -143,7 +149,7 @@ export function buildHenesys(game) {
     id: 'henesys', name: 'Henesys', scene, sun, colliders, heightFns,
     bounds: { minX: -HALF, maxX: HALF + 2, minZ: -HALF, maxZ: HALF },
     spawn: { x: 4, z: 10 },
-    portals: [{ x: 28, z: 0, r: 1.3, to: 'hunting', arrive: { x: -33, z: 0 } }],
+    portals: [{ x: 28, z: 0, r: 1.3, to: 'hunting', arrive: { x: -33, z: 0 } }, { x: 0, z: 27.5, r: 1.3, to: 'pigfarm', arrive: { x: 0, z: -25 } }],
     npcs, mobs: null, occluders,
     animate(t, camera) { animated.forEach(a => a.animate(t, camera)); },
   };
