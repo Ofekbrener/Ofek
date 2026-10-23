@@ -9,7 +9,7 @@ export function newCharacter(name, look) {
     name, look: normalizeLook(look), level: 1, exp: 0, job: 'beginner',
     str: BASE_STAT, dex: 5, int: 4, luk: 4,
     hp: 50, maxHp: 50, mp: 5, maxMp: 5,
-    mesos: 0, potions: { red: 5, blue: 5 },
+    mesos: 0, potions: { red: 5, blue: 5 }, quests: {},
   };
 }
 
