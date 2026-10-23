@@ -20,7 +20,7 @@ function rig(root, body, { gait, hopHeight = 0.5, rate = 1.5, eyes = [], flashMa
     if (state === 'die' && s.dieT < 0) {
       s.dieT = 0;
       mats = materialsOf(root);
-      mats.forEach(m => { m.transparent = true; m.depthWrite = m.side !== THREE.BackSide; });
+      mats.forEach(m => { m.transparent = true; m.depthWrite = m.side !== THREE.BackSide; m.needsUpdate = true; });
     }
     s.blend = ease(s.blend, state === 'move' ? 1 : 0, 6, dt);
     s.ph = (s.ph + dt * rate) % 1;
@@ -186,7 +186,7 @@ function orangeMushroom() {
 
   shell(root, m, 0.8);
   const r = rig(root, body, { gait: 'hop', hopHeight: 0.55, rate: 1.5, eyes, flashMats: [capMat] });
-  return { object3d: root, height: 1.75 * 0.8 + 0.2, radius: 0.85 * 0.8, ...r };
+  return Object.assign(r, { object3d: root, height: 1.75 * 0.8 + 0.2, radius: 0.85 * 0.8 });
 }
 
 // ------------------------------------------------------------------ Snails
@@ -246,7 +246,7 @@ function snail(shellColor, scale) {
 
   shell(root, m, scale);
   const r = rig(root, body, { gait: 'slide', rate: 1.2, eyes, flashMats: [shellMat, skin] });
-  return { object3d: root, height: 0.8 * scale, radius: 0.4 * scale, ...r };
+  return Object.assign(r, { object3d: root, height: 0.8 * scale, radius: 0.4 * scale });
 }
 
 // ------------------------------------------------------------------- Slime
@@ -284,7 +284,7 @@ function slime() {
   smile.rotateZ(Math.PI);
 
   const r = rig(root, body, { gait: 'blob', hopHeight: 0.35, rate: 1.7, eyes, flashMats: [gel] });
-  return { object3d: root, height: 0.95, radius: 0.55, ...r };
+  return Object.assign(r, { object3d: root, height: 0.95, radius: 0.55 });
 }
 
 // ------------------------------------------------------------------- export

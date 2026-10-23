@@ -11,6 +11,7 @@ import { buildPlayer } from './assets/characters.js';
 import { buildHenesys } from './world/henesys.js';
 import { buildHuntingGround } from './world/hunting-ground.js';
 import { buildMob } from './assets/mobs.js';
+import { disposeObject } from './assets/toon.js';
 import { Mob } from './entities/mob.js';
 import { Drop } from './entities/drop.js';
 import { createCombat } from './combat.js';
@@ -54,7 +55,7 @@ const game = {
 const hud = createHud(app, {
   settings,
   onToggle(key, val) { settings[key] = val; configureAudio(settings); saveSettings(settings); },
-  onReset() { clear(); location.reload(); },
+  onReset() { resetting = true; clear(); location.reload(); },
 });
 
 const RED_HEAL = 50, BLUE_HEAL = 100;
@@ -73,6 +74,8 @@ function drinkPotions() {
 async function die() {
   player.dead = true;
   const lost = deathPenalty(game.character);
+  // Save the outcome now, so closing the app on the death notice cannot apply the penalty twice.
+  save({ ...game.character, hp: game.character.maxHp }, 'henesys');
   await hud.death(lost);
   const ch = game.character;
   ch.hp = ch.maxHp;
@@ -100,8 +103,8 @@ function enterMap(id, at) {
 }
 
 const SAVE_EVERY = 15;
-let saveTimer = 0;
-function persist() { if (player) save(game.character, map?.id ?? 'henesys'); }
+let saveTimer = 0, resetting = false;
+function persist() { if (player && !player.dead && !resetting) save(game.character, map?.id ?? 'henesys'); }
 
 const raycaster = new THREE.Raycaster();
 function handleTap() {
@@ -152,7 +155,7 @@ function updateMobs(dt, t) {
   for (let i = map.mobs.length - 1; i >= 0; i--) {
     const m = map.mobs[i];
     m.update(dt, t, player, map);
-    if (m.removable) { m.object3d.removeFromParent(); map.mobs.splice(i, 1); }
+    if (m.removable) { m.object3d.removeFromParent(); disposeObject(m.object3d); map.mobs.splice(i, 1); }
   }
   for (let i = map.drops.length - 1; i >= 0; i--) {
     const d = map.drops[i], res = d.update(dt, t, player);

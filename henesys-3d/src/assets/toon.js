@@ -113,3 +113,15 @@ export function mergeParts(parts) {
   g.computeBoundingSphere();
   return g;
 }
+
+/**
+ * Frees the GPU buffers of a removed object. Cached Canvas textures are kept
+ * because other instances still use them.
+ */
+export function disposeObject(root) {
+  root.traverse(o => {
+    o.geometry?.dispose();
+    const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of mats) m.dispose();
+  });
+}

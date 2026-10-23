@@ -40,6 +40,7 @@ npx http-server henesys-3d -p 8080
 ```bash
 node --test 'henesys-3d/tests/*.test.js'   # rules: stats, drops, spawning, collision, saves
 node henesys-3d/tests/smoke.mjs             # end-to-end in phone-sized Chromium (Playwright)
+node henesys-3d/tests/regressions.mjs       # fixed bugs stay fixed
 node henesys-3d/tests/preview-shots.mjs out # screenshot every model
 ```
 

@@ -69,7 +69,7 @@ export function createFx(root, camera) {
         c.mesh.position.x = c.player.position.x; c.mesh.position.z = c.player.position.z;
         c.mesh.material.opacity = 0.35 * Math.max(0, 1 - c.t / 1.6);
         c.mesh.scale.set(1 + c.t * 0.4, 1 + c.t * 0.2, 1 + c.t * 0.4);
-        if (c.t > 1.6) { c.mesh.removeFromParent(); columns.splice(i, 1); }
+        if (c.t > 1.6) { c.mesh.removeFromParent(); c.mesh.geometry.dispose(); c.mesh.material.dispose(); columns.splice(i, 1); }
       }
     },
 

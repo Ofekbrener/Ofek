@@ -217,7 +217,7 @@ function animator(h, { weaponKind = null } = {}) {
     attack() { s.atkT = 0; },
     hit() { s.hitT = 0; s.flash = 1; },
     get attacking() { return s.atkT >= 0; },
-    fadeAll(opacity) { materialsOf(h.root).forEach(m => { m.transparent = opacity < 1; m.opacity = opacity; }); },
+    fadeAll(opacity) { materialsOf(h.root).forEach(m => { if (m.transparent !== opacity < 1) m.needsUpdate = true; m.transparent = opacity < 1; m.opacity = opacity; }); },
   };
 }
 
@@ -227,7 +227,8 @@ export function buildPlayer(look = 0, job = 'beginner') {
   const L = LOOKS[look] ?? LOOKS[0];
   const h = humanoid({ hair: L.hair, shirt: L.shirt, pants: L.pants, shoes: L.shoes });
   const a = animator(h, { weaponKind: JOB_WEAPON[job] });
-  return { object3d: h.root, height: 1.6, ...a, setWeapon: j => a.setWeapon(JOB_WEAPON[j] ?? j) };
+  const setWeapon = a.setWeapon;
+  return Object.assign(a, { object3d: h.root, height: 1.6, setWeapon: j => setWeapon(JOB_WEAPON[j] ?? j) });
 }
 
 const NPCS = {
@@ -264,7 +265,7 @@ export const NPC_IDS = Object.keys(NPCS);
 export function buildNpc(id) {
   const h = NPCS[id]();
   const a = animator(h);
-  return { object3d: h.root, height: 1.6, ...a };
+  return Object.assign(a, { object3d: h.root, height: 1.6 });
 }
 
 export const CHARACTER_IDS = ['player0', 'player1', 'player2', 'bowman', 'warrior', ...NPC_IDS];
