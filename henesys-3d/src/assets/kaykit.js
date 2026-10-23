@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { normalizeLook } from '../rules/appearance.js';
 
-const BASES = ['Knight', 'Barbarian', 'Mage', 'Rogue', 'Rogue_Hooded'];
+const BASES = ['Knight', 'Barbarian', 'Mage', 'Rogue', 'Rogue_Hooded', 'Skeleton_Minion', 'Skeleton_Warrior', 'Skeleton_Mage'];
 const HEIGHT = 1.75;
 // (findMesh kept for gear lookups)
 const lib = { gltf: {}, clips: {}, scale: 1 };
@@ -339,3 +339,80 @@ export function prop(name, { scale = 1, solid = 0.8, shadow = true, platform = f
   return { object3d: o, collider: solid > 0 ? { type: 'circle', r } : null, height: size.y };
 }
 
+
+// ---------------------------------------------------------------- skeletons
+
+const SKELETON = {
+  skeletonMinion: { base: 'Skeleton_Minion', weapon: ['Knight', '1H_Sword'], attack: '1H_Melee_Attack_Chop', scale: 1.0 },
+  skeletonWarrior: { base: 'Skeleton_Warrior', weapon: ['Barbarian', '1H_Axe'], offhand: ['Barbarian', 'Barbarian_Round_Shield'], attack: '1H_Melee_Attack_Slice_Diagonal', scale: 1.12 },
+  skeletonMage: { base: 'Skeleton_Mage', weapon: ['Mage', '2H_Staff'], attack: 'Spellcast_Shoot', scale: 1.05 },
+};
+
+/** Copies a weapon node from another KayKit character into this skeleton's hand slot. */
+function attachGear(root, [from, name], slot) {
+  let src = null;
+  lib.gltf[from].scene.traverse(o => { if (o.name === name) src = o; });
+  let bone = null;
+  // GLTFLoader strips the dot from bone names: handslot.r -> handslotr
+  const want = slot.replace('.', '');
+  root.traverse(o => { if (o.name === slot || o.name === want) bone = o; });
+  if (!src || !bone) return;
+  const g = src.clone(true);
+  g.visible = true;
+  g.traverse(o => { o.visible = true; if (o.isMesh) o.castShadow = true; });
+  bone.add(g);
+}
+
+/** A KayKit skeleton as a MobModel: { object3d, height, radius, hop, dead, animate(state), hit(), lunge() }. */
+export function buildSkeletonMob(id) {
+  const d = SKELETON[id];
+  const holder = new THREE.Group();
+  holder.scale.setScalar(lib.scale * d.scale);
+  const root = cloneSkinned(lib.gltf[d.base].scene);
+  root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; o.material = o.material.clone(); } });
+  attachGear(root, d.weapon, 'handslot.r');
+  if (d.offhand) attachGear(root, d.offhand, 'handslot.l');
+  holder.add(root);
+
+  const mixer = new THREE.AnimationMixer(root);
+  const act = n => mixer.clipAction(lib.clips[n]);
+  let base = act('Idle'); base.play();
+  let baseName = 'Idle', shot = null, shotLeft = 0, dieT = -1, mats = null;
+  const setBase = (n, ts = 1) => {
+    if (baseName === n) return;
+    const a = act(n); a.reset().fadeIn(0.2).play(); a.timeScale = ts;
+    base.fadeOut(0.2); base = a; baseName = n;
+  };
+  const once = (n, len) => {
+    const a = act(n); if (shot && shot !== a) shot.fadeOut(0.1);
+    a.reset().setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true;
+    a.timeScale = lib.clips[n].duration / len; a.fadeIn(0.08).play();
+    shot = a; shotLeft = len;
+  };
+  const flash = { v: 0 };
+  const lit = []; root.traverse(o => { if (o.material?.emissive) lit.push(o.material); });
+  return {
+    object3d: holder, height: HEIGHT * d.scale, radius: 0.55 * d.scale, hop: 0,
+    get dead() { return dieT > 1.6; },
+    animate(state, dt) {
+      if (state === 'die') {
+        if (dieT < 0) {
+          dieT = 0;
+          const a = act('Death_A'); a.reset().setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.fadeIn(0.1).play();
+          base.fadeOut(0.1); if (shot) shot.fadeOut(0.1);
+          mats = []; root.traverse(o => { if (o.material) { o.material.transparent = true; o.material.needsUpdate = true; mats.push(o.material); } });
+        }
+        dieT += dt;
+        if (dieT > 1.0) mats.forEach(m => { m.opacity = Math.max(0, 1 - (dieT - 1.0) / 0.6); });
+      } else {
+        setBase(state === 'move' ? 'Walking_A' : 'Idle', state === 'move' ? 1.1 : 1);
+        if (shot) { shotLeft -= dt; if (shotLeft <= 0.1) { shot.fadeOut(0.15); shot = null; } }
+      }
+      flash.v = Math.max(0, flash.v - dt * 4);
+      if (!mats) for (const m of lit) m.emissive.setRGB(0.5 * flash.v, 0.15 * flash.v, 0.1 * flash.v);
+      mixer.update(dt);
+    },
+    hit() { flash.v = 1; if (dieT < 0) once(Math.random() < 0.5 ? 'Hit_A' : 'Hit_B', 0.35); },
+    lunge() { if (dieT < 0) once(d.attack, 0.55); },
+  };
+}

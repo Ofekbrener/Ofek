@@ -3,6 +3,7 @@
 // state: 'idle' | 'move' | 'die'. hit() plays the knock-back on top of any state.
 import * as THREE from 'three';
 import { toon, flat, outline, paintY, canvasTexture, lathe, materialsOf, mergeParts, ease, INK } from './toon.js';
+import { buildSkeletonMob } from './kaykit.js';
 
 // ---------------------------------------------------------------- shared rig
 
@@ -10,7 +11,7 @@ import { toon, flat, outline, paintY, canvasTexture, lathe, materialsOf, mergePa
  * Shared animation for every mob. All motion eases toward a target so state
  * changes never snap. gait: 'hop' (mushroom), 'slide' (snails), 'blob' (slime).
  */
-function rig(root, body, { gait, hopHeight = 0.5, rate = 1.5, eyes = [], flashMats = [] }) {
+function rig(root, body, { gait, hopHeight = 0.5, rate = 1.5, eyes = [], flashMats = [], legs = [] }) {
   const s = { blend: 0, ph: Math.random(), sq: 1, lean: 0, flash: 0, eye: 1, hitT: -1, dieT: -1, lungeT: -1, look: 0 };
   const eyeBase = eyes.map(e => e.scale.y);
   let mats = null;
@@ -35,6 +36,12 @@ function rig(root, body, { gait, hopHeight = 0.5, rate = 1.5, eyes = [], flashMa
         sqT = 1 + (gait === 'blob' ? 0.18 : 0.12) * Math.abs(vy);
         lean = vy * 0.12;
       }
+    } else if (gait === 'trot') {
+      // four-legged trot: quick body bob, legs swing in diagonal pairs
+      const w = Math.sin(s.ph * Math.PI * 4);
+      hop = Math.abs(w) * 0.08;
+      sqT = 1 + 0.03 * w;
+      legs.forEach((l, i) => { l.rotation.x = ease(l.rotation.x, ((i === 0 || i === 3) ? w : -w) * 0.7 * s.blend, 20, dt); });
     } else {
       // slide: the foot stretches and contracts while the shell rocks
       const w = Math.sin(s.ph * Math.PI * 2);
@@ -42,6 +49,7 @@ function rig(root, body, { gait, hopHeight = 0.5, rate = 1.5, eyes = [], flashMa
       sqT = 1 - 0.05 * w;
       lean = 0.05 * Math.sin(s.ph * Math.PI * 2 + 1);
     }
+    if (gait !== 'trot') legs.forEach((l, i) => { l.rotation.x = ease(l.rotation.x, Math.sin(s.ph * Math.PI * 2 + i * 2) * 0.4 * s.blend, 12, dt); });
     sqT = THREE.MathUtils.lerp(breathe, sqT, s.blend);
     hop *= s.blend; lean *= s.blend;
     s.sq = ease(s.sq, sqT, 22, dt);
@@ -134,16 +142,23 @@ function dotEye(radius, ink, white) {
 
 // ------------------------------------------------------------ Orange Mushroom
 
-const capTexture = () => canvasTexture('om-cap', 1024, 256, (g) => {
+// Cap colours per mushroom kind: [top, middle, rim, spot shadow, spot, spot highlight]
+const CAPS = {
+  orange: ['#ec8526', '#e06e1c', '#b84c16', '#c96a12', '#f5c840', '#fbe07a'],
+  green: ['#7ccf4e', '#5fae3e', '#3d7f26', '#4e9a30', '#e8f8c8', '#ffffff'],
+  horny: ['#6f86e0', '#566fd0', '#3a4aa0', '#4a5cb8', '#d8dcff', '#ffffff'],
+};
+const capTexture = (kind = 'orange') => canvasTexture('cap-' + kind, 1024, 256, (g) => {
+  const [top, mid, rim, shade, spot, hi] = CAPS[kind];
   const grad = g.createLinearGradient(0, 0, 0, 256);
-  grad.addColorStop(0, '#ec8526'); grad.addColorStop(0.75, '#e06e1c'); grad.addColorStop(1, '#b84c16');
+  grad.addColorStop(0, top); grad.addColorStop(0.75, mid); grad.addColorStop(1, rim);
   g.fillStyle = grad; g.fillRect(0, 0, 1024, 256);
   const spots = [[60, .5, 46], [210, .74, 38], [330, .4, 50], [470, .68, 42], [600, .44, 48], [740, .76, 36], [860, .42, 50], [960, .72, 36], [150, .2, 34], [520, .18, 36], [800, .16, 34]];
   for (const [x, v, w] of spots) for (const dx of [-1024, 0, 1024]) {
     const y = v * 256;
-    g.fillStyle = '#c96a12'; g.beginPath(); g.ellipse(x + dx + 3, y + 3, w, w * 0.85, 0, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#f5c840'; g.beginPath(); g.ellipse(x + dx, y, w, w * 0.85, 0, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#fbe07a'; g.beginPath(); g.ellipse(x + dx - w * 0.25, y - 4, w * 0.4, w * 0.22, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = shade; g.beginPath(); g.ellipse(x + dx + 3, y + 3, w, w * 0.85, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = spot; g.beginPath(); g.ellipse(x + dx, y, w, w * 0.85, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = hi; g.beginPath(); g.ellipse(x + dx - w * 0.25, y - 4, w * 0.4, w * 0.22, 0, 0, Math.PI * 2); g.fill();
   }
 });
 
@@ -172,7 +187,8 @@ const mouthTexture = () => canvasTexture('om-mouth', 128, 256, (g) => {
   for (const x of [30, 98]) { g.beginPath(); g.moveTo(x - 11, 38); g.lineTo(x + 11, 38); g.lineTo(x, 60); g.closePath(); g.fill(); g.stroke(); }
 });
 
-function orangeMushroom() {
+/** kind: 'orange' (open shouting mouth), 'green' (calm smile), 'horny' (horns, frown). */
+function mushroom(kind = 'orange', scale = 0.8) {
   const root = new THREE.Group(), body = new THREE.Group(), m = new THREE.Group();
   root.add(body); body.add(m);
   const outlineMat = flat(INK, { side: THREE.BackSide });
@@ -187,7 +203,7 @@ function orangeMushroom() {
   for (let i = 0; i <= 20; i++) { const a = i / 20 * Math.PI * 0.5; capPts.push([Math.sin(a) * 1.08, Math.cos(a) * 0.74]); }
   capPts.push([1.04, -0.06]);
   capPts.reverse(); // rim first so faces point outward
-  const capMat = toon(0xe8e8e8, { map: capTexture() });
+  const capMat = toon(0xe8e8e8, { map: capTexture(kind) });
   const capGroup = new THREE.Group();
   capGroup.position.set(0, 1.16, -0.1);
   capGroup.rotation.x = -0.34; // tilted back so the gills show from the front
@@ -198,13 +214,31 @@ function orangeMushroom() {
   capGroup.add(gills);
 
   const eyes = [-1, 1].map(side => onSurface(m, dotEye(0.065, ink, white), radiusAt, side * 0.32, 0.88, 0));
-  const mouth = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.46), flat(0xffffff, { map: mouthTexture(), transparent: true }));
-  onSurface(m, mouth, radiusAt, 0, 0.6, 0.02);
-  mouth.rotation.x -= 0.18;
+  if (kind === 'orange') {
+    const mouth = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.46), flat(0xffffff, { map: mouthTexture(), transparent: true }));
+    onSurface(m, mouth, radiusAt, 0, 0.6, 0.02);
+    mouth.rotation.x -= 0.18;
+  } else {
+    // a small curved mouth: smile for green, frown for horny
+    const arc = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.022, 6, 16, Math.PI), ink);
+    onSurface(m, arc, radiusAt, 0, 0.66, 0.012);
+    if (kind === 'green') arc.rotateZ(Math.PI);
+    // brows give the horny mushroom its scowl
+    if (kind === 'horny') for (const side of [-1, 1]) {
+      const brow = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 0.03), ink);
+      onSurface(m, brow, radiusAt, side * 0.3, 1.0, 0.01);
+      brow.rotateZ(side * 0.45);
+    }
+  }
+  if (kind === 'horny') for (const side of [-1, 1]) {
+    const horn = outline(new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.55, 10), toon(0xf4ecd8)), 1.06, outlineMat);
+    horn.position.set(side * 0.45, 0.72, 0.05); horn.rotation.z = -side * 0.5;
+    capGroup.add(horn);
+  }
 
-  shell(root, m, 0.8);
-  const r = rig(root, body, { gait: 'hop', hopHeight: 0.55, rate: 1.5, eyes, flashMats: [capMat] });
-  return Object.assign(r, { object3d: root, height: 1.75 * 0.8 + 0.2, radius: 0.85 * 0.8 });
+  shell(root, m, scale);
+  const r = rig(root, body, { gait: 'hop', hopHeight: kind === 'green' ? 0.45 : 0.55, rate: kind === 'horny' ? 1.8 : 1.5, eyes, flashMats: [capMat] });
+  return Object.assign(r, { object3d: root, height: 1.95 * scale, radius: 0.85 * scale });
 }
 
 // ------------------------------------------------------------------ Snails
@@ -305,6 +339,98 @@ function slime() {
   return Object.assign(r, { object3d: root, height: 0.95, radius: 0.55 });
 }
 
+// --------------------------------------------------------------------- Pig
+
+function pig(ribbon = false) {
+  const root = new THREE.Group(), body = new THREE.Group(), m = new THREE.Group();
+  root.add(body); body.add(m);
+  const outlineMat = flat(INK, { side: THREE.BackSide });
+  const ink = flat(0x1a1210), white = flat(0xffffff);
+  const skin = toon(ribbon ? 0xf7b2c4 : 0xf4a8b8), dark = toon(0xd9809a);
+
+  const trunk = outline(new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 18), skin), 1.04, outlineMat);
+  trunk.scale.set(0.95, 0.82, 1.25); trunk.position.y = 0.6; m.add(trunk);
+  const head = outline(new THREE.Mesh(new THREE.SphereGeometry(0.36, 22, 16), skin), 1.05, outlineMat);
+  head.position.set(0, 0.78, 0.55); m.add(head);
+  const snout = outline(new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.14, 18), dark), 1.08, outlineMat);
+  snout.rotation.x = Math.PI / 2; snout.position.set(0, -0.06, 0.34); head.add(snout);
+  for (const side of [-1, 1]) {
+    const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), ink);
+    nostril.position.set(side * 0.06, 0, 0.075); nostril.scale.z = 0.4; snout.add(nostril); nostril.rotation.x = -Math.PI / 2;
+    const ear = outline(new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.22, 4), dark), 1.08, outlineMat);
+    ear.position.set(side * 0.24, 0.28, -0.02); ear.rotation.set(-0.3, 0, -side * 0.5); head.add(ear);
+  }
+  const eyes = [-1, 1].map(side => { const e = dotEye(0.05, ink, white); e.position.set(side * 0.15, 0.1, 0.3); head.add(e); return e; });
+  const legs = [];
+  for (const [x, z] of [[-0.25, 0.32], [0.25, 0.32], [-0.25, -0.32], [0.25, -0.32]]) {
+    const leg = new THREE.Group(); leg.position.set(x, 0.4, z); m.add(leg);
+    const l = outline(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.36, 10), skin), 1.08, outlineMat);
+    l.position.y = -0.2; leg.add(l);
+    const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.09, 0.06, 10), toon(0x6a3a3a));
+    hoof.position.y = -0.38; leg.add(hoof);
+    legs.push(leg);
+  }
+  const tail = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.025, 6, 14, Math.PI * 1.6), dark);
+  tail.position.set(0, 0.75, -0.62); tail.rotation.y = Math.PI / 2; m.add(tail);
+  if (ribbon) {
+    const red = toon(0xe8352a);
+    for (const side of [-1, 1]) {
+      const loop = outline(new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.24, 8), red), 1.08, outlineMat);
+      loop.position.set(side * 0.13, 0.36, -0.05); loop.rotation.z = side * Math.PI / 2; head.add(loop);
+    }
+    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), red); knot.position.set(0, 0.36, -0.05); head.add(knot);
+  }
+  shell(root, m, ribbon ? 1.1 : 1);
+  const r = rig(root, body, { gait: 'trot', rate: 2.2, eyes, flashMats: [skin], legs });
+  return Object.assign(r, { object3d: root, height: 1.25 * (ribbon ? 1.1 : 1), radius: 0.6 * (ribbon ? 1.1 : 1) });
+}
+
+// ------------------------------------------------------------------- Stump
+
+const barkTexture = () => canvasTexture('bark', 256, 256, (g) => {
+  g.fillStyle = '#7a4e2c'; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 40; i++) { g.strokeStyle = i % 2 ? 'rgba(60,34,18,.6)' : 'rgba(150,104,64,.5)'; g.lineWidth = 3 + Math.random() * 4; const x = Math.random() * 256; g.beginPath(); g.moveTo(x, 0); g.bezierCurveTo(x + 10, 80, x - 10, 170, x + 4, 256); g.stroke(); }
+});
+const ringsTexture = () => canvasTexture('rings', 256, 256, (g) => {
+  g.fillStyle = '#e8c890'; g.fillRect(0, 0, 256, 256);
+  g.strokeStyle = '#b88a52'; for (let r = 12; r < 128; r += 14) { g.lineWidth = 3; g.beginPath(); g.arc(128, 128, r, 0, Math.PI * 2); g.stroke(); }
+});
+
+function stump() {
+  const root = new THREE.Group(), body = new THREE.Group(), m = new THREE.Group();
+  root.add(body); body.add(m);
+  const outlineMat = flat(INK, { side: THREE.BackSide });
+  const ink = flat(0x1a1210);
+  const bark = toon(0xffffff, { map: barkTexture() });
+  const trunk = outline(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.68, 1.0, 20, 1, true), bark), 1.04, outlineMat);
+  trunk.position.y = 0.62; m.add(trunk);
+  const top = new THREE.Mesh(new THREE.CircleGeometry(0.55, 20), toon(0xffffff, { map: ringsTexture() }));
+  top.rotation.x = -Math.PI / 2; top.position.y = 1.12; m.add(top);
+  const sprout = new THREE.Group(); sprout.position.set(0.15, 1.12, 0.1); m.add(sprout);
+  const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.3, 6), toon(0x4f8f2a)); stalk.position.y = 0.15; sprout.add(stalk);
+  for (const side of [-1, 1]) { const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 6), toon(0x6cc04a)); leaf.scale.set(1.4, 0.4, 0.8); leaf.position.set(side * 0.1, 0.3, 0); leaf.rotation.z = side * 0.4; sprout.add(leaf); }
+  // glowing angry eyes in dark hollows
+  const eyes = [-1, 1].map(side => {
+    const hollow = new THREE.Mesh(new THREE.CircleGeometry(0.1, 14), ink);
+    hollow.position.set(side * 0.2, 0.8, 0.6); hollow.rotation.y = side * 0.3; m.add(hollow);
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.05, 10), flat(0xffd23f));
+    glow.position.z = 0.01; hollow.add(glow);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.03), ink);
+    brow.position.set(0, 0.12, 0.02); brow.rotation.z = -side * 0.5; hollow.add(brow);
+    return hollow;
+  });
+  const mouth = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.08), ink); mouth.position.set(0, 0.55, 0.64); m.add(mouth);
+  const legs = [];
+  for (const a of [0.6, 2.6, 4.6]) {
+    const leg = new THREE.Group(); leg.position.set(Math.sin(a) * 0.5, 0.18, Math.cos(a) * 0.5); m.add(leg);
+    const root2 = outline(new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.4, 8), bark), 1.08, outlineMat);
+    root2.rotation.x = Math.PI; root2.position.y = -0.04; leg.add(root2);
+    legs.push(leg);
+  }
+  const r = rig(root, body, { gait: 'hop', hopHeight: 0.25, rate: 1.4, eyes, flashMats: [bark], legs });
+  return Object.assign(r, { object3d: root, height: 1.35, radius: 0.65 });
+}
+
 // ------------------------------------------------------------------- export
 
 const BUILDERS = {
@@ -312,7 +438,15 @@ const BUILDERS = {
   blueSnail: () => snail(0x3d7fd8, 1.0),
   redSnail: () => snail(0xd83a2a, 1.15),
   slime,
-  orangeMushroom,
+  orangeMushroom: () => mushroom('orange', 0.8),
+  greenMushroom: () => mushroom('green', 0.9),
+  hornyMushroom: () => mushroom('horny', 1.0),
+  pig: () => pig(false),
+  ribbonPig: () => pig(true),
+  stump,
+  skeletonMinion: () => buildSkeletonMob('skeletonMinion'),
+  skeletonWarrior: () => buildSkeletonMob('skeletonWarrior'),
+  skeletonMage: () => buildSkeletonMob('skeletonMage'),
 };
 
 export const MOB_IDS = Object.keys(BUILDERS);
