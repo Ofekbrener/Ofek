@@ -60,6 +60,8 @@ export class Player {
     this.position.set(x, groundHeight(map.heightFns, x, z), z);
     this.vy = 0;
     this.camFocus.copy(this.position);
+    // put faded props back before leaving them (maps are kept and revisited)
+    for (const o of this.faded?.keys() ?? []) setOpacity(o, 1);
     this.faded?.clear(); this.camLast = null;
   }
 
