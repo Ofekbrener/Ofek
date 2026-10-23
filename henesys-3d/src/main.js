@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createEngine } from './engine.js';
 import { createInput } from './input.js';
 import { Player } from './entities/player.js';
-import { newCharacter, advance, gainExp } from './rules/stats.js';
+import { newCharacter, advance, gainExp, deathPenalty } from './rules/stats.js';
 import { rollDrops } from './rules/drops.js';
 import { Spawner } from './rules/spawner.js';
 import { JOBS, MOBS } from './config.js';
@@ -16,6 +16,9 @@ import { Drop } from './entities/drop.js';
 import { createCombat } from './combat.js';
 import { createFx } from './fx.js';
 import { groundHeight } from './rules/collision.js';
+import { createHud } from './hud.js';
+import { showTitle } from './title.js';
+import { EXP_TABLE } from './config.js';
 import { dialogOpen } from './dialog.js';
 import { TALK_RANGE } from './entities/npc.js';
 
@@ -24,18 +27,58 @@ const input = createInput(document.getElementById('app'));
 const fx = createFx(document.getElementById('app'), engine.camera);
 const combat = createCombat(fx);
 
+const app = document.getElementById('app');
+const settings = { sound: true, vibration: true };
+
 const game = {
   character: newCharacter('Beginner', 0),
   advance(job) {
-    if (advance(game.character, job)) player.model.setWeapon(job);
+    if (!advance(game.character, job)) return;
+    player.model.setWeapon(job);
+    fx.levelUp(map.scene, player);
+    hud.toast(`You are now a ${JOBS[job].name}! New skills are on the S1 and S2 buttons.`);
+  },
+  onLevelUp() {
+    const ch = game.character;
+    if (ch.level === 10 && ch.job === 'beginner') hud.toast('Level 10! Visit Athena Pierce or Dances with Balrog in Henesys to choose a job.', 6000);
   },
 };
+
+const hud = createHud(app, {
+  settings,
+  onToggle(key, val) { settings[key] = val; },
+  onReset() { location.reload(); },
+});
+
+const RED_HEAL = 50, BLUE_HEAL = 100;
+function drinkPotions() {
+  const ch = game.character;
+  if (input.pressed('red')) {
+    if (ch.potions.red > 0 && ch.hp < ch.maxHp) { ch.potions.red--; ch.hp = Math.min(ch.maxHp, ch.hp + RED_HEAL); fx.text(player.position, 2.2, `+${RED_HEAL} HP`, 'gain'); }
+    else if (ch.potions.red === 0) hud.toast('No Red Potions left. Monsters drop them.', 2000);
+  }
+  if (input.pressed('blue')) {
+    if (ch.potions.blue > 0 && ch.mp < ch.maxMp) { ch.potions.blue--; ch.mp = Math.min(ch.maxMp, ch.mp + BLUE_HEAL); fx.text(player.position, 2.2, `+${BLUE_HEAL} MP`, 'gain'); }
+    else if (ch.potions.blue === 0) hud.toast('No Blue Potions left. Monsters drop them.', 2000);
+  }
+}
+
+async function die() {
+  player.dead = true;
+  const lost = deathPenalty(game.character);
+  await hud.death(lost);
+  const ch = game.character;
+  ch.hp = ch.maxHp;
+  player.dead = false;
+  player.model.object3d.rotation.x = 0;
+  enterMap('henesys');
+}
 
 const builders = { henesys: () => buildHenesys(game), hunting: buildHuntingGround };
 const maps = {};
 let map = null;
 
-const player = new Player(game.character, buildPlayer(game.character.look, game.character.job));
+let player = null;
 
 function enterMap(id, at) {
   map = maps[id] ??= builders[id]();
@@ -45,6 +88,7 @@ function enterMap(id, at) {
   const p = at ?? map.spawn;
   player.place(p.x, p.z, map);
   engine.setScene(map.scene);
+  hud.mapName(map.name);
 }
 
 const raycaster = new THREE.Raycaster();
@@ -68,7 +112,7 @@ function checkPortals() {
 }
 
 const ctx = {
-  player, get character() { return game.character; }, get map() { return map; },
+  get player() { return player; }, get character() { return game.character; }, get map() { return map; },
   sfx: () => {},
   onKill(mob) {
     const ch = game.character;
@@ -111,7 +155,7 @@ function updateMobs(dt, t) {
 }
 
 function handleCombatInput() {
-  if (dialogOpen()) return;
+  if (dialogOpen() || player.dead) return;
   const skills = JOBS[game.character.job].skills;
   if (input.pressed('skill1') && skills[0]) combat.tryAttack(ctx, skills[0]);
   else if (input.pressed('skill2') && skills[1]) combat.tryAttack(ctx, skills[1]);
@@ -119,8 +163,10 @@ function handleCombatInput() {
 }
 
 engine.onFrame((dt, t) => {
+  if (!player) return;
   input.poll();
-  if (dialogOpen()) { input.move.x = 0; input.move.y = 0; input.clear(); }
+  if (dialogOpen() || player.dead) { input.move.x = 0; input.move.y = 0; input.clear(); }
+  drinkPotions();
   player.update(dt, input, map, t);
   for (const n of map.npcs ?? []) n.update(dt, t, player);
   handleCombatInput();
@@ -134,10 +180,26 @@ engine.onFrame((dt, t) => {
     map.sun.position.set(player.position.x + 6, player.position.y + 12, player.position.z + 8);
     map.sun.target.position.copy(player.position);
   }
+  if (game.character.hp <= 0 && !player.dead) die();
+  if (player.dead) player.model.object3d.rotation.x = Math.max(-Math.PI / 2, player.model.object3d.rotation.x - dt * 5);
+  hud.update(game.character);
   player.updateCamera(engine.camera, input, dt);
 });
 
-enterMap('henesys');
 engine.start();
 
-window.__game = { engine, input, player, game, enterMap, combat, ctx, get map() { return map; } };
+async function boot() {
+  const { name, look } = await showTitle(app);
+  game.character = newCharacter(name, look);
+  player = new Player(game.character, buildPlayer(look, 'beginner'));
+  enterMap('henesys');
+  hud.toast(`Welcome, ${name}! Talk to Chief Stan, then head east to the Hunting Ground.`, 5000);
+}
+boot();
+
+window.__game = {
+  engine, input, game, enterMap, combat, ctx, hud,
+  get player() { return player; }, get map() { return map; },
+  /** Test hook: jump straight to a level. */
+  debugSetLevel(n) { const ch = game.character; gainExp(ch, EXP_TABLE.slice(ch.level, n).reduce((a, b) => a + b, 0) - ch.exp); },
+};

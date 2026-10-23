@@ -37,7 +37,7 @@ export function createFx(root, camera) {
     levelUp(scene, player) {
       const col = new THREE.Mesh(
         new THREE.CylinderGeometry(0.9, 0.9, 6, 24, 1, true),
-        new THREE.MeshBasicMaterial({ color: 0xfff1a0, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+        new THREE.MeshBasicMaterial({ color: 0xfff1a0, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
       );
       col.position.copy(player.position); col.position.y += 3;
       scene.add(col);
@@ -67,7 +67,7 @@ export function createFx(root, camera) {
         const c = columns[i];
         c.t += dt;
         c.mesh.position.x = c.player.position.x; c.mesh.position.z = c.player.position.z;
-        c.mesh.material.opacity = 0.7 * Math.max(0, 1 - c.t / 1.6);
+        c.mesh.material.opacity = 0.35 * Math.max(0, 1 - c.t / 1.6);
         c.mesh.scale.set(1 + c.t * 0.4, 1 + c.t * 0.2, 1 + c.t * 0.4);
         if (c.t > 1.6) { c.mesh.removeFromParent(); columns.splice(i, 1); }
       }

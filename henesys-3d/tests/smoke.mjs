@@ -6,7 +6,12 @@ const server = await serve();
 const { browser, page, errors, touch } = await launch();
 try {
   await page.goto('http://localhost:8123/');
+  await page.waitForSelector('#t-start', { timeout: 15000 });
+  await page.fill('#t-name', 'Tester');
+  await page.click('.look[data-look="2"]');
+  await page.click('#t-start');
   await page.waitForFunction(() => window.__game?.player, null, { timeout: 15000 });
+  check(await page.evaluate(() => window.__game.game.character.name) === 'Tester', 'title screen sets the character name');
   await sleep(500);
 
   // --- movement + camera with two simultaneous touches ---
@@ -100,6 +105,50 @@ try {
     return max;
   });
   check(maxMobs <= 15, `mob count stays within 15 (max ${maxMobs})`);
+
+  // --- level 10, then Athena Pierce makes us a Bowman ---
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.debugSetLevel(10);
+    g.enterMap('henesys');
+    const a = g.map.npcs.find(n => n.id === 'athena');
+    g.player.place(a.position.x, a.position.z + 3, g.map);
+    g.input.camYaw = 0; g.input.camPitch = 0.3;
+    for (let i = 0; i < 60; i++) g.engine.tick(1 / 30, false);
+  });
+  const ath = await page.evaluate(() => {
+    const g = window.__game, a = g.map.npcs.find(n => n.id === 'athena');
+    g.engine.tick(1 / 30);
+    const v = a.position.clone(); v.y += 1; v.project(g.engine.camera);
+    return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight };
+  });
+  await touch('touchStart', [{ x: ath.x, y: ath.y, id: 11 }]); await sleep(60); await touch('touchEnd', []); await sleep(300);
+  check(await page.isVisible('.dialog'), 'tapping Athena Pierce opens her dialog');
+  for (let i = 0; i < 6 && !(await page.isVisible('.dlg-btns button:has-text("Become a Bowman")')); i++) { await page.click('.dlg-btns button.pick'); await sleep(100); }
+  await page.click('.dlg-btns button:has-text("Become a Bowman")');
+  await sleep(200);
+  const job = await page.evaluate(() => ({ job: window.__game.game.character.job, s1: document.getElementById('btn-skill1').disabled, s2: document.getElementById('btn-skill2').disabled }));
+  check(job.job === 'bowman' && !job.s1 && !job.s2, 'Athena makes the player a Bowman and both skill buttons are enabled');
+  await page.screenshot({ path: shot.replace(/\.png$/, '-bowman.png') });
+
+  // --- death: HP 1, a monster bumps us, we wake up in Henesys with less EXP ---
+  const before = await page.evaluate(() => {
+    const g = window.__game;
+    g.enterMap('hunting');
+    g.engine.tick(1 / 30, false);
+    g.game.character.exp = 100;
+    g.game.character.hp = 1;
+    const m = g.map.mobs.find(x => x.alive);
+    g.player.place(m.position.x, m.position.z, g.map);
+    for (let i = 0; i < 30; i++) g.engine.tick(1 / 30, false);
+    return g.game.character.exp;
+  });
+  await page.waitForSelector('#h-death:not([hidden])', { timeout: 3000 });
+  await page.screenshot({ path: shot.replace(/\.png$/, '-death.png') });
+  await page.click('#h-revive');
+  await sleep(200);
+  const after2 = await page.evaluate(() => ({ map: window.__game.map.id, exp: window.__game.game.character.exp, hp: window.__game.game.character.hp, max: window.__game.game.character.maxHp }));
+  check(after2.map === 'henesys' && after2.exp === 90 && after2.hp === after2.max, `death returns to Henesys with full HP and 10% EXP lost (exp 100 -> ${after2.exp})`);
 
   await page.screenshot({ path: shot });
   check(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
