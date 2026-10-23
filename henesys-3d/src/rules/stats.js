@@ -1,11 +1,12 @@
 // Character stats, levelling and damage. Pure: no Three.js, no DOM.
+import { normalizeLook } from './appearance.js';
 import { EXP_TABLE, MAX_LEVEL, JOBS, SKILLS, CRIT_CHANCE, CRIT_MULT, MOBS, EXP_MULT } from '../config.js';
 
 const BASE_STAT = 12;
 
 export function newCharacter(name, look) {
   return {
-    name, look, level: 1, exp: 0, job: 'beginner',
+    name, look: normalizeLook(look), level: 1, exp: 0, job: 'beginner',
     str: BASE_STAT, dex: 5,
     hp: 50, maxHp: 50, mp: 5, maxMp: 5,
     mesos: 0, potions: { red: 5, blue: 5 },

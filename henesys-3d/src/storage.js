@@ -1,6 +1,7 @@
 // Save / load through localStorage. Any throw or unexpected shape loads as
 // null so a private window or an old save starts a fresh game.
 import { JOBS, MAX_LEVEL } from './config.js';
+import { normalizeLook } from './rules/appearance.js';
 
 export const KEY = 'henesys3d.save.v1';
 const MAPS = ['henesys', 'hunting'];
@@ -11,7 +12,6 @@ const num = (v, min = 0) => typeof v === 'number' && Number.isFinite(v) && v >= 
 function valid(c) {
   return c && typeof c === 'object'
     && typeof c.name === 'string' && c.name.length <= 20
-    && Number.isInteger(c.look) && c.look >= 0 && c.look <= 2
     && Number.isInteger(c.level) && c.level >= 1 && c.level <= MAX_LEVEL
     && typeof c.job === 'string' && Object.hasOwn(JOBS, c.job)
     && ['exp', 'str', 'dex', 'mesos'].every(k => num(c[k]))
@@ -24,6 +24,7 @@ export function load(store = store0()) {
   try {
     const data = JSON.parse(store.getItem(KEY));
     if (!data || data.v !== 1 || !valid(data.character)) return null;
+    data.character.look = normalizeLook(data.character.look);
     return { character: data.character, mapId: MAPS.includes(data.mapId) ? data.mapId : 'henesys' };
   } catch {
     return null;

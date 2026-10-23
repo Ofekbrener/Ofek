@@ -8,10 +8,14 @@ try {
   await page.goto('http://localhost:8123/');
   await page.waitForSelector('#t-start', { timeout: 15000 });
   await page.fill('#t-name', 'Tester');
-  await page.click('.look[data-look="2"]');
+  check(await page.isVisible('#t-preview'), 'the character creator shows a 3D preview');
+  await page.click('.chip[data-v="spiky"]');
+  await page.click('[data-key="hair"] .sw[data-v="' + 0xc0392b + '"]');
+  await page.click('.chip[data-v="skirt"]');
   await page.click('#t-start');
   await page.waitForFunction(() => window.__game?.player, null, { timeout: 15000 });
-  check(await page.evaluate(() => window.__game.game.character.name) === 'Tester', 'title screen sets the character name');
+  const made = await page.evaluate(() => window.__game.game.character);
+  check(made.name === 'Tester' && made.look.hairStyle === 'spiky' && made.look.hair === 0xc0392b && made.look.bottom === 'skirt', 'the creator sets name, hair style, hair colour and skirt');
   await sleep(500);
 
   // --- movement + camera with two simultaneous touches ---
@@ -43,12 +47,29 @@ try {
   const outside = await page.evaluate(() => {
     const g = window.__game, house = g.map.colliders.find(c => c.type === 'circle' && Math.hypot(c.x + 15, c.z + 7) < 0.1);
     g.player.place(-10, -7, g.map);
-    g.input.camYaw = 0; g.input.move.x = -1; g.input.move.y = 0;
-    for (let i = 0; i < 90; i++) g.engine.tick(1 / 30, false);
+    g.input.camYaw = 0;
+    for (let i = 0; i < 90; i++) {
+      // push toward world -x whatever the camera does
+      const y = g.input.camYaw;
+      g.input.move.x = -Math.cos(y); g.input.move.y = Math.sin(y);
+      g.engine.tick(1 / 30, false);
+    }
     g.input.move.x = 0;
     return Math.hypot(g.player.position.x - house.x, g.player.position.z - house.z) >= house.r;
   });
   check(outside, 'player stays outside the mushroom house');
+
+  // --- walking turns the camera behind the player ---
+  const behind = await page.evaluate(() => {
+    const g = window.__game;
+    g.player.place(0, 12, g.map);
+    g.input.camYaw = 0; g.input.move.x = 1; g.input.move.y = 0;
+    for (let i = 0; i < 150; i++) g.engine.tick(1 / 30, false);
+    g.input.move.x = 0;
+    const d = g.player.yaw + Math.PI - g.input.camYaw;
+    return Math.abs(Math.atan2(Math.sin(d), Math.cos(d)));
+  });
+  check(behind < 0.35, `walking swings the camera behind the player (off by ${behind.toFixed(2)} rad)`);
 
   // --- tap Chief Stan to open his dialog ---
   const at = await page.evaluate(() => {
@@ -71,7 +92,7 @@ try {
   await page.evaluate(() => {
     const g = window.__game, portal = g.map.portals[0];
     g.player.place(portal.x - 3, portal.z, g.map);
-    g.input.camYaw = -Math.PI / 2; g.input.move.x = 0; g.input.move.y = 1; // forward = +x
+    g.input.camYaw = g.input.moveYaw = -Math.PI / 2; g.input.move.x = 0; g.input.move.y = 1; // forward = +x
     for (let i = 0; i < 60 && g.map.id === 'henesys'; i++) g.engine.tick(1 / 30, false);
     g.input.move.y = 0;
   });

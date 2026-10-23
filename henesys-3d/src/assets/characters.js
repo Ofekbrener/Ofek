@@ -4,12 +4,8 @@
 //   state: 'idle' | 'walk' | 'jump'. attack() and hit() are one-shots layered on top.
 import * as THREE from 'three';
 import { toon, flat, outline, paintY, lathe, materialsOf, ease, INK } from './toon.js';
+import { normalizeLook } from '../rules/appearance.js';
 
-export const LOOKS = [
-  { name: 'Classic', hair: 0x7a4a24, shirt: 0xf4f1ea, pants: 0x3d6fd1, shoes: 0x5a3a20 },
-  { name: 'Forest',  hair: 0x2a2220, shirt: 0x58b04a, pants: 0x7a5232, shoes: 0x3a2a1c },
-  { name: 'Sunny',   hair: 0xf1c34e, shirt: 0xe0483a, pants: 0x464a5a, shoes: 0x2a2a30 },
-];
 const SKIN = 0xffdcbc;
 
 function eye(ink, white, iris) {
@@ -108,6 +104,13 @@ function humanoid(o) {
     if (style === 'pigtails') for (const side of [-1, 1]) {
       const tail = outline(new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), hairM), 1.05, outlineMat);
       tail.scale.set(0.8, 1.3, 0.8); tail.position.set(side * 0.38, -0.1, -0.05); head.add(tail);
+    }
+    if (style === 'spiky') for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2, tilt = 0.75;
+      const spike = outline(new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.32, 6), hairM), 1.06, outlineMat);
+      spike.position.set(Math.sin(a) * 0.22, 0.3, Math.cos(a) * 0.22 - 0.04);
+      spike.rotation.set(Math.cos(a) * tilt, 0, -Math.sin(a) * tilt);
+      head.add(spike);
     }
     if (style === 'old') { head.children.filter(c => c.geometry?.type === 'ConeGeometry').forEach(c => c.visible = false); }
   }
@@ -228,9 +231,13 @@ function animator(h, { weaponKind = null } = {}) {
 
 const JOB_WEAPON = { beginner: 'club', bowman: 'bow', warrior: 'sword' };
 
+/** look: an appearance object (see rules/appearance.js) or an old 0..2 look number. */
 export function buildPlayer(look = 0, job = 'beginner') {
-  const L = LOOKS[look] ?? LOOKS[0];
-  const h = humanoid({ hair: L.hair, shirt: L.shirt, pants: L.pants, shoes: L.shoes });
+  const L = normalizeLook(look);
+  const h = humanoid({
+    hair: L.hair, hairStyle: L.hairStyle, skin: L.skin, eyes: L.eyes, shirt: L.shirt, pants: L.pants,
+    skirt: L.bottom === 'skirt' ? L.pants : undefined, shoes: 0x5a3a20,
+  });
   const a = animator(h, { weaponKind: JOB_WEAPON[job] });
   const setWeapon = a.setWeapon;
   return Object.assign(a, { object3d: h.root, height: 1.6, setWeapon: j => setWeapon(JOB_WEAPON[j] ?? j) });

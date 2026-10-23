@@ -11,6 +11,9 @@ export function createInput(root) {
   const state = {
     move: { x: 0, y: 0 },
     camYaw: 0,
+    // Walking directions are measured from this yaw. It locks while the stick is held,
+    // so the follow camera can swing behind the player without changing their path.
+    moveYaw: 0,
     camPitch: 0.35,
     tapPoint: null,
     enabled: true,
@@ -102,18 +105,25 @@ export function createInput(root) {
   document.addEventListener('touchmove', e => { if (e.cancelable && !e.target.closest('.scroll')) e.preventDefault(); }, { passive: false });
   document.addEventListener('gesturestart', e => e.preventDefault());
 
+  // A getter must be defined on state itself: Object.assign would copy its value once.
+  Object.defineProperty(state, 'camDragging', {
+    get: () => [...pointers.values()].some(p => p.role === 'cam' && Math.hypot(p.x - p.x0, p.y - p.y0) > TAP_SLOP),
+  });
+
   return Object.assign(state, {
     /** True once per tap or key press. */
     pressed(name) { const had = taps.has(name); taps.delete(name); return had; },
     held(name) { return held.has(name); },
     /** Call once per frame before reading move; folds keyboard into the stick. */
     poll() {
+      const idle = state.move.x === 0 && state.move.y === 0;
       if (keys.size) {
         const kx = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
         const ky = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
         if (kx || ky) { const d = Math.hypot(kx, ky); state.move.x = kx / d; state.move.y = ky / d; }
         else if (![...pointers.values()].some(p => p.role === 'stick')) { state.move.x = 0; state.move.y = 0; }
       }
+      if (idle) state.moveYaw = state.camYaw;
     },
     takeTap() { const t = state.tapPoint; state.tapPoint = null; return t; },
     clear() { taps.clear(); },

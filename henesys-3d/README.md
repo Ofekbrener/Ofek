@@ -4,8 +4,11 @@ A 3D tribute to MapleStory Classic for phone browsers. It has two maps: the town
 
 ## Play
 
+The first screen is the character creator. You pick a name, one of 5 hair styles, hair, skin, eye, shirt and pants colours, and pants or a skirt. A 3D preview shows each change.
+
+
 - Drag on the left half of the screen to walk. The joystick appears under your thumb.
-- Drag on the right half to turn the camera.
+- Drag on the right half to turn the camera. While you walk, the camera swings behind your character on its own.
 - **Attack** hits the nearest monster in range. Hold it to keep attacking.
 - **Jump**, the two skill buttons, and the Red and Blue Potion buttons sit next to it. A Red Potion heals 50 HP and a Blue Potion restores 100 MP.
 - Tap an NPC to talk to them.

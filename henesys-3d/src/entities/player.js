@@ -51,7 +51,7 @@ export class Player {
   }
 
   update(dt, input, map, t) {
-    const yaw = input.camYaw;
+    const yaw = input.moveYaw ?? input.camYaw;
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw);   // camera forward on the ground
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);    // camera right
     const mx = input.move.x, my = input.move.y;

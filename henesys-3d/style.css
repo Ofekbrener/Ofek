@@ -117,20 +117,29 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #5fb4f5; col
 .panel button.danger { background: #e8574a; color: #fff; }
 .panel.death { text-align: center; }
 
-/* Title */
-.title { position: fixed; inset: 0; z-index: 40; display: grid; place-content: center; justify-items: center; gap: 12px; padding: 24px max(16px, var(--safe-r)) 24px max(16px, var(--safe-l));
-  background: radial-gradient(ellipse at 50% 120%, #7fcf52 0 35%, transparent 36%), linear-gradient(#5fb4f5, #cdeeff); touch-action: auto; text-align: center; }
+/* Title / character creator */
+.title { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: calc(12px + var(--safe-t)) max(16px, var(--safe-r)) calc(10px + var(--safe-b)) max(16px, var(--safe-l));
+  background: radial-gradient(ellipse at 50% 46%, #7fcf52 0 18%, transparent 19%), linear-gradient(#5fb4f5, #cdeeff); touch-action: auto; text-align: center; }
 .logo { font: 64px/0.9 var(--display); color: #ffb84a; -webkit-text-stroke: 3px var(--ink); text-shadow: 0 6px 0 var(--ink); }
-.logo em { display: block; font-style: normal; font-size: 40px; color: #fff; }
-.tag { margin: 0; font-weight: 600; color: var(--ink); }
-.title .card { display: grid; gap: 10px; width: min(320px, calc(100vw - 32px)); background: var(--panel); border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 5px 0 var(--ink); padding: 16px; text-align: left; }
+.logo em { font-style: normal; color: #fff; }
+.logo.small { font-size: 40px; -webkit-text-stroke-width: 2px; text-shadow: 0 4px 0 var(--ink); }
+.stage { position: relative; width: min(320px, 100%); height: 30vh; min-height: 170px; flex: none; }
+.stage canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+.stage .hint { position: absolute; bottom: 2px; left: 0; right: 0; font-size: 11px; font-weight: 700; opacity: .6; }
+.title .card { display: grid; gap: 8px; width: min(360px, 100%); background: var(--panel); border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 5px 0 var(--ink);
+  padding: 14px; text-align: left; overflow-y: auto; min-height: 0; flex: 1 1 auto; touch-action: pan-y; }
+.title h3 { margin: 4px 0 0; font: 15px var(--display); color: var(--orange); -webkit-text-stroke: .4px var(--ink); }
 .title label { font-weight: 700; font-size: 14px; }
 .title input { font: 600 18px var(--body); border: 3px solid var(--ink); border-radius: 12px; padding: 8px 12px; background: #fff; color: var(--ink); user-select: text; -webkit-user-select: text; }
-.looks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.look { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; border: 3px solid var(--ink); border-radius: 12px; background: var(--panel-2); padding: 8px 6px 4px; }
-.look span { height: 18px; border-radius: 5px; border: 1.5px solid var(--ink); }
-.look small { grid-column: 1 / -1; font: 13px var(--display); color: var(--ink); }
-.look.on { background: #ffd9a8; box-shadow: 0 0 0 3px var(--orange); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 14px var(--display); border: 2.5px solid var(--ink); border-radius: 999px; background: var(--panel-2); padding: 6px 12px; color: var(--ink); }
+.chip.on { background: var(--orange); color: #fff; -webkit-text-stroke: .4px var(--ink); }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.sw { width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid var(--ink); padding: 0; box-shadow: 0 2px 0 var(--ink); }
+.sw.on { outline: 3px solid var(--orange); outline-offset: 2px; transform: scale(1.08); }
+.title .row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; margin-top: 6px; }
+.random { font: 18px var(--display); border: 3px solid var(--ink); border-radius: 999px; background: var(--panel-2); padding: 10px; box-shadow: 0 4px 0 var(--ink); color: var(--ink); }
 .start { font: 22px var(--display); color: #fff; -webkit-text-stroke: 1px var(--ink); background: var(--orange); border: 3px solid var(--ink); border-radius: 999px; padding: 10px; box-shadow: 0 4px 0 var(--ink); }
 .fine { margin: 0; font-size: 11px; opacity: .7; max-width: 300px; }
 

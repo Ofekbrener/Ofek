@@ -17,6 +17,7 @@ import { Drop } from './entities/drop.js';
 import { createCombat } from './combat.js';
 import { createFx } from './fx.js';
 import { groundHeight } from './rules/collision.js';
+import { followYaw } from './rules/camera.js';
 import { createHud } from './hud.js';
 import { showTitle } from './title.js';
 import { EXP_TABLE } from './config.js';
@@ -213,6 +214,8 @@ engine.onFrame((dt, t, realDt) => {
   hud.update(game.character);
   saveTimer += dt;
   if (saveTimer > SAVE_EVERY) { saveTimer = 0; persist(); }
+  const mag = Math.hypot(input.move.x, input.move.y);
+  input.camYaw = followYaw(input.camYaw, player.yaw, dt, { moving: mag > 0.15 && !player.dead, forward: mag ? input.move.y / mag : 0, dragging: input.camDragging });
   player.updateCamera(engine.camera, input, dt);
   fx.applyShake(engine.camera, realDt);
   dustT -= dt;
