@@ -7,13 +7,13 @@ A 3D tribute to MapleStory Classic for phone browsers. It has two maps: the town
 The first screen is the character creator. You pick a name, one of 5 hair styles, hair, skin, eye, shirt and pants colours, and pants or a skirt. A 3D preview shows each change.
 
 
-- Drag on the left half of the screen to walk. The joystick appears under your thumb.
-- Drag on the right half to turn the camera. While you walk, the camera swings behind your character on its own.
+- Drag on the left half of the screen to move. The joystick appears under your thumb. With the default Classic controls, up walks forward, down walks backward, and left or right turns on the spot. Settings has a Free mode where you walk wherever you push.
+- Drag on the right half to look around. The camera settles back behind your character. Pinch with two fingers to zoom.
 - **Attack** hits the nearest monster in range. Hold it to keep attacking.
 - **Jump**, the two skill buttons, and the Red and Blue Potion buttons sit next to it. A Red Potion heals 50 HP and a Blue Potion restores 100 MP.
 - Tap an NPC to talk to them.
 - Walk into the swirl at the east gate to reach the Hunting Ground.
-- At level 10, talk to Athena Pierce (Bowman) or Dances with Balrog (Warrior) to pick a job.
+- At level 10, pick a job from Athena Pierce (Bowman), Dances with Balrog (Warrior), Grendel the Really Old (Magician) or Dark Lord (Thief). Each job has 4 skills, which unlock at levels 10, 13, 16 and 20.
 
 On a computer: WASD moves, Space jumps, J attacks, K and L use skills, 1 and 2 drink potions.
 
@@ -55,7 +55,7 @@ node henesys-3d/tests/preview-shots.mjs out # screenshot every model
 
 - Three.js r186 loads as a plain ES module. There is no build step.
 - `src/rules/` holds the game logic (stats, drops, spawning, collision) as pure functions. Node tests them without a browser.
-- Every model is built in code from primitives, lathe shapes and Canvas textures, in `src/assets/`. The project has no image or model files.
+- Characters, animations, trees and props come from the KayKit packs by Kay Lousberg (CC0). `tools/build-assets.mjs` downloads them and makes them smaller; see `assets/CREDITS.md`. The monsters and mushroom houses are built in code in `src/assets/`.
 - Sound effects are synthesised with Web Audio.
 
 ## Credits

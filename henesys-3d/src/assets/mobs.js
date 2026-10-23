@@ -11,7 +11,7 @@ import { toon, flat, outline, paintY, canvasTexture, lathe, materialsOf, mergePa
  * changes never snap. gait: 'hop' (mushroom), 'slide' (snails), 'blob' (slime).
  */
 function rig(root, body, { gait, hopHeight = 0.5, rate = 1.5, eyes = [], flashMats = [] }) {
-  const s = { blend: 0, ph: Math.random(), sq: 1, lean: 0, flash: 0, eye: 1, hitT: -1, dieT: -1 };
+  const s = { blend: 0, ph: Math.random(), sq: 1, lean: 0, flash: 0, eye: 1, hitT: -1, dieT: -1, lungeT: -1, look: 0 };
   const eyeBase = eyes.map(e => e.scale.y);
   let mats = null;
   const GROUND = 0.25;
@@ -58,24 +58,42 @@ function rig(root, body, { gait, hopHeight = 0.5, rate = 1.5, eyes = [], flashMa
     s.eye = ease(s.eye, eyeT, 30, dt);
     eyes.forEach((e, i) => { e.scale.y = eyeBase[i] * s.eye; });
 
+    // contact attack: a quick forward pounce with a squash on landing
+    let pounce = 0;
+    if (s.lungeT >= 0) {
+      s.lungeT += dt;
+      const k = s.lungeT / 0.35;
+      pounce = Math.sin(Math.min(1, k) * Math.PI);
+      lean -= pounce * 0.35;
+      if (k >= 1) s.lungeT = -1;
+    }
+    // idle: glance left and right now and then
+    s.look = ease(s.look, s.blend < 0.3 ? Math.sin(t * 0.7 + s.ph * 9) * 0.35 : 0, 3, dt);
+    body.rotation.y = s.look;
+
     s.lean = ease(s.lean, lean, 10, dt);
     body.rotation.x = -s.lean + hitTilt;
     const side = 1 / Math.sqrt(s.sq);
     body.scale.set(side, s.sq, side * stretchZ);
-    body.position.y = hop;
+    body.position.y = hop + pounce * 0.25;
+    body.position.z = pounce * 0.45;
 
     if (s.dieT >= 0) {
       s.dieT += dt;
       const k = Math.min(1, s.dieT / 0.6);
       mats.forEach(m => { m.opacity = (m.userData.baseOpacity ?? 1) * (1 - k); });
-      body.position.y -= k * 0.4;
-      body.scale.y *= 1 - k * 0.5;
+      // squash flat, then spread and sink
+      const squash = Math.min(1, s.dieT / 0.15);
+      body.scale.y *= 1 - squash * 0.55;
+      body.scale.x *= 1 + squash * 0.35; body.scale.z *= 1 + squash * 0.35;
+      body.position.y -= k * 0.3;
     }
   }
 
   return {
     animate,
     hit() { s.hitT = 0; s.flash = 1; },
+    lunge() { if (s.lungeT < 0) s.lungeT = 0; },
     get dead() { return s.dieT >= 0.6; },
     get hop() { return body.position.y; },
   };

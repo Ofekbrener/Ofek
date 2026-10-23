@@ -277,7 +277,8 @@ export function hill(x, z, r, h) {
 }
 
 /** Sky colour, distant green hills and slow clouds around the map. */
-export function skyAndHills(scene, radius = 90) {
+/** makeCloud: optional factory returning an Object3D (KayKit clouds); spheres otherwise. */
+export function skyAndHills(scene, radius = 90, makeCloud = null) {
   scene.background = new THREE.Color(0x8fd0ff);
   scene.fog = new THREE.Fog(0xbfe6ff, 60, 170);
   const g = new THREE.Group();
@@ -291,7 +292,8 @@ export function skyAndHills(scene, radius = 90) {
   const clouds = new THREE.Group();
   for (let i = 0; i < 12; i++) {
     const cl = new THREE.Group();
-    for (let j = 0; j < 4; j++) {
+    if (makeCloud) cl.add(makeCloud(i));
+    else for (let j = 0; j < 4; j++) {
       const p = new THREE.Mesh(new THREE.SphereGeometry(2.4 + Math.random() * 1.6, 12, 8), toon(0xffffff));
       p.position.set(j * 2.6 - 4, Math.random(), 0); p.scale.y = 0.6; cl.add(p);
     }
@@ -316,7 +318,7 @@ export function nameTag(text, color = '#ffffff') {
     c.fillText(text, 256, 50);
   });
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-  s.scale.set(2.4, 0.45, 1);
+  s.scale.set(3.4, 0.64, 1);
   s.renderOrder = 10;
   return s;
 }

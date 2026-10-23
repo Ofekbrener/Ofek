@@ -45,7 +45,7 @@ const game = {
     fx.levelUp(map.scene, player);
     sfx('levelup');
     persist();
-    hud.toast(`You are now a ${JOBS[job].name}! New skills are on the S1 and S2 buttons.`);
+    hud.toast(`You are now a ${JOBS[job].name}! Your skills are on the round buttons. More unlock at levels 13, 16 and 20.`, 5000);
   },
   onLevelUp() {
     sfx('levelup');
@@ -150,6 +150,7 @@ const ctx = {
     fx.text(player.position, 2.3, `+${exp} EXP`, 'gain');
     map.spawner.onDeath(mob.zone);
     fx.kill(mob.position);
+    fx.particles.burst(mob.position.clone().setY(mob.position.y + 0.3), { count: 10, color: 0xf0ece0, shape: 'dot', speed: 1.6, up: 1.2, size: 1.1, life: 0.6, gravity: -0.5 });
     const y = groundHeight(map.heightFns, mob.position.x, mob.position.z);
     for (const loot of rollDrops(mob.id)) {
       const d = new Drop(loot, mob.position.x, mob.position.z, y);
@@ -225,7 +226,7 @@ engine.onFrame((dt, t, realDt) => {
   input.camYaw = input.scheme === 'classic'
     ? followYaw(input.camYaw, player.yaw, dt, { moving: true, forward: 1, dragging: input.camDragging })
     : followYaw(input.camYaw, player.yaw, dt, { moving: mag > 0.15 && !player.dead, forward: mag ? input.move.y / mag : 0, dragging: input.camDragging });
-  player.updateCamera(engine.camera, input, dt);
+  player.updateCamera(engine.camera, input, dt, map.occluders);
   fx.applyShake(engine.camera, realDt);
   dustT -= dt;
   if (player.onGround && player.speed > 0.5 && dustT <= 0) { dustT = 0.28; fx.dust(player.position); }

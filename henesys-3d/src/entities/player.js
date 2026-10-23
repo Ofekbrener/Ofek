@@ -10,6 +10,7 @@ export const JUMP_VELOCITY = 7;
 export const GRAVITY = 20;
 export const RADIUS = 0.4;
 export const CAM_DIST = 9;
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _ray = new THREE.Raycaster();
 const CAM_HEIGHT = 1.5;
 
 export class Player {
@@ -126,8 +127,20 @@ export class Player {
     this.model.animate(this.anim, dt, t, this.speed * this.speedMod);
   }
 
-  updateCamera(camera, input, dt) {
-    const dist = CAM_DIST * (input.zoom ?? 1);
+  /** occluders: big meshes (trees, houses) the camera should not hide behind. */
+  updateCamera(camera, input, dt, occluders = null) {
+    let dist = CAM_DIST * (input.zoom ?? 1);
+    if (occluders?.length) {
+      // pull the camera in front of anything between it and the player
+      const pitch0 = input.camPitch, yaw0 = input.camYaw;
+      const from = _v1.set(this.camFocus.x, this.camFocus.y + CAM_HEIGHT, this.camFocus.z);
+      const dir = _v2.set(Math.sin(yaw0) * Math.cos(pitch0), Math.sin(pitch0), Math.cos(yaw0) * Math.cos(pitch0));
+      _ray.set(from, dir); _ray.far = dist;
+      const hit = _ray.intersectObjects(occluders, true)[0];
+      const want = hit ? Math.max(2.2, hit.distance - 0.5) : dist;
+      this.camDist = ease(this.camDist ?? want, want, want < (this.camDist ?? want) ? 18 : 4, dt);
+      dist = this.camDist;
+    }
     this.camFocus.x = ease(this.camFocus.x, this.position.x, 10, dt);
     this.camFocus.z = ease(this.camFocus.z, this.position.z, 10, dt);
     this.camFocus.y = ease(this.camFocus.y, this.position.y, 6, dt);

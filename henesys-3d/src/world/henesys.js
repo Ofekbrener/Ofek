@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { addDaylight } from '../assets/toon.js';
 import { mushroomHouse, lollipopTree, giantMushroom, grassTufts, flowers, fence, signpost, portal, paintedGround, dirtPath, dirtDisc, hill, skyAndHills } from '../assets/props.js';
-import { buildNpc } from '../assets/kaykit.js';
+import { buildNpc, prop } from '../assets/kaykit.js';
 import { Npc } from '../entities/npc.js';
 import { canAdvance } from '../rules/stats.js';
 
@@ -13,8 +13,8 @@ const HALF = 30;
 export function buildHenesys(game) {
   const scene = new THREE.Scene();
   const { sun } = addDaylight(scene);
-  const sky = skyAndHills(scene);
-  const colliders = [], heightFns = [], animated = [sky];
+  const sky = skyAndHills(scene, 90, i => prop(i % 2 ? 'cloud_big' : 'cloud_small', { scale: 1.4, solid: 0, shadow: false }).object3d);
+  const colliders = [], heightFns = [], animated = [sky], occluders = [];
   const place = (item, x, z, ry = 0) => {
     item.object3d.position.set(x, item.object3d.position.y, z);
     item.object3d.rotation.y = ry;
@@ -42,16 +42,34 @@ export function buildHenesys(game) {
   schoolSign.object3d.position.y = h.heightFn(3.5, -17);
   place(schoolSign, 3.5, -17, -0.2);
 
-  place(giantMushroom(), 0, 0);
-  place(mushroomHouse('orange'), -15, -7, 0.9);
-  place(mushroomHouse('red'), -17, 9, 1.8);
-  place(mushroomHouse('brown', 0.9), 13, 14, -2.6);
-  place(mushroomHouse('red', 0.95), 15, -11, -0.6);
-  place(mushroomHouse('orange', 0.85), -4, 18, 3.1);
+  occluders.push(place(giantMushroom(), 0, 0).object3d);
+  occluders.push(place(mushroomHouse('orange'), -15, -7, 0.9).object3d);
+  occluders.push(place(mushroomHouse('red'), -17, 9, 1.8).object3d);
+  occluders.push(place(mushroomHouse('brown', 0.9), 13, 14, -2.6).object3d);
+  occluders.push(place(mushroomHouse('red', 0.95), 15, -11, -0.6).object3d);
+  occluders.push(place(mushroomHouse('orange', 0.85), -4, 18, 3.1).object3d);
 
   // trees around the edges
   const trees = [[-24, -20], [-26, -6], [-25, 20], [-12, 24], [6, 25], [22, 22], [25, 9], [24, -14], [16, -24], [-16, -24], [-8, -15], [9, -17], [-22, 2], [5, 12]];
-  trees.forEach(([x, z], i) => place(lollipopTree(0.9 + (i % 3) * 0.15, i % 4 === 0 ? 0x6cc04a : 0x56b03a), x, z, i));
+  const TREES = ['tree_single_A', 'tree_single_B', 'trees_A_medium', 'trees_B_medium'];
+  // round Henesys trees mixed with KayKit pines
+  trees.forEach(([x, z], i) => occluders.push(place(i % 2 ? lollipopTree(1 + (i % 3) * 0.15, i % 4 === 1 ? 0x6cc04a : 0x56b03a) : prop(TREES[i % 4], { scale: 0.9 + (i % 3) * 0.15, solid: i % 4 > 1 ? 0.35 : 0.25 }), x, z, i).object3d));
+
+  // life around town: barrels and crates by the houses, an archery range by
+  // Athena's hill, a weapon rack by Dances with Balrog, flags at the gate
+  const decor = [
+    ['barrel', -12, -4, 0], ['barrel', -12.8, -3.2, 1], ['crate_A_big', -11.5, -2.6, 0.3], ['sack', -13.5, -2.8, 0.8],
+    ['crate_B_big', 16.5, -7.5, 0.5], ['crate_A_small', 17.4, -7, 1.2], ['wheelbarrow', 10, 12, 2.2],
+    ['barrel', -13, 12, 0.2], ['resource_lumber', -20, 5, 1.4],
+    ['target', -5, -19, 0.4, 1.3], ['target', -7.5, -18, 0.7, 1.3], ['bucket_arrows', -3.8, -17.6, 0, 1.2],
+    ['weaponrack', 11, 8, -2.2, 1.3], ['tent', 21, -16, -0.8],
+    ['flag_red', 27, 6, 0, 1.6], ['flag_red', 27, -6, 0, 1.6],
+  ];
+  for (const [n, x, z, ry, sc = 1] of decor) {
+    const item = prop(n, { scale: sc, solid: n.startsWith('flag') ? 0.2 : 0.7 });
+    item.object3d.position.y = h.heightFn(x, z) ?? 0;
+    place(item, x, z, ry);
+  }
 
   // fence around the town, open at the east gate
   for (const path of [[[HALF, 4], [HALF, HALF], [-HALF, HALF], [-HALF, -HALF], [HALF, -HALF], [HALF, -4]]]) {
@@ -126,7 +144,7 @@ export function buildHenesys(game) {
     bounds: { minX: -HALF, maxX: HALF + 2, minZ: -HALF, maxZ: HALF },
     spawn: { x: 4, z: 10 },
     portals: [{ x: 28, z: 0, r: 1.3, to: 'hunting', arrive: { x: -33, z: 0 } }],
-    npcs, mobs: null,
+    npcs, mobs: null, occluders,
     animate(t, camera) { animated.forEach(a => a.animate(t, camera)); },
   };
 }

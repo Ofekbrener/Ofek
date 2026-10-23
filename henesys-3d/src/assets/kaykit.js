@@ -14,14 +14,23 @@ const HEIGHT = 1.75;
 // (findMesh kept for gear lookups)
 const lib = { gltf: {}, clips: {}, scale: 1 };
 
+export const PROP_NAMES = ['tree_single_A', 'tree_single_B', 'trees_A_small', 'trees_A_medium', 'trees_B_small', 'trees_B_medium',
+  'rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E', 'cloud_big', 'cloud_small',
+  'barrel', 'crate_A_big', 'crate_A_small', 'crate_B_big', 'sack', 'tent', 'target', 'flag_red', 'flag_green', 'flag_blue', 'flag_yellow',
+  'weaponrack', 'wheelbarrow', 'bucket_arrows', 'resource_lumber'];
+// KayKit hex props are modelled at about 1/5 of our metre scale.
+export const PROP_SCALE = 5;
+
 export async function loadKayKit(onProgress = () => {}) {
   if (lib.ready) return;
   const loader = new GLTFLoader();
-  const files = [...BASES.map(b => `assets/chars/${b}.glb`), 'assets/anims.glb'];
+  const files = [...BASES.map(b => `assets/chars/${b}.glb`), 'assets/anims.glb', ...PROP_NAMES.map(n => `assets/props/${n}.glb`)];
   let done = 0;
   const loaded = await Promise.all(files.map(f => loader.loadAsync(f).then(g => { onProgress(++done / files.length); return g; })));
   BASES.forEach((b, i) => { lib.gltf[b] = loaded[i]; });
-  for (const c of loaded.at(-1).animations) lib.clips[c.name] = c;
+  for (const c of loaded[BASES.length].animations) lib.clips[c.name] = c;
+  lib.props = {};
+  PROP_NAMES.forEach((n, i) => { lib.props[n] = loaded[BASES.length + 1 + i].scene; });
   const box = new THREE.Box3().setFromObject(lib.gltf.Rogue.scene);
   lib.scale = HEIGHT / (box.max.y - box.min.y);
   lib.ready = true;
@@ -296,4 +305,17 @@ export function buildNpc(id) {
   const anim = animator(root, d.outfit);
   holder.add(root);
   return { object3d: holder, height: HEIGHT, animate: (...a) => anim.animate(...a), attack: id2 => anim.attack(id2), hit: () => anim.hit(), cheer: () => anim.cheer() };
+}
+
+/**
+ * A KayKit prop at game scale. Returns { object3d, collider } where the collider
+ * is a circle covering `solid` of the footprint (trees: just the trunk).
+ */
+export function prop(name, { scale = 1, solid = 0.8, shadow = true } = {}) {
+  const o = lib.props[name].clone();
+  o.scale.setScalar(PROP_SCALE * scale);
+  o.traverse(m => { if (m.isMesh) { m.castShadow = shadow; m.receiveShadow = true; } });
+  const box = new THREE.Box3().setFromObject(o), size = box.getSize(new THREE.Vector3());
+  const r = Math.max(size.x, size.z) / 2 * solid;
+  return { object3d: o, collider: solid > 0 ? { type: 'circle', r } : null, height: size.y };
 }

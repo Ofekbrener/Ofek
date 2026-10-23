@@ -68,6 +68,7 @@ export function createHud(root, { onReset, onToggle, settings }) {
         const locked = !s || c.level < s.level;
         set('sk' + i, `${id}|${locked}`, () => {
           b.disabled = !s;
+          b.hidden = !s;
           b.classList.toggle('locked', !!s && locked);
           b.querySelector('span').textContent = !s ? '—' : locked ? `Lv ${s.level}` : s.short;
           b.title = s ? s.name : '';
