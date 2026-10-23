@@ -6,6 +6,7 @@ import { Player } from './entities/player.js';
 import { newCharacter, advance, gainExp, deathPenalty, killExp, canAdvance } from './rules/stats.js';
 import { rollDrops } from './rules/drops.js';
 import { Spawner } from './rules/spawner.js';
+import { buyPotion, buyUpgrade, upgradePrice, gearTier, POTION_PRICE } from './rules/shop.js';
 import { JOBS, MOBS } from './config.js';
 import { loadKayKit, buildHero } from './assets/kaykit.js';
 import { buildHenesys } from './world/henesys.js';
@@ -56,6 +57,35 @@ const game = {
     if (ch.level === 10 && ch.job === 'beginner') hud.toast('Level 10! Visit Athena Pierce or Dances with Balrog in Henesys to choose a job.', 6000);
   },
 };
+
+// ------------------------------------------------------------------ shop
+// Rina sells potions and gear upgrades; the dialog reopens after each purchase.
+game.shop = () => {
+  const c = game.character, fmt = n => n.toLocaleString('en-US');
+  const up = (slot, label, what) => {
+    const p = upgradePrice(c, slot), tier = gearTier(c, slot);
+    return p == null ? null : { label: `${label} +${tier + 1}: ${what} (${fmt(p)})`, onPick: () => shopBuy(() => buyUpgrade(c, slot), `${label} is now +${tier + 1}!`) };
+  };
+  return {
+    lines: [`Welcome! You have ${fmt(c.mesos)} mesos. Weapon +${gearTier(c, 'weapon')}, Armor +${gearTier(c, 'armor')}.`],
+    choices: [
+      { label: `Red Potion x10 (${fmt(POTION_PRICE.red * 10)})`, onPick: () => shopBuy(() => buyPotion(c, 'red', 10), '+10 Red Potions', 'red') },
+      { label: `Blue Potion x10 (${fmt(POTION_PRICE.blue * 10)})`, onPick: () => shopBuy(() => buyPotion(c, 'blue', 10), '+10 Blue Potions', 'blue') },
+      up('weapon', 'Weapon', '+15% damage'),
+      up('armor', 'Armor', '+15% max HP'),
+    ].filter(Boolean),
+  };
+};
+function shopBuy(buy, msg, pop) {
+  const r = buy();
+  if (!r.ok) { hud.toast(r.reason, 2200); sfx('hurt'); return; }
+  sfx(r.tier ? 'levelup' : 'coin'); hud.bump('mesos'); if (pop) hud.bump(pop);
+  if (r.tier) { fx.levelUp(map.scene, player); player.model.cheer?.(); player.model.setGlow?.(gearTier(game.character, 'weapon')); }
+  hud.toast(msg, 2200);
+  persist();
+  // reopen so buying ten of something is ten taps, not ten walks
+  setTimeout(() => map.npcs?.find(n => n.id === 'rina')?.onTap(), 250);
+}
 
 // ------------------------------------------------------------------ quests
 const MAP_MUSIC = { henesys: 'town', hunting: 'field', hunting2: 'field', pigfarm: 'farm', ruins: 'ruins' };
@@ -333,6 +363,7 @@ async function boot() {
   else game.character = newCharacter(pick.name, pick.look);
   const ch = game.character;
   player = new Player(ch, buildHero(ch.look, ch.job));
+  player.model.setGlow?.(gearTier(ch, 'weapon'));
   player.onJump = () => sfx('jump');
   enterMap(mapId);
   if (!warnedNoSave) hud.toast(pick.continue ? `Welcome back, ${ch.name}!` : `Welcome, ${ch.name}! Talk to Chief Stan, then head east to the Hunting Ground.`, 5000);

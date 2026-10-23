@@ -108,6 +108,7 @@ export function buildHenesys(game) {
       `Welcome to Henesys, ${c().name}! I am Chief Stan.`,
       'East through the gate lies the Hunting Ground. Snails near the gate, Orange Mushrooms deep inside.',
       'Tap Attack near a monster to fight. Drink potions when your HP runs low.',
+      'Monsters drop mesos. Rina, by the red house, sells potions and weapon and armor upgrades for them.',
       'At level 10, pick a job: Athena Pierce (Bowman), Dances with Balrog (Warrior), Grendel (Magician) or Dark Lord (Thief).',
     ] })),
     new Npc('mia', 'Mia', buildNpc('mia'), 6, -5, -0.8, () => ({ lines: [
@@ -125,6 +126,7 @@ export function buildHenesys(game) {
       'Dark Lord. Kerning City sent me.',
       'Thieves throw Lucky Seven, strike with Double Stab, and vanish with Dark Sight.',
     ])),
+    new Npc('rina', 'Rina (Shop)', buildNpc('rina'), -7, 11, 1.66, () => game.shop()),
     new Npc('balrog', 'Dances with Balrog', buildNpc('balrog'), 9, 6, -2.2, () => jobTalk('warrior', [
       'I am Dances with Balrog. I came from Perion to train warriors.',
       'Warriors fight up close with Power Strike and Slash Blast.',

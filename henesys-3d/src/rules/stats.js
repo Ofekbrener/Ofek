@@ -1,5 +1,6 @@
 // Character stats, levelling and damage. Pure: no Three.js, no DOM.
 import { normalizeLook } from './appearance.js';
+import { weaponMult } from './shop.js';
 import { EXP_TABLE, MAX_LEVEL, JOBS, SKILLS, CRIT_CHANCE, CRIT_MULT, MOBS, EXP_MULT } from '../config.js';
 
 const BASE_STAT = 12;
@@ -9,7 +10,7 @@ export function newCharacter(name, look) {
     name, look: normalizeLook(look), level: 1, exp: 0, job: 'beginner',
     str: BASE_STAT, dex: 5, int: 4, luk: 4,
     hp: 50, maxHp: 50, mp: 5, maxMp: 5,
-    mesos: 0, potions: { red: 5, blue: 5 }, quests: {},
+    mesos: 0, potions: { red: 5, blue: 5 }, quests: {}, gear: { weapon: 0, armor: 0 },
   };
 }
 
@@ -38,7 +39,7 @@ export function gainExp(c, amount) {
 
 export function damageRange(c, skillId) {
   const mult = skillId ? SKILLS[skillId].multiplier : 1;
-  const max = Math.max(1, Math.round(((c[JOBS[c.job].stat] ?? 4) + c.level * 2) * mult));
+  const max = Math.max(1, Math.round(((c[JOBS[c.job].stat] ?? 4) + c.level * 2) * mult * weaponMult(c)));
   return [Math.max(1, Math.round(max * 0.6)), max];
 }
 

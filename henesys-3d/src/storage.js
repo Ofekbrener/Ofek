@@ -25,6 +25,8 @@ export function load(store = store0()) {
     const data = JSON.parse(store.getItem(KEY));
     if (!data || data.v !== 1 || !valid(data.character)) return null;
     data.character.look = normalizeLook(data.character.look);
+    const g = data.character.gear, tier = v => (Number.isInteger(v) && v >= 0 && v <= 5 ? v : 0);
+    data.character.gear = { weapon: tier(g?.weapon), armor: tier(g?.armor) };
     const q = data.character.quests;
     if (!q || typeof q !== 'object' || Array.isArray(q)) data.character.quests = {};
     else for (const k of Object.keys(q)) {

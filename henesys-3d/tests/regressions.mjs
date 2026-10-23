@@ -89,6 +89,25 @@ try {
   });
   check(ready.includes('Complete'), `Athena takes back a finished quest before the job talk (${ready})`);
 
+  // the shop turns mesos into potions and a glowing weapon tier
+  const shop = await page.evaluate(() => {
+    const g = window.__game;
+    g.resetCharacterForTest(); g.enterMap('henesys');
+    const ch = g.game.character;
+    const rina = g.map.npcs.some(n => n.id === 'rina');
+    ch.mesos = 1000;
+    const d = g.game.shop();
+    d.choices.find(c => c.label.startsWith('Red Potion')).onPick();
+    d.choices.find(c => c.label.startsWith('Weapon')).onPick();
+    let glow = 0; g.player.model.object3d.traverse(m => { if (m.isMesh && m.name === 'Knife') glow = m.material.emissive.getHex(); });
+    const broke = g.game.shop(); broke.choices.find(c => c.label.startsWith('Blue Potion')).onPick();
+    return { rina, mesos: ch.mesos, red: ch.potions.red, weapon: ch.gear.weapon, glow, blue: ch.potions.blue };
+  });
+  check(shop.rina && shop.mesos === 200 && shop.red === 15 && shop.weapon === 1 && shop.glow > 0 && shop.blue === 5, `Rina sells potions and a weapon upgrade (${JSON.stringify(shop)})`);
+
+  await sleep(500);
+  await page.evaluate(() => { for (const b of document.querySelectorAll('.dialog button')) if (b.textContent === 'Not now') b.click(); });
+
   // #2 reset progress really deletes the save
   await page.click('#h-gear');
   await page.click('#h-reset');

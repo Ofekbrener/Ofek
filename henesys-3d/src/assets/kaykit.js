@@ -283,11 +283,14 @@ function animator(root, job) {
 
 // ------------------------------------------------------------------ public
 
+const WEAPON_MESHES = new Set(['Knife', 'Knife_Offhand', '1H_Sword', '2H_Staff', '2H_Crossbow', '2H_Sword']);
+const GLOW = [0, 0x1a3a6a, 0x1f6a2a, 0x5a2a8a, 0x8a6a10, 0xb04010];
+
 export function buildHero(look, job = 'beginner') {
   const L = normalizeLook(look);
   const holder = new THREE.Group();
   holder.scale.setScalar(lib.scale);
-  let root = assemble(L, job), anim = animator(root, job);
+  let root = assemble(L, job), anim = animator(root, job), glowTier = 0;
   holder.add(root);
   const model = {
     object3d: holder, height: HEIGHT,
@@ -298,6 +301,15 @@ export function buildHero(look, job = 'beginner') {
       if (!bone) return false;
       bone.getWorldPosition(out);
       return true;
+    },
+    /** Weapon glow for the shop upgrade tier (0 = none, 5 = gold). Survives job changes. */
+    setGlow(tier) {
+      glowTier = tier;
+      root.traverse(m => {
+        if (!m.isMesh || !WEAPON_MESHES.has(m.name)) return;
+        if (!m.userData.glowMat) { m.userData.glowMat = m.material.clone(); m.material = m.userData.glowMat; }
+        m.material.emissive?.setHex(GLOW[tier] ?? 0);
+      });
     },
     /** Swap the right-hand knife for a throwing star for `secs` (Lucky Seven wind-up). */
     holdStar(secs) {
@@ -322,6 +334,7 @@ export function buildHero(look, job = 'beginner') {
       holder.remove(root);
       root = assemble(L, j); anim = animator(root, j);
       holder.add(root);
+      if (glowTier) model.setGlow(glowTier);
     },
   };
   return model;
@@ -333,6 +346,7 @@ const NPCS = {
   athena: { look: { hairStyle: 'rogue', hair: 0xf1c34e, skin: 0xffdcbc, shirt: 0x58b04a, pants: 0x2f6a38 }, outfit: 'bowman' },
   balrog: { look: { hairStyle: 'barbarian', hair: 0x2a2220, skin: 0xa8673c, shirt: 0x7a5232, pants: 0x464a5a }, outfit: 'warrior', gear: ['2H_Sword'] },
   grendel: { look: { hairStyle: 'mage', hair: 0xe8e8f0, skin: 0xf6c79e, shirt: 0x3d6fd1, pants: 0x2a2a30 }, outfit: 'magician' },
+  rina: { look: { hairStyle: 'rogue', hair: 0xc0502a, skin: 0xffdcbc, shirt: 0xf2c14e, pants: 0x7a4a24 }, outfit: 'beginner', gear: [] },
   darklord: { look: { hairStyle: 'hooded', hair: 0x2a2220, skin: 0xd9a273, shirt: 0x2a2a30, pants: 0x2a2a30 }, outfit: 'thief' },
 };
 export const NPC_IDS = Object.keys(NPCS);
