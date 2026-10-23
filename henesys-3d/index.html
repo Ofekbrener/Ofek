@@ -3,11 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#5fb4f5">
+  <meta name="description" content="Henesys 3D: a MapleStory Classic fan tribute for your phone.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Henesys 3D</title>
+  <link rel="icon" href="data:,">
+  <link rel="preload" href="fonts/lilita-one.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="style.css">
   <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
 </head>
 <body>
-  <canvas id="game"></canvas>
+  <div id="app">
+    <canvas id="game"></canvas>
+
+    <div id="stick"><div id="stick-knob"></div></div>
+
+    <div id="controls">
+      <button class="btn small" data-btn="red" aria-label="Red potion"><span class="pot red"></span><b id="cnt-red">0</b></button>
+      <button class="btn small" data-btn="blue" aria-label="Blue potion"><span class="pot blue"></span><b id="cnt-blue">0</b></button>
+      <button class="btn skill" data-btn="skill1" id="btn-skill1" disabled>S1</button>
+      <button class="btn skill" data-btn="skill2" id="btn-skill2" disabled>S2</button>
+      <button class="btn jump" data-btn="jump">Jump</button>
+      <button class="btn attack" data-btn="attack">Attack</button>
+    </div>
+  </div>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>
