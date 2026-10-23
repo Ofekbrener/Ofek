@@ -91,8 +91,8 @@ function turnIn(id) {
   const r = completeQuest(game.character, id);
   if (!r.ok) return false;
   fx.banner('QUEST COMPLETE', QUESTS[id].name);
+  sfx('quest');
   hud.toast(`Reward: ${rewardText(QUESTS[id].reward)}`, 4000);
-  sfx('levelup');
   if (game.character.level > before) { fx.levelUp(map.scene, player); player.model.cheer?.(); game.onLevelUp?.(); }
   persist();
   return true;
@@ -197,6 +197,7 @@ const ctx = {
     fx.text(player.position, 2.3, `+${exp} EXP`, 'gain');
     map.spawner.onDeath(mob.zone);
     fx.kill(mob.position);
+    sfx('mobdie');
     fx.particles.burst(mob.position.clone().setY(mob.position.y + 0.3), { count: 10, color: 0xf0ece0, shape: 'dot', speed: 1.6, up: 1.2, size: 1.1, life: 0.6, gravity: -0.5 });
     const y = groundHeight(map.heightFns, mob.position.x, mob.position.z);
     for (const loot of rollDrops(mob.id)) {

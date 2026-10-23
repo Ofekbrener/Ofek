@@ -40,6 +40,7 @@ const PROJECTILE = {
   energyBolt: { geo: orbGeo, mat: orbMat, trail: 0x6fc8ff, big: true },
   luckySeven: { geo: starGeo, mat: starMat, trail: 0xffffff, spin: true },
 };
+const SKILL_SOUND = { luckySeven: 'throw', threeSnails: 'throw', thunderbolt: 'thunder', spin: 'spin', energyBolt: 'bolt', magicClaw: 'bolt', doubleShot: 'arrow', arrowBlow: 'arrow', arrowRain: 'arrow' };
 const SKILL_SFX = { buff: 'buff', heal: 'heal', aoe: 'heavy', rain: 'arrow', projectile: 'arrow', melee: 'heavy' };
 
 const REASON = { mp: 'Not enough MP', cooldown: 'Not ready yet', job: 'Not your skill', locked: lv => `Unlocks at Lv. ${lv}` };
@@ -116,7 +117,7 @@ export function createCombat(fx) {
       }
       lock = GLOBAL_LOCK;
       player.model.attack(skillId ?? undefined);
-      ctx.sfx?.(skill ? SKILL_SFX[skill.kind] : job.weapon === 'bow' ? 'arrow' : 'swing');
+      ctx.sfx?.(skill ? (SKILL_SOUND[skillId] ?? SKILL_SFX[skill.kind]) : job.weapon === 'bow' ? 'arrow' : 'swing');
 
       const kind = skill?.kind ?? (job.weapon === 'bow' ? 'projectile' : 'melee');
       // attacking reveals you; casting a buff or heal does not
