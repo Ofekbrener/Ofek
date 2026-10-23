@@ -59,3 +59,22 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #5fb4f5; col
 .dlg-btns button { font: 16px var(--display); border: 3px solid var(--ink); border-radius: 999px; background: var(--panel-2); padding: 8px 16px; box-shadow: 0 3px 0 var(--ink); color: var(--ink); }
 .dlg-btns button.pick { background: var(--orange); color: #fff; -webkit-text-stroke: .5px var(--ink); }
 .dlg-btns button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+
+/* Effects layer */
+#fx { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
+.dmg { position: absolute; transform: translate(-50%, -50%); font: 30px var(--display); letter-spacing: -1px;
+  background: linear-gradient(#fff3a0, #ffa21a 55%, #e2531a); -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-stroke: 1.4px #5a2400; animation: rise 1s ease-out forwards; }
+.dmg.crit { font-size: 38px; background-image: linear-gradient(#ffd0a0, #ff6a2a 55%, #c41a1a); }
+.dmg.taken { background-image: linear-gradient(#f0d8ff, #b46cff 55%, #6a1ab0); -webkit-text-stroke-color: #2a0a40; }
+@keyframes rise { 0% { opacity: 1; margin-top: 8px; } 15% { margin-top: -6px; } 100% { opacity: 0; margin-top: -60px; } }
+.gain, .warn { position: absolute; transform: translate(-50%, -50%); font: 15px var(--display); color: #fff6b0; -webkit-text-stroke: .8px #3a2412; white-space: nowrap; animation: rise 1.4s ease-out forwards; }
+.gain.meso { color: #ffe066; }
+.warn { color: #ffb0a0; }
+.hpbar { position: absolute; width: 64px; height: 8px; border: 2px solid #111; background: #333; transform: translate(-50%, -50%); }
+.hpbar i { display: block; height: 100%; background: linear-gradient(#ff7a6a, var(--hp) 60%, #a51a12); transition: width .15s; }
+.levelup { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); font: 46px var(--display); letter-spacing: 1px; white-space: nowrap;
+  background: linear-gradient(#fffbe0, #ffd23f 50%, #ff8a1a); -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-stroke: 2px #5a2400; animation: lvl 2.2s ease-out forwards; }
+@keyframes lvl { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.6); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } 25% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -70%); } }
+@media (prefers-reduced-motion: reduce) { .dmg, .gain, .warn, .levelup { animation-duration: .01s; } }

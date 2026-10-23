@@ -3,14 +3,26 @@ import * as THREE from 'three';
 import { createEngine } from './engine.js';
 import { createInput } from './input.js';
 import { Player } from './entities/player.js';
-import { newCharacter, advance } from './rules/stats.js';
+import { newCharacter, advance, gainExp } from './rules/stats.js';
+import { rollDrops } from './rules/drops.js';
+import { Spawner } from './rules/spawner.js';
+import { JOBS, MOBS } from './config.js';
 import { buildPlayer } from './assets/characters.js';
 import { buildHenesys } from './world/henesys.js';
+import { buildHuntingGround } from './world/hunting-ground.js';
+import { buildMob } from './assets/mobs.js';
+import { Mob } from './entities/mob.js';
+import { Drop } from './entities/drop.js';
+import { createCombat } from './combat.js';
+import { createFx } from './fx.js';
+import { groundHeight } from './rules/collision.js';
 import { dialogOpen } from './dialog.js';
 import { TALK_RANGE } from './entities/npc.js';
 
 const engine = createEngine(document.getElementById('game'));
 const input = createInput(document.getElementById('app'));
+const fx = createFx(document.getElementById('app'), engine.camera);
+const combat = createCombat(fx);
 
 const game = {
   character: newCharacter('Beginner', 0),
@@ -19,7 +31,7 @@ const game = {
   },
 };
 
-const builders = { henesys: () => buildHenesys(game) };
+const builders = { henesys: () => buildHenesys(game), hunting: buildHuntingGround };
 const maps = {};
 let map = null;
 
@@ -28,6 +40,8 @@ const player = new Player(game.character, buildPlayer(game.character.look, game.
 function enterMap(id, at) {
   map = maps[id] ??= builders[id]();
   map.scene.add(player.object3d);
+  if (map.zones && !map.spawner) map.spawner = new Spawner(map.zones);
+  fx.clear(); combat.reset();
   const p = at ?? map.spawn;
   player.place(p.x, p.z, map);
   engine.setScene(map.scene);
@@ -53,11 +67,66 @@ function checkPortals() {
   }
 }
 
+const ctx = {
+  player, get character() { return game.character; }, get map() { return map; },
+  sfx: () => {},
+  onKill(mob) {
+    const ch = game.character;
+    const before = ch.level;
+    gainExp(ch, mob.def.exp);
+    fx.text(player.position, 2.3, `+${mob.def.exp} EXP`, 'gain');
+    map.spawner.onDeath(mob.zone);
+    const y = groundHeight(map.heightFns, mob.position.x, mob.position.z);
+    for (const loot of rollDrops(mob.id)) {
+      const d = new Drop(loot, mob.position.x, mob.position.z, y);
+      map.scene.add(d.object3d); map.drops.push(d);
+    }
+    if (ch.level > before) { fx.levelUp(map.scene, player); game.onLevelUp?.(); }
+  },
+};
+
+function updateMobs(dt, t) {
+  if (!map.spawner) return;
+  for (const r of map.spawner.update(dt)) {
+    const m = new Mob(r.mobId, buildMob(r.mobId), r.x, r.z, r.zone);
+    m.position.y = groundHeight(map.heightFns, r.x, r.z);
+    map.scene.add(m.object3d); map.mobs.push(m);
+  }
+  for (let i = map.mobs.length - 1; i >= 0; i--) {
+    const m = map.mobs[i];
+    m.update(dt, t, player, map);
+    if (m.removable) { m.object3d.removeFromParent(); map.mobs.splice(i, 1); }
+  }
+  for (let i = map.drops.length - 1; i >= 0; i--) {
+    const d = map.drops[i], res = d.update(dt, t, player);
+    if (!res) continue;
+    if (res === 'picked') {
+      const ch = game.character;
+      if (d.loot.kind === 'mesos') { ch.mesos += d.loot.amount; fx.text(d.position, 0.8, `+${d.loot.amount} mesos`, 'gain meso'); }
+      else { ch.potions[d.loot.item]++; fx.text(d.position, 0.8, d.loot.item === 'red' ? 'Red Potion' : 'Blue Potion', 'gain'); }
+      ctx.sfx('pickup');
+    }
+    d.object3d.removeFromParent(); map.drops.splice(i, 1);
+  }
+}
+
+function handleCombatInput() {
+  if (dialogOpen()) return;
+  const skills = JOBS[game.character.job].skills;
+  if (input.pressed('skill1') && skills[0]) combat.tryAttack(ctx, skills[0]);
+  else if (input.pressed('skill2') && skills[1]) combat.tryAttack(ctx, skills[1]);
+  else if (input.pressed('attack') || input.held('attack')) combat.tryAttack(ctx);
+}
+
 engine.onFrame((dt, t) => {
   input.poll();
   if (dialogOpen()) { input.move.x = 0; input.move.y = 0; input.clear(); }
   player.update(dt, input, map, t);
   for (const n of map.npcs ?? []) n.update(dt, t, player);
+  handleCombatInput();
+  updateMobs(dt, t);
+  combat.update(dt, ctx);
+  fx.update(dt, map.mobs ?? []);
   handleTap();
   checkPortals();
   map.animate?.(t, engine.camera);
@@ -71,4 +140,4 @@ engine.onFrame((dt, t) => {
 enterMap('henesys');
 engine.start();
 
-window.__game = { engine, input, player, game, enterMap, get map() { return map; } };
+window.__game = { engine, input, player, game, enterMap, combat, ctx, get map() { return map; } };

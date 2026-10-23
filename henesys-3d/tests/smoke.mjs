@@ -27,7 +27,7 @@ try {
   const inBounds = await page.evaluate(() => {
     const g = window.__game;
     g.input.move.x = 1; g.input.move.y = 1;
-    for (let i = 0; i < 400; i++) g.engine.tick(10);
+    for (let i = 0; i < 400; i++) g.engine.tick(10, false);
     g.input.move.x = 0; g.input.move.y = 0;
     const p = g.player.position, b = g.map.bounds;
     return p.x >= b.minX && p.x <= b.maxX && p.z >= b.minZ && p.z <= b.maxZ;
@@ -39,7 +39,7 @@ try {
     const g = window.__game, house = g.map.colliders.find(c => c.type === 'circle' && Math.hypot(c.x + 15, c.z + 7) < 0.1);
     g.player.place(-10, -7, g.map);
     g.input.camYaw = 0; g.input.move.x = -1; g.input.move.y = 0;
-    for (let i = 0; i < 90; i++) g.engine.tick(1 / 30);
+    for (let i = 0; i < 90; i++) g.engine.tick(1 / 30, false);
     g.input.move.x = 0;
     return Math.hypot(g.player.position.x - house.x, g.player.position.z - house.z) >= house.r;
   });
@@ -50,7 +50,7 @@ try {
     const g = window.__game, stan = g.map.npcs.find(n => n.id === 'stan');
     g.player.place(stan.position.x + 2.5, stan.position.z + 2.5, g.map);
     g.input.camYaw = Math.PI / 4; g.input.camPitch = 0.3;
-    for (let i = 0; i < 60; i++) g.engine.tick(1 / 30);
+    for (let i = 0; i < 60; i++) g.engine.tick(1 / 30, false);
     const v = stan.position.clone(); v.y += 1; v.project(g.engine.camera);
     return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight };
   });
@@ -61,6 +61,45 @@ try {
   check(await page.isVisible('.dialog'), 'tapping Chief Stan opens his dialog');
   await page.screenshot({ path: shot.replace(/\.png$/, '-dialog.png') });
   while (await page.isVisible('.dialog')) { await page.click('.dlg-btns button.pick'); await sleep(100); }
+
+  // --- walk into the east-gate portal ---
+  await page.evaluate(() => {
+    const g = window.__game, portal = g.map.portals[0];
+    g.player.place(portal.x - 3, portal.z, g.map);
+    g.input.camYaw = -Math.PI / 2; g.input.move.x = 0; g.input.move.y = 1; // forward = +x
+    for (let i = 0; i < 60 && g.map.id === 'henesys'; i++) g.engine.tick(1 / 30, false);
+    g.input.move.y = 0;
+  });
+  check(await page.evaluate(() => window.__game.map.id) === 'hunting', 'portal leads to the Hunting Ground');
+
+  // --- kill the nearest snail with the Attack button ---
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.engine.tick(1 / 30, false);
+    const snail = g.map.mobs.filter(m => m.zone === 0).sort((a, b) => a.position.distanceTo(g.player.position) - b.position.distanceTo(g.player.position))[0];
+    g.player.place(snail.position.x - 1.2, snail.position.z, g.map);
+    window.__target = snail;
+  });
+  const btn = await page.locator('[data-btn=attack]').boundingBox();
+  for (let i = 0; i < 40 && await page.evaluate(() => window.__target.alive); i++) {
+    await touch('touchStart', [{ x: btn.x + btn.width / 2, y: btn.y + btn.height / 2, id: 9 }]);
+    await sleep(80);
+    await touch('touchEnd', []);
+    await page.evaluate(() => { const g = window.__game, m = window.__target; if (m.alive) g.player.place(m.position.x - 1.2, m.position.z, g.map); });
+    await sleep(250);
+  }
+  const after = await page.evaluate(() => ({ dead: !window.__target.alive, exp: window.__game.game.character.exp, drops: window.__game.map.drops.length }));
+  check(after.dead, 'the snail died');
+  check(after.exp > 0, `EXP gained (${after.exp})`);
+  check(after.drops > 0, `loot dropped (${after.drops})`);
+  await page.screenshot({ path: shot.replace(/\.png$/, '-hunt.png') });
+
+  const maxMobs = await page.evaluate(() => {
+    const g = window.__game; let max = 0;
+    for (let i = 0; i < 600; i++) { g.engine.tick(1 / 30, false); max = Math.max(max, g.map.mobs.filter(m => m.alive).length); }
+    return max;
+  });
+  check(maxMobs <= 15, `mob count stays within 15 (max ${maxMobs})`);
 
   await page.screenshot({ path: shot });
   check(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));

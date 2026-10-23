@@ -127,7 +127,7 @@ export function grassTufts(points) {
   const geo = new THREE.ConeGeometry(0.08, 0.35, 4); geo.translate(0, 0.17, 0);
   const g = new THREE.Group();
   const off = [[0, 0], [0.09, 0.04], [-0.08, 0.05]];
-  for (const [ox, oz] of off) g.add(instanced(geo, toon(0x4fa83c), points.map(p => ({ x: p.x + ox, z: p.z + oz, ry: p.ry, s: p.s }))));
+  for (const [ox, oz] of off) g.add(instanced(geo, toon(0x4fa83c), points.map(p => ({ x: p.x + ox, y: p.y, z: p.z + oz, ry: p.ry, s: p.s }))));
   return g;
 }
 

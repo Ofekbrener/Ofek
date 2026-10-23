@@ -26,11 +26,12 @@ export function createEngine(canvas) {
   addEventListener('resize', resize);
   resize();
 
-  function tick(rawDt) {
+  /** render=false lets tests advance the simulation quickly. */
+  function tick(rawDt, render = true) {
     const dt = Math.min(Math.max(rawDt, 0), MAX_DT);
     elapsed += dt;
     for (const fn of frameFns) fn(dt, elapsed);
-    renderer.render(scene, camera);
+    if (render) renderer.render(scene, camera);
   }
 
   function loop() {

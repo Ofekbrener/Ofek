@@ -24,6 +24,14 @@ export class Player {
     this.targetYaw = 0;
     this.camFocus = new THREE.Vector3();
     this.anim = 'idle';
+    this.knock = null;
+  }
+
+  /** Shove the player away from (x, z), e.g. after a monster bump. */
+  knockFrom(x, z) {
+    const dx = this.position.x - x, dz = this.position.z - z, d = Math.hypot(dx, dz) || 1;
+    this.knock = { x: dx / d * 6, z: dz / d * 6 };
+    if (this.onGround) { this.vy = 3.5; this.onGround = false; }
   }
 
   get position() { return this.object3d.position; }
@@ -55,6 +63,12 @@ export class Player {
       const fixed = resolve({ x: this.position.x, z: this.position.z }, RADIUS, map.colliders, map.bounds);
       this.position.x = fixed.x; this.position.z = fixed.z;
     }
+    if (this.knock) {
+      const k = resolve({ x: this.position.x + this.knock.x * dt, z: this.position.z + this.knock.z * dt }, RADIUS, map.colliders, map.bounds);
+      this.position.x = k.x; this.position.z = k.z;
+      this.knock.x = ease(this.knock.x, 0, 7, dt); this.knock.z = ease(this.knock.z, 0, 7, dt);
+      if (Math.abs(this.knock.x) + Math.abs(this.knock.z) < 0.1) this.knock = null;
+    }
     this.speed = ease(this.speed, mag, 12, dt);
 
     // facing: shortest-angle ease
@@ -65,7 +79,7 @@ export class Player {
 
     // vertical
     const floor = groundHeight(map.heightFns, this.position.x, this.position.z);
-    if (input.pressed('jump') && this.onGround) { this.vy = JUMP_VELOCITY; this.onGround = false; }
+    if (input.pressed('jump') && this.onGround && !this.dead) { this.vy = JUMP_VELOCITY; this.onGround = false; }
     this.vy -= GRAVITY * dt;
     this.position.y += this.vy * dt;
     if (this.position.y <= floor) {
@@ -75,7 +89,7 @@ export class Player {
       this.onGround = false;
     }
 
-    if (this.anim !== 'attack' && this.anim !== 'hit') this.anim = !this.onGround ? 'jump' : (this.speed > 0.15 ? 'walk' : 'idle');
+    this.anim = !this.onGround ? 'jump' : (this.speed > 0.15 ? 'walk' : 'idle');
     this.model.animate(this.anim, dt, t, this.speed);
   }
 
