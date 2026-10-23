@@ -66,3 +66,11 @@ export const EXP_MULT = 4;
 
 export const CRIT_CHANCE = 0.05;
 export const CRIT_MULT = 1.5;
+
+// Which voice each monster family uses when it is hit or defeated (assets/sfx/mob_*.mp3).
+export const MOB_VOICE = {
+  snail: 'mob_snail', blueSnail: 'mob_snail', redSnail: 'mob_snail', slime: 'mob_slime',
+  orangeMushroom: 'mob_mushroom', greenMushroom: 'mob_mushroom', hornyMushroom: 'mob_mushroom',
+  pig: 'mob_pig', ribbonPig: 'mob_pig', stump: 'mob_stump',
+  skeletonMinion: 'mob_skeleton', skeletonWarrior: 'mob_skeleton', skeletonMage: 'mob_skeleton',
+};

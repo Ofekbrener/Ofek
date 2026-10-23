@@ -1,7 +1,7 @@
 // Sound effects synthesised with Web Audio (no audio files), plus vibration.
 // The AudioContext starts on the first touch, as mobile browsers require.
 let ctx = null, master = null;
-const opts = { sound: true, vibration: true };
+const opts = { sound: true, vibration: true, music: true };
 
 export function configureAudio(settings) { Object.assign(opts, settings); }
 
@@ -64,7 +64,7 @@ const VIBES = { hurt: 60, levelup: [40, 60, 40, 60, 80], hit: 12, crit: 30, heav
 // Recorded sounds (assets/sfx, listed in index.json) win over the synthesised
 // ones above. Each play gets a small random pitch so repeats do not sound robotic.
 const samples = {};
-const GAIN = { step: 0.35, ambience: 0.22, land: 0.6 };
+const GAIN = { step: 0.35, ambience: 0.14, land: 0.6, ui_tap: 0.5 };
 let ambienceNode = null;
 
 export async function loadSamples(base = 'assets/sfx/') {
@@ -105,6 +105,20 @@ export function ambience(on) {
   if (!ctx || ctx.state !== 'running') return;
   if (on && opts.sound && !ambienceNode) ambienceNode = playSample('ambience', { loop: true });
   if ((!on || !opts.sound) && ambienceNode) { ambienceNode.g.gain.setTargetAtTime(0, ctx.currentTime, 0.4); const n = ambienceNode; setTimeout(() => n.src.stop(), 1500); ambienceNode = null; }
+}
+
+// Background music: one looping track per area, cross-faded on map change.
+let musicNode = null, musicName = null;
+export function music(name) {
+  if (!ctx || ctx.state !== 'running') return;
+  const want = opts.music && opts.sound ? name : null;
+  if (want === musicName) return;
+  if (want && !(samples['bgm_' + want] instanceof AudioBuffer)) { if (samples['bgm_' + want]) decoded('bgm_' + want); return; }
+  if (musicNode) { const old = musicNode; old.g.gain.setTargetAtTime(0, ctx.currentTime, 0.5); setTimeout(() => old.src.stop(), 2500); }
+  musicNode = null; musicName = want;
+  if (!want) return;
+  musicNode = playSample('bgm_' + want, { loop: true });
+  musicNode.g.gain.value = 0; musicNode.g.gain.setTargetAtTime(0.32, ctx.currentTime, 0.6);
 }
 
 export function sfx(name) {

@@ -2,7 +2,7 @@
 // invulnerability. Skills are data (config.SKILLS); this file turns each
 // skill kind into targets, projectiles, buffs and heals.
 import * as THREE from 'three';
-import { JOBS, SKILLS } from './config.js';
+import { JOBS, SKILLS, MOB_VOICE } from './config.js';
 import { rollDamage, skillState } from './rules/stats.js';
 import { applyBuff, endBuff, modifiers } from './rules/buffs.js';
 import { toon } from './assets/toon.js';
@@ -65,6 +65,7 @@ export function createCombat(fx) {
     const chest = mob.position.clone(); chest.y += mob.model.height * 0.5;
     fx.impact(chest, dmg.crit, p.heavy, p.color);
     ctx.sfx?.(dmg.crit ? 'crit' : 'hit');
+    if (Math.random() < 0.35 || killed) ctx.sfx?.(MOB_VOICE[mob.id]);
     if (killed) ctx.onKill(mob);
   }
 

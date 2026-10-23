@@ -22,7 +22,7 @@ import { createHud } from './hud.js';
 import { showTitle } from './title.js';
 import { EXP_TABLE } from './config.js';
 import { load, save, clear, loadSettings, saveSettings } from './storage.js';
-import { sfx, configureAudio, loadSamples, ambience } from './audio.js';
+import { sfx, configureAudio, loadSamples, ambience, music } from './audio.js';
 import { modifiers, activeBuffs } from './rules/buffs.js';
 import { QUESTS, questStatus, acceptQuest, onMobKilled, completeQuest, availableQuests, activeQuests } from './rules/quests.js';
 import { dialogOpen } from './dialog.js';
@@ -58,6 +58,7 @@ const game = {
 };
 
 // ------------------------------------------------------------------ quests
+const MAP_MUSIC = { henesys: 'town', hunting: 'field', hunting2: 'field', pigfarm: 'farm', ruins: 'ruins' };
 const JOB_NPCS = ['athena', 'balrog', 'grendel', 'darklord'];
 const announced = new Set(); // quests whose "done" toast was shown this session (not saved)
 const NPC_NAMES = { stan: 'Chief Stan', mia: 'Mia', athena: 'Athena Pierce', balrog: 'Dances with Balrog', grendel: 'Grendel the Really Old', darklord: 'Dark Lord' };
@@ -292,6 +293,7 @@ engine.onFrame((dt, t, realDt) => {
   if (player.onGround && !wasOnGround) sfx('land');
   wasOnGround = player.onGround;
   ambience(!!map.zones && settings.sound);
+  music(MAP_MUSIC[map.id] ?? 'field');
 });
 
 engine.start();

@@ -139,6 +139,7 @@ Sounds in sfx/:
 - jump, land, step, coin, ambience: Kenney Starter Kits (https://github.com/KenneyNL), MIT License, Copyright (c) 2023 Kenney.
 - swing: generated for this game with ElevenLabs sound effects.
 - All other sfx/*.mp3: designed for this game from scratch by tools/make-sfx.py (synthesis, no samples).
+- bgm_*.mp3: original music composed for this game by tools/make-music.py (no MapleStory audio).
 
 Rebuild with \`cd henesys-3d/tools && npm install && npm run assets\`.
 `);

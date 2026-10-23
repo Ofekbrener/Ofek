@@ -191,6 +191,49 @@ def render(name, x):
         os.unlink(f.name)
 
 
+
+# ------------------------------------------------------------- monster voices
+
+@sound('mob_snail')
+def _():  # wet squelch
+    return mix((0, bp(noise(.18), 300, 1100) * env(.18, a=.02, k=14) * .8), (0.02, sweep(240, 120, .12) * env(.12, k=20) * .4))
+
+@sound('mob_slime')
+def _():  # bouncy squish
+    return mix((0, sweep(180, 520, .16, 'sine') * env(.16, a=.01, k=10) * .7), (0, bp(noise(.12), 500, 1800) * env(.12, k=25) * .4))
+
+@sound('mob_mushroom')
+def _():  # cartoon boing
+    x = t(.35); f = 260 + 140 * np.sin(2 * np.pi * 9 * x) * np.exp(-6 * x)
+    return np.sin(2 * np.pi * np.cumsum(f) / SR) * env(.35, a=.005, k=7) * .7
+
+@sound('mob_pig')
+def _():  # oink: two nasal grunts
+    def grunt(d, f0, f1):
+        x = sweep(f0, f1, d, 'saw'); x = bp(x, 300, 1400) + .5 * bp(x, 1800, 2600)
+        return x * env(d, a=.015, k=9)
+    return reverb(mix((0, grunt(.13, 190, 150)), (.15, grunt(.16, 210, 160))), .2, .1)
+
+@sound('mob_stump')
+def _():  # wooden knock
+    knock = sum(np.sin(2 * np.pi * f * t(.2)) * np.exp(-k * t(.2)) for f, k in ((310, 30), (620, 45), (1150, 60)))
+    return mix((0, knock * .5), (0, hp(noise(.02), 1500) * env(.02, k=150) * .5))
+
+@sound('mob_skeleton')
+def _():  # bone rattle: a burst of dry clicks
+    clicks = [(rng.uniform(0, .25), hp(noise(.015), 2000) * env(.015, k=250) * rng.uniform(.4, 1)) for _ in range(14)]
+    clacks = [(rng.uniform(0, .2), bp(noise(.03), 900, 2400) * env(.03, k=90) * .6) for _ in range(5)]
+    return reverb(mix(*clicks, *clacks), .25, .15)
+
+# -------------------------------------------------------------------- UI
+
+@sound('ui_open')
+def _(): return mix((0, bell(1047, .25, k=12) * .4), (.06, bell(1568, .25, k=12) * .35))
+
+@sound('ui_tap')
+def _(): return sweep(700, 900, .04) * env(.04, k=60) * .5
+
+
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
     for name, fn in SOUNDS.items():
