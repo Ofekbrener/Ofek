@@ -26,7 +26,7 @@ export class Mob {
   get alive() { return this.state !== 'dead'; }
   get radius() { return this.model.radius; }
 
-  takeHit(amount, fromX, fromZ) {
+  takeHit(amount, fromX, fromZ, force = 1) {
     if (!this.alive) return false;
     this.hp = Math.max(0, this.hp - amount);
     this.hpShownFor = 4;
@@ -34,7 +34,7 @@ export class Mob {
     if (this.state === 'wander') { this.state = 'chase'; this.leashFrom = { x: this.position.x, z: this.position.z }; }
     // small knock-back away from the attacker
     const dx = this.position.x - fromX, dz = this.position.z - fromZ, d = Math.hypot(dx, dz) || 1;
-    this.knock = { x: dx / d * 2.5, z: dz / d * 2.5 };
+    this.knock = { x: dx / d * 4 * force, z: dz / d * 4 * force };
     if (this.hp === 0) { this.state = 'dead'; return true; }
     return false;
   }

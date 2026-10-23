@@ -25,7 +25,11 @@ export class Player {
     this.camFocus = new THREE.Vector3();
     this.anim = 'idle';
     this.knock = null;
+    this.lungeT = 0;
   }
+
+  /** Short step forward with each melee swing. */
+  lunge() { this.lungeT = 0.13; }
 
   /** Shove the player away from (x, z), e.g. after a monster bump. */
   knockFrom(x, z) {
@@ -62,6 +66,12 @@ export class Player {
     } else {
       const fixed = resolve({ x: this.position.x, z: this.position.z }, RADIUS, map.colliders, map.bounds);
       this.position.x = fixed.x; this.position.z = fixed.z;
+    }
+    if (this.lungeT > 0) {
+      this.lungeT -= dt;
+      const step = 3.2 * dt;
+      const l = resolve({ x: this.position.x + Math.sin(this.yaw) * step, z: this.position.z + Math.cos(this.yaw) * step }, RADIUS, map.colliders, map.bounds);
+      this.position.x = l.x; this.position.z = l.z;
     }
     if (this.knock) {
       const k = resolve({ x: this.position.x + this.knock.x * dt, z: this.position.z + this.knock.z * dt }, RADIUS, map.colliders, map.bounds);

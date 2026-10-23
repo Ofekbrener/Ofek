@@ -27,7 +27,7 @@ import { TALK_RANGE } from './entities/npc.js';
 
 const engine = createEngine(document.getElementById('game'));
 const input = createInput(document.getElementById('app'));
-const fx = createFx(document.getElementById('app'), engine.camera);
+const fx = createFx(document.getElementById('app'), engine.camera, engine);
 const combat = createCombat(fx);
 
 const app = document.getElementById('app');
@@ -46,6 +46,7 @@ const game = {
   },
   onLevelUp() {
     sfx('levelup');
+    hud.bump('lv');
     persist();
     const ch = game.character;
     if (ch.level === 10 && ch.job === 'beginner') hud.toast('Level 10! Visit Athena Pierce or Dances with Balrog in Henesys to choose a job.', 6000);
@@ -94,7 +95,7 @@ function enterMap(id, at) {
   map = maps[id] ??= builders[id]();
   map.scene.add(player.object3d);
   if (map.zones && !map.spawner) map.spawner = new Spawner(map.zones);
-  fx.clear(); combat.reset();
+  fx.clear(); fx.attach(map.scene); combat.reset();
   const p = at ?? map.spawn;
   player.place(p.x, p.z, map);
   engine.setScene(map.scene);
@@ -143,6 +144,7 @@ const ctx = {
     gainExp(ch, exp);
     fx.text(player.position, 2.3, `+${exp} EXP`, 'gain');
     map.spawner.onDeath(mob.zone);
+    fx.kill(mob.position);
     const y = groundHeight(map.heightFns, mob.position.x, mob.position.z);
     for (const loot of rollDrops(mob.id)) {
       const d = new Drop(loot, mob.position.x, mob.position.z, y);
@@ -170,9 +172,9 @@ function updateMobs(dt, t) {
     if (!res) continue;
     if (res === 'picked') {
       const ch = game.character;
-      if (d.loot.kind === 'mesos') { ch.mesos += d.loot.amount; fx.text(d.position, 0.8, `+${d.loot.amount} mesos`, 'gain meso'); }
-      else { ch.potions[d.loot.item]++; fx.text(d.position, 0.8, d.loot.item === 'red' ? 'Red Potion' : 'Blue Potion', 'gain'); }
-      ctx.sfx('pickup');
+      if (d.loot.kind === 'mesos') { ch.mesos += d.loot.amount; fx.text(d.position, 0.8, `+${d.loot.amount} mesos`, 'gain meso'); hud.bump('mesos'); ctx.sfx('coin'); }
+      else { ch.potions[d.loot.item]++; fx.text(d.position, 0.8, d.loot.item === 'red' ? 'Red Potion' : 'Blue Potion', 'gain'); hud.bump(d.loot.item); ctx.sfx('pickup'); }
+      fx.particles.burst(d.position, { count: 6, color: d.loot.kind === 'mesos' ? [0xffe066, 0xffffff] : [0xffffff], speed: 2.5, up: 2, size: 0.25, life: 0.4, gravity: 4, additive: true });
       persist();
     }
     d.object3d.removeFromParent(); map.drops.splice(i, 1);
@@ -187,7 +189,8 @@ function handleCombatInput() {
   else if (input.pressed('attack') || input.held('attack')) combat.tryAttack(ctx);
 }
 
-engine.onFrame((dt, t) => {
+let dustT = 0;
+engine.onFrame((dt, t, realDt) => {
   if (!player) return;
   input.poll();
   if (dialogOpen() || player.dead) { input.move.x = 0; input.move.y = 0; input.clear(); }
@@ -211,6 +214,9 @@ engine.onFrame((dt, t) => {
   saveTimer += dt;
   if (saveTimer > SAVE_EVERY) { saveTimer = 0; persist(); }
   player.updateCamera(engine.camera, input, dt);
+  fx.applyShake(engine.camera, realDt);
+  dustT -= dt;
+  if (player.onGround && player.speed > 0.5 && dustT <= 0) { dustT = 0.28; fx.dust(player.position); }
 });
 
 engine.start();
@@ -235,7 +241,8 @@ addEventListener('pagehide', persist);
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 
 window.__game = {
-  engine, input, game, enterMap, combat, ctx, hud,
+  engine, input, game, enterMap, combat, ctx, hud, fx,
+  expToNext: () => EXP_TABLE[game.character.level],
   get player() { return player; }, get map() { return map; },
   /** Test hook: jump straight to a level. */
   debugSetLevel(n) { const ch = game.character; gainExp(ch, EXP_TABLE.slice(ch.level, n).reduce((a, b) => a + b, 0) - ch.exp); },

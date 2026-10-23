@@ -1,14 +1,28 @@
-// Screen-space effects layered over the canvas: damage numbers, mob HP bars,
-// floating text, and the LEVEL UP banner with a 3D light column.
+// Game feel. Screen-space: damage numbers, mob HP bars, floating text,
+// combo counter, flashes, LEVEL UP banner. World-space: pooled particles,
+// weapon swipes, shockwaves, the level-up ring and light column.
+// Camera shake is applied after the follow camera each frame.
 import * as THREE from 'three';
+import { createParticles } from './particles.js';
 
-export function createFx(root, camera) {
+const swipeGeo = new THREE.RingGeometry(0.55, 1.35, 28, 1, -Math.PI * 0.55, Math.PI * 1.1);
+const waveGeo = new THREE.RingGeometry(0.85, 1, 48);
+const ringGeo = new THREE.TorusGeometry(1, 0.08, 8, 48);
+const columnGeo = new THREE.CylinderGeometry(0.9, 0.9, 6, 24, 1, true);
+const rayGeo = new THREE.PlaneGeometry(0.35, 7);
+const glow = (color, opacity = 0.9) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+
+export function createFx(root, camera, engine) {
   const layer = document.createElement('div');
   layer.id = 'fx';
   root.appendChild(layer);
+  const flashEl = document.createElement('div'); flashEl.className = 'flash'; root.appendChild(flashEl);
+  const comboEl = document.createElement('div'); comboEl.id = 'combo'; comboEl.hidden = true; root.appendChild(comboEl);
   const bars = new Map();
-  const columns = [];
+  const transients = []; // { obj, t, life, step(k, obj) }
+  const particles = createParticles();
   const v = new THREE.Vector3();
+  let shake = 0, combo = 0, lastKill = -1e9, comboHide = 0, scene = null;
 
   function toScreen(pos, lift = 0) {
     v.set(pos.x, pos.y + lift, pos.z).project(camera);
@@ -19,37 +33,117 @@ export function createFx(root, camera) {
     const s = toScreen(pos, lift);
     if (s.behind) return;
     const el = document.createElement('div');
-    el.className = cls;
-    el.innerHTML = html;
-    el.style.left = s.x + 'px';
-    el.style.top = (s.y - dy) + 'px';
+    el.className = cls; el.innerHTML = html;
+    el.style.left = s.x + 'px'; el.style.top = (s.y - dy) + 'px';
     layer.appendChild(el);
     setTimeout(() => el.remove(), life);
   }
 
+  function addTransient(obj, life, step) {
+    scene.add(obj);
+    transients.push({ obj, t: 0, life, step });
+  }
+
+  function flash(color = '#fff', strength = 0.6) {
+    flashEl.style.background = color;
+    flashEl.style.setProperty('--strength', strength);
+    flashEl.classList.remove('on'); void flashEl.offsetWidth; flashEl.classList.add('on');
+  }
+
   return {
+    particles,
+    attach(sc) { scene = sc; particles.attach(sc); },
+
     /** i stacks multi-hit numbers upward, like the classic client. */
     damage(pos, lift, amount, crit, i = 0, taken = false) {
-      float(pos, lift, String(amount), 'dmg' + (crit ? ' crit' : '') + (taken ? ' taken' : ''), 1000, i * 30);
+      const html = crit ? `<small>CRITICAL</small>${amount}` : String(amount);
+      float(pos, lift, html, 'dmg' + (crit ? ' crit' : '') + (taken ? ' taken' : ''), 1000, i * 32);
     },
     text(pos, lift, str, cls = 'gain') { float(pos, lift, str, cls, 1400); },
 
-    levelUp(scene, player) {
-      const col = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.9, 0.9, 6, 24, 1, true),
-        new THREE.MeshBasicMaterial({ color: 0xfff1a0, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
-      );
-      col.position.copy(player.position); col.position.y += 3;
-      scene.add(col);
-      columns.push({ mesh: col, t: 0, player });
-      const el = document.createElement('div');
-      el.className = 'levelup';
-      el.textContent = 'LEVEL UP!';
-      layer.appendChild(el);
-      setTimeout(() => el.remove(), 2200);
+    /** A landed hit: sparks, hit stop, shake. */
+    impact(pos, crit, heavy = false) {
+      const c = pos.clone();
+      particles.burst(c, { count: crit ? 16 : 9, color: crit ? [0xffe066, 0xff7a2a, 0xffffff] : [0xfff1a0, 0xffc040], speed: crit ? 7 : 5, up: 1.5, size: crit ? 0.45 : 0.3, life: 0.35, gravity: 6, additive: true });
+      particles.burst(c, { count: 4, color: 0xffffff, shape: 'dot', speed: 1.5, up: 0.5, size: crit ? 1.4 : 0.9, life: 0.18, gravity: 0, additive: true });
+      engine.hitStop(crit || heavy ? 0.09 : 0.05);
+      shake = Math.max(shake, crit || heavy ? 0.28 : 0.1);
     },
 
-    /** Per frame: HP bars over hurt mobs, fade light columns. */
+    /** A kill: star burst, a pop ring, and the combo counter. */
+    kill(pos) {
+      const c = pos.clone(); c.y += 0.6;
+      particles.burst(c, { count: 18, color: [0xffe066, 0xffffff, 0x9fe8ff, 0xff9ad0], speed: 6, up: 3, size: 0.4, life: 0.7, gravity: 7, additive: true });
+      const ring = new THREE.Mesh(ringGeo, glow(0xfff1a0)); ring.position.copy(c); ring.rotation.x = Math.PI / 2;
+      addTransient(ring, 0.35, k => { ring.scale.setScalar(0.3 + k * 1.6); ring.material.opacity = 0.9 * (1 - k); });
+      const now = performance.now();
+      combo = now - lastKill < 3000 ? combo + 1 : 1;
+      lastKill = now;
+      if (combo >= 2) {
+        comboEl.innerHTML = `<b>x${combo}</b> COMBO`;
+        comboEl.hidden = false;
+        comboEl.classList.remove('pop'); void comboEl.offsetWidth; comboEl.classList.add('pop');
+        comboHide = 3;
+      }
+    },
+
+    /** Weapon swipe arc in front of the player. */
+    swipe(player, color = 0xfff6c0, big = false) {
+      const m = new THREE.Mesh(swipeGeo, glow(color, 0.85));
+      const g = new THREE.Group(); g.add(m);
+      m.rotation.x = -Math.PI / 2 + 0.35;
+      g.position.copy(player.position); g.position.y += 0.9;
+      g.rotation.y = player.yaw;
+      m.position.z = 0.3;
+      if (big) g.scale.setScalar(1.6);
+      addTransient(g, 0.2, k => { m.rotation.z = -1.2 + k * 2.4; m.material.opacity = 0.85 * (1 - k); });
+    },
+
+    /** Ground shockwave (Slash Blast). */
+    shockwave(pos, radius = 3.4, color = 0x9fe8ff) {
+      const w = new THREE.Mesh(waveGeo, glow(color));
+      w.rotation.x = -Math.PI / 2; w.position.copy(pos); w.position.y += 0.08;
+      addTransient(w, 0.4, k => { w.scale.setScalar(0.3 + k * radius); w.material.opacity = 0.9 * (1 - k); });
+      particles.burst(pos.clone().setY(pos.y + 0.2), { count: 14, color: [color, 0xffffff], speed: 7, up: 1, spread: 0.1, size: 0.35, life: 0.4, gravity: 2, additive: true });
+      shake = Math.max(shake, 0.2);
+    },
+
+    /** Little dust puff at the feet while walking. */
+    dust(pos) {
+      particles.burst(pos.clone().setY(pos.y + 0.1), { count: 2, color: 0xe8d8b8, shape: 'dot', speed: 0.8, up: 0.8, size: 0.45, life: 0.45, gravity: 0.5 });
+    },
+
+    levelUp(sc, player) {
+      const p = player.position;
+      // light column
+      const col = new THREE.Mesh(columnGeo, glow(0xfff1a0, 0.35)); col.position.copy(p); col.position.y += 3;
+      addTransient(col, 1.6, k => { col.position.x = player.position.x; col.position.z = player.position.z; col.material.opacity = 0.35 * (1 - k); col.scale.set(1 + k * 0.6, 1 + k * 0.3, 1 + k * 0.6); });
+      // expanding golden rings
+      for (let i = 0; i < 2; i++) {
+        const r = new THREE.Mesh(ringGeo, glow(0xffd23f)); r.position.copy(p); r.position.y += 0.2 + i * 0.9; r.rotation.x = Math.PI / 2;
+        addTransient(r, 0.9 + i * 0.2, k => { r.scale.setScalar(0.5 + k * (4 + i * 2)); r.material.opacity = (1 - k); });
+      }
+      // spinning rays
+      const rays = new THREE.Group(); rays.position.copy(p); rays.position.y += 1;
+      for (let i = 0; i < 8; i++) { const ray = new THREE.Mesh(rayGeo, glow(0xfff6c0, 0.3)); ray.rotation.z = i / 8 * Math.PI; rays.add(ray); }
+      addTransient(rays, 1.4, k => { rays.quaternion.copy(camera.quaternion); rays.rotateZ(k * 2); rays.scale.setScalar(0.4 + k * 1.2); rays.children.forEach(c => { c.material.opacity = 0.3 * (1 - k); }); });
+      // confetti and stars
+      const top = p.clone(); top.y += 2.2;
+      particles.burst(top, { count: 36, shape: 'square', color: [0xff5a5a, 0xffd23f, 0x5ad1ff, 0x7cf05a, 0xff8ad8, 0xffffff], speed: 6, up: 6, size: 0.11, life: 1.8, gravity: 6 });
+      particles.burst(top, { count: 20, color: [0xffe066, 0xffffff], speed: 5, up: 4, size: 0.5, life: 1, gravity: 3, additive: true });
+      flash('#fff3b0', 0.7);
+      engine.slowMo(0.35, 0.9);
+      shake = Math.max(shake, 0.25);
+      const el = document.createElement('div');
+      el.className = 'levelup';
+      el.innerHTML = 'LEVEL UP!';
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 2400);
+    },
+
+    flash,
+
+    /** Per frame: HP bars over hurt mobs, transients, particles, combo timer. */
     update(dt, mobs) {
       const seen = new Set();
       for (const m of mobs) {
@@ -63,16 +157,34 @@ export function createFx(root, camera) {
         el.firstChild.style.width = (m.hp / m.def.hp * 100) + '%';
       }
       for (const [m, el] of bars) if (!seen.has(m)) { el.remove(); bars.delete(m); }
-      for (let i = columns.length - 1; i >= 0; i--) {
-        const c = columns[i];
-        c.t += dt;
-        c.mesh.position.x = c.player.position.x; c.mesh.position.z = c.player.position.z;
-        c.mesh.material.opacity = 0.35 * Math.max(0, 1 - c.t / 1.6);
-        c.mesh.scale.set(1 + c.t * 0.4, 1 + c.t * 0.2, 1 + c.t * 0.4);
-        if (c.t > 1.6) { c.mesh.removeFromParent(); c.mesh.geometry.dispose(); c.mesh.material.dispose(); columns.splice(i, 1); }
+      for (let i = transients.length - 1; i >= 0; i--) {
+        const tr = transients[i];
+        tr.t += dt;
+        const k = Math.min(1, tr.t / tr.life);
+        tr.step(k, tr.obj);
+        if (k >= 1) {
+          tr.obj.removeFromParent();
+          tr.obj.traverse(o => o.material?.dispose());
+          transients.splice(i, 1);
+        }
       }
+      particles.update(dt);
+      if (comboHide > 0) { comboHide -= dt; if (comboHide <= 0) comboEl.hidden = true; }
     },
 
-    clear() { for (const el of bars.values()) el.remove(); bars.clear(); },
+    /** Call after the follow camera is placed. Uses real time so it also shakes during hit stop. */
+    applyShake(cam, realDt) {
+      if (shake <= 0.002) return;
+      cam.position.x += (Math.random() - 0.5) * shake;
+      cam.position.y += (Math.random() - 0.5) * shake;
+      shake *= Math.exp(-realDt * 14);
+    },
+
+    clear() {
+      for (const el of bars.values()) el.remove();
+      bars.clear();
+      for (const tr of transients) { tr.obj.removeFromParent(); tr.obj.traverse(o => o.material?.dispose()); }
+      transients.length = 0;
+    },
   };
 }

@@ -203,7 +203,12 @@ function animator(h, { weaponKind = null } = {}) {
 
     const j = (g, x) => { g.rotation.x = ease(g.rotation.x, x, 18, dt); };
     j(h.arms[1], armR); j(h.arms[0], armL); j(h.legs[1], legR); j(h.legs[0], legL);
-    h.hips.position.y = 0.36 + Math.abs(Math.cos(s.ph)) * 0.05 * s.walk + breathe;
+    // bouncy chibi gait: hop on every step, squash on landing
+    const step = Math.abs(Math.cos(s.ph));
+    h.hips.position.y = 0.36 + step * 0.1 * s.walk + breathe;
+    const sq = 1 + (step - 0.5) * 0.08 * s.walk + Math.sin(t * 2.4) * 0.012;
+    h.body.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+    h.head.rotation.z = Math.sin(s.ph) * 0.08 * s.walk;
     s.lean = ease(s.lean, 0.12 * s.walk, 8, dt);
     h.body.rotation.x = s.lean + hitTilt;
     h.head.rotation.x = -s.lean * 0.6 + Math.sin(t * 1.3) * 0.03;

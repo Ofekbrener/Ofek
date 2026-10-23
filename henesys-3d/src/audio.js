@@ -34,15 +34,21 @@ function noise(dur, f0, f1, vol = 0.4, q = 1) {
 const SOUNDS = {
   swing: () => noise(0.18, 600, 2400, 0.35, 0.8),
   arrow: () => { tone('triangle', 700, 260, 0.12, 0.35); noise(0.12, 3000, 1200, 0.15, 2); },
-  hit: () => { tone('sine', 180, 60, 0.12, 0.6); noise(0.08, 1800, 600, 0.25, 1.5); },
+  hit: () => { tone('sine', 180, 60, 0.12, 0.6); noise(0.08, 1800, 600, 0.25, 1.5); tone('square', 900, 500, 0.05, 0.08); },
+  crit: () => { tone('sine', 220, 50, 0.2, 0.8); noise(0.14, 2600, 500, 0.4, 1.2); tone('triangle', 1400, 700, 0.12, 0.2); },
+  heavy: () => { noise(0.28, 300, 2200, 0.45, 0.7); tone('sawtooth', 120, 60, 0.2, 0.15); },
+  coin: () => { tone('square', 1568, 1568, 0.05, 0.12); tone('square', 2093, 2093, 0.12, 0.12, 0.05); },
   hurt: () => tone('square', 240, 90, 0.2, 0.25),
   jump: () => tone('square', 320, 640, 0.12, 0.15),
   pickup: () => { tone('sine', 988, 988, 0.08, 0.3); tone('sine', 1319, 1319, 0.14, 0.3, 0.07); },
-  levelup: () => [523, 659, 784, 1047].forEach((f, i) => tone('triangle', f, f, 0.22, 0.35, i * 0.1)),
+  levelup: () => {
+    [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone('triangle', f, f, 0.25, 0.35, i * 0.08));
+    [1047, 1319, 1568].forEach(f => tone('sine', f, f, 0.9, 0.18, 0.5));
+  },
   portal: () => tone('sine', 300, 1200, 0.45, 0.3),
   potion: () => { tone('sine', 500, 900, 0.15, 0.3); tone('sine', 700, 1200, 0.15, 0.2, 0.08); },
 };
-const VIBES = { hurt: 60, levelup: [40, 60, 40], hit: 12 };
+const VIBES = { hurt: 60, levelup: [40, 60, 40, 60, 80], hit: 12, crit: 30, heavy: 25 };
 
 export function sfx(name) {
   if (opts.vibration && VIBES[name] && navigator.vibrate) { try { navigator.vibrate(VIBES[name]); } catch { /* unsupported */ } }

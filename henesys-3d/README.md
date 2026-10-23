@@ -14,17 +14,19 @@ A 3D tribute to MapleStory Classic for phone browsers. It has two maps: the town
 
 On a computer: WASD moves, Space jumps, J attacks, K and L use skills, 1 and 2 drink potions.
 
-Progress is saved on the phone (localStorage) after each level up, on every map change, and every 15 seconds. Add the page to the home screen and it runs full screen and offline.
+Progress is saved on the phone (localStorage) after every kill and pickup, on every map change, when you leave the page, and every 15 seconds. A returning player goes straight back into the game. To start over, open Settings and tap New character. Add the page to the home screen and it runs full screen and offline.
 
 ## Monsters
 
-| Monster | Level | HP | EXP | Zone |
+Kills pay 4x the classic EXP, so level 10 takes about 10 minutes. Each zone holds up to 8 monsters (20 in total), and a monster respawns 4 seconds after it dies.
+
+| Monster | Level | HP | EXP (classic ×4) | Zone |
 |---|---|---|---|---|
-| Snail | 1 | 8 | 3 | near the portal |
-| Blue Snail | 2 | 15 | 4 | near the portal |
-| Red Snail | 4 | 45 | 8 | middle |
-| Slime | 6 | 50 | 10 | middle |
-| Orange Mushroom | 8 | 80 | 15 | far east |
+| Snail | 1 | 8 | 12 | near the portal |
+| Blue Snail | 2 | 15 | 16 | near the portal |
+| Red Snail | 4 | 45 | 32 | middle |
+| Slime | 6 | 50 | 40 | middle |
+| Orange Mushroom | 8 | 80 | 60 | far east |
 
 ## Run locally
 
@@ -41,6 +43,8 @@ npx http-server henesys-3d -p 8080
 node --test 'henesys-3d/tests/*.test.js'   # rules: stats, drops, spawning, collision, saves
 node henesys-3d/tests/smoke.mjs             # end-to-end in phone-sized Chromium (Playwright)
 node henesys-3d/tests/regressions.mjs       # fixed bugs stay fixed
+node henesys-3d/tests/save.mjs              # saving and returning players
+node henesys-3d/tests/juice.mjs             # hit stop, combo, particles, level-up effects
 node henesys-3d/tests/preview-shots.mjs out # screenshot every model
 ```
 

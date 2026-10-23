@@ -26,24 +26,31 @@ export function createEngine(canvas) {
   addEventListener('resize', resize);
   resize();
 
+  // Game-feel time controls: hit stop freezes the simulation for a few
+  // frames; slow motion scales time down (level up).
+  let freeze = 0, slowScale = 1, slowFor = 0;
+
   /** render=false lets tests advance the simulation quickly. */
   function tick(rawDt, render = true) {
-    const dt = Math.min(Math.max(rawDt, 0), MAX_DT);
+    const real = Math.min(Math.max(rawDt, 0), MAX_DT);
+    let dt = real;
+    if (freeze > 0) { freeze -= real; dt = 0; }
+    else if (slowFor > 0) { slowFor -= real; dt *= slowScale; }
     elapsed += dt;
-    for (const fn of frameFns) fn(dt, elapsed);
+    for (const fn of frameFns) fn(dt, elapsed, real);
     if (render) renderer.render(scene, camera);
   }
 
   // Adaptive resolution: step the render scale down when the phone cannot
   // hold 45 fps for 3 s in a row.
   const SCALES = [1, 0.8, 0.65];
-  let slowFor = 0, fpsAvg = 60;
+  let slowFrames = 0, fpsAvg = 60;
   function adapt(rawDt) {
     if (rawDt <= 0 || rawDt > 0.5) return;
     fpsAvg += (1 / rawDt - fpsAvg) * 0.1;
-    slowFor = fpsAvg < 45 ? slowFor + rawDt : 0;
+    slowFrames = fpsAvg < 45 ? slowFrames + rawDt : 0;
     const i = SCALES.indexOf(scale);
-    if (slowFor > 3 && i < SCALES.length - 1) { scale = SCALES[i + 1]; slowFor = 0; resize(); }
+    if (slowFrames > 3 && i < SCALES.length - 1) { scale = SCALES[i + 1]; slowFrames = 0; resize(); }
   }
 
   function loop() {
@@ -63,5 +70,9 @@ export function createEngine(canvas) {
     start() { last = performance.now() / 1000; requestAnimationFrame(loop); },
     setScale(s) { scale = s; resize(); },
     get scale() { return scale; },
+    hitStop(sec) { freeze = Math.max(freeze, sec); },
+    slowMo(k, sec) { slowScale = k; slowFor = sec; },
+    get frozen() { return freeze > 0; },
+    get timeScale() { return freeze > 0 ? 0 : slowFor > 0 ? slowScale : 1; },
   };
 }

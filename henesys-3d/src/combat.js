@@ -14,6 +14,7 @@ const arrowGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.7, 5).rotateX(Math.PI 
 const arrowMat = toon(0xc89050);
 const shellGeo = new THREE.SphereGeometry(0.14, 10, 8);
 const shellMat = toon(0x5fae3e);
+const glowArrowMat = toon(0xffe066, { emissive: 0xc08000 });
 
 /** ctx (per call): { player, character, map, onKill(mob), sfx(name) } */
 export function createCombat(fx) {
@@ -28,9 +29,11 @@ export function createCombat(fx) {
   function land(ctx, p) {
     const { mob, dmg, i } = p;
     if (!mob.alive) return;
-    const killed = mob.takeHit(dmg.amount, ctx.player.position.x, ctx.player.position.z);
+    const killed = mob.takeHit(dmg.amount, ctx.player.position.x, ctx.player.position.z, p.heavy ? 2 : 1);
     fx.damage(mob.position, mob.model.height + 0.4, dmg.amount, dmg.crit, i);
-    ctx.sfx?.('hit');
+    const chest = mob.position.clone(); chest.y += mob.model.height * 0.5;
+    fx.impact(chest, dmg.crit, p.heavy);
+    ctx.sfx?.(dmg.crit ? 'crit' : 'hit');
     if (killed) ctx.onKill(mob);
   }
 
@@ -56,13 +59,21 @@ export function createCombat(fx) {
       player.model.attack();
       if (targets[0]) player.faceTowards(targets[0].position.x, targets[0].position.z);
       const ranged = job.weapon === 'bow' || skillId === 'threeSnails';
-      ctx.sfx?.(ranged ? 'arrow' : 'swing');
+      const heavy = skillId === 'powerStrike' || skillId === 'arrowBlow' || skillId === 'slashBlast';
+      ctx.sfx?.(ranged ? 'arrow' : heavy ? 'heavy' : 'swing');
+      if (!ranged) {
+        player.lunge();
+        setTimeout(() => fx.swipe(player, skillId === 'powerStrike' ? 0xffb050 : 0xfff6c0, heavy), 110);
+      }
+      if (skillId === 'slashBlast') setTimeout(() => fx.shockwave(player.position, range), 150);
       for (const mob of targets) {
         for (let h = 0; h < (skill?.hits ?? 1); h++) {
           const dmg = rollDamage(character, skillId);
-          const p = { delay: MELEE_DELAY + h * 0.12, mob, dmg, i: h };
+          const p = { delay: MELEE_DELAY + h * 0.12, mob, dmg, i: h, heavy };
           if (ranged) {
-            p.mesh = new THREE.Mesh(skillId === 'threeSnails' ? shellGeo : arrowGeo, skillId === 'threeSnails' ? shellMat : arrowMat);
+            p.mesh = new THREE.Mesh(skillId === 'threeSnails' ? shellGeo : arrowGeo, skillId === 'threeSnails' ? shellMat : skillId === 'arrowBlow' ? glowArrowMat : arrowMat);
+            if (skillId === 'arrowBlow') p.mesh.scale.set(2.2, 2.2, 1.4);
+            p.trail = skillId === 'arrowBlow' ? 0xffd23f : skillId === 'doubleShot' ? 0x9fe8ff : 0xfff6c0;
             p.from = player.position.clone().add(new THREE.Vector3(0, 1.0, 0));
             p.mesh.position.copy(p.from);
             p.mesh.visible = false;
@@ -89,7 +100,10 @@ export function createCombat(fx) {
         if (dist <= step || !p.mob.alive) {
           p.mesh.removeFromParent(); pending.splice(k, 1);
           land(ctx, p);
-        } else p.mesh.position.addScaledVector(d, step / dist);
+        } else {
+          p.mesh.position.addScaledVector(d, step / dist);
+          fx.particles.burst(p.mesh.position, { count: 1, color: p.trail, shape: 'dot', speed: 0.2, up: 0, size: p.heavy ? 0.7 : 0.4, life: 0.25, gravity: 0, additive: true });
+        }
       }
 
       // contact damage
@@ -105,6 +119,7 @@ export function createCombat(fx) {
           fx.damage(player.position, 2.0, amount, false, 0, true);
           player.model.hit();
           player.knockFrom(m.position.x, m.position.z);
+          fx.flash('#ff3b30', 0.25);
           ctx.sfx?.('hurt');
           break;
         }

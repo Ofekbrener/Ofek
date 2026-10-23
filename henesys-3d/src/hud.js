@@ -75,6 +75,12 @@ export function createHud(root, { onReset, onToggle, settings }) {
       set('red', c.potions.red, v => { cntRed.textContent = v; });
       set('blue', c.potions.blue, v => { cntBlue.textContent = v; });
     },
+    /** Pop animation on a HUD number: 'mesos', 'red', 'blue' or 'lv'. */
+    bump(what) {
+      const el = { mesos: $('h-mesos'), lv: $('h-lv'), red: cntRed, blue: cntBlue }[what];
+      if (!el) return;
+      el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+    },
     mapName(name) {
       const m = $('h-map');
       m.textContent = name; m.classList.remove('show'); void m.offsetWidth; m.classList.add('show');

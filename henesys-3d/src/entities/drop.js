@@ -5,6 +5,7 @@ import { toon, lathe, outline, flat, INK } from '../assets/toon.js';
 
 export const PICKUP_RANGE = 1.2;
 export const DESPAWN = 60;
+export const MAGNET = 5;
 
 const outlineMat = flat(INK, { side: THREE.BackSide });
 const coinGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.06, 18);
@@ -43,9 +44,16 @@ export class Drop {
       if (p.y <= this.ground + 0.25) { p.y = this.ground + 0.25; this.landed = true; }
     } else {
       p.y = this.ground + 0.25 + Math.sin(t * 3 + p.x) * 0.06;
+      // magnet: loot within 5 m flies to the player, faster as it gets close
+      const dx = player.position.x - p.x, dz = player.position.z - p.z, d = Math.hypot(dx, dz);
+      if (d < MAGNET && this.age > 0.5 && !player.dead) {
+        const sp = 4 + (MAGNET - d) * 4;
+        p.x += dx / d * Math.min(d, sp * dt); p.z += dz / d * Math.min(d, sp * dt);
+        p.y += Math.sin(Math.min(1, d / MAGNET) * Math.PI) * 0.4;
+      }
     }
     this.object3d.rotation.y += dt * 2.5;
-    if (this.landed && this.age > 0.4 && Math.hypot(player.position.x - p.x, player.position.z - p.z) < PICKUP_RANGE && Math.abs(player.position.y - this.ground) < 1.5) return 'picked';
+    if (this.landed && this.age > 0.5 && Math.hypot(player.position.x - p.x, player.position.z - p.z) < PICKUP_RANGE && Math.abs(player.position.y - this.ground) < 1.5) return 'picked';
     if (this.age > DESPAWN) return 'expired';
     return null;
   }
