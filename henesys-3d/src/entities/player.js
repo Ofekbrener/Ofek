@@ -79,7 +79,7 @@ export class Player {
 
     // vertical
     const floor = groundHeight(map.heightFns, this.position.x, this.position.z);
-    if (input.pressed('jump') && this.onGround && !this.dead) { this.vy = JUMP_VELOCITY; this.onGround = false; }
+    if (input.pressed('jump') && this.onGround && !this.dead) { this.vy = JUMP_VELOCITY; this.onGround = false; this.onJump?.(); }
     this.vy -= GRAVITY * dt;
     this.position.y += this.vy * dt;
     if (this.position.y <= floor) {

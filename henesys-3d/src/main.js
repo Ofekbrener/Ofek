@@ -19,6 +19,8 @@ import { groundHeight } from './rules/collision.js';
 import { createHud } from './hud.js';
 import { showTitle } from './title.js';
 import { EXP_TABLE } from './config.js';
+import { load, save, clear, loadSettings, saveSettings } from './storage.js';
+import { sfx, configureAudio } from './audio.js';
 import { dialogOpen } from './dialog.js';
 import { TALK_RANGE } from './entities/npc.js';
 
@@ -28,7 +30,8 @@ const fx = createFx(document.getElementById('app'), engine.camera);
 const combat = createCombat(fx);
 
 const app = document.getElementById('app');
-const settings = { sound: true, vibration: true };
+const settings = loadSettings();
+configureAudio(settings);
 
 const game = {
   character: newCharacter('Beginner', 0),
@@ -36,9 +39,13 @@ const game = {
     if (!advance(game.character, job)) return;
     player.model.setWeapon(job);
     fx.levelUp(map.scene, player);
+    sfx('levelup');
+    persist();
     hud.toast(`You are now a ${JOBS[job].name}! New skills are on the S1 and S2 buttons.`);
   },
   onLevelUp() {
+    sfx('levelup');
+    persist();
     const ch = game.character;
     if (ch.level === 10 && ch.job === 'beginner') hud.toast('Level 10! Visit Athena Pierce or Dances with Balrog in Henesys to choose a job.', 6000);
   },
@@ -46,19 +53,19 @@ const game = {
 
 const hud = createHud(app, {
   settings,
-  onToggle(key, val) { settings[key] = val; },
-  onReset() { location.reload(); },
+  onToggle(key, val) { settings[key] = val; configureAudio(settings); saveSettings(settings); },
+  onReset() { clear(); location.reload(); },
 });
 
 const RED_HEAL = 50, BLUE_HEAL = 100;
 function drinkPotions() {
   const ch = game.character;
   if (input.pressed('red')) {
-    if (ch.potions.red > 0 && ch.hp < ch.maxHp) { ch.potions.red--; ch.hp = Math.min(ch.maxHp, ch.hp + RED_HEAL); fx.text(player.position, 2.2, `+${RED_HEAL} HP`, 'gain'); }
+    if (ch.potions.red > 0 && ch.hp < ch.maxHp) { ch.potions.red--; ch.hp = Math.min(ch.maxHp, ch.hp + RED_HEAL); sfx('potion'); fx.text(player.position, 2.2, `+${RED_HEAL} HP`, 'gain'); }
     else if (ch.potions.red === 0) hud.toast('No Red Potions left. Monsters drop them.', 2000);
   }
   if (input.pressed('blue')) {
-    if (ch.potions.blue > 0 && ch.mp < ch.maxMp) { ch.potions.blue--; ch.mp = Math.min(ch.maxMp, ch.mp + BLUE_HEAL); fx.text(player.position, 2.2, `+${BLUE_HEAL} MP`, 'gain'); }
+    if (ch.potions.blue > 0 && ch.mp < ch.maxMp) { ch.potions.blue--; ch.mp = Math.min(ch.maxMp, ch.mp + BLUE_HEAL); sfx('potion'); fx.text(player.position, 2.2, `+${BLUE_HEAL} MP`, 'gain'); }
     else if (ch.potions.blue === 0) hud.toast('No Blue Potions left. Monsters drop them.', 2000);
   }
 }
@@ -89,7 +96,12 @@ function enterMap(id, at) {
   player.place(p.x, p.z, map);
   engine.setScene(map.scene);
   hud.mapName(map.name);
+  persist();
 }
+
+const SAVE_EVERY = 15;
+let saveTimer = 0;
+function persist() { if (player) save(game.character, map?.id ?? 'henesys'); }
 
 const raycaster = new THREE.Raycaster();
 function handleTap() {
@@ -105,6 +117,7 @@ function handleTap() {
 function checkPortals() {
   for (const p of map.portals) {
     if (Math.hypot(player.position.x - p.x, player.position.z - p.z) < p.r && builders[p.to]) {
+      sfx('portal');
       enterMap(p.to, p.arrive);
       return;
     }
@@ -113,7 +126,7 @@ function checkPortals() {
 
 const ctx = {
   get player() { return player; }, get character() { return game.character; }, get map() { return map; },
-  sfx: () => {},
+  sfx,
   onKill(mob) {
     const ch = game.character;
     const before = ch.level;
@@ -183,19 +196,29 @@ engine.onFrame((dt, t) => {
   if (game.character.hp <= 0 && !player.dead) die();
   if (player.dead) player.model.object3d.rotation.x = Math.max(-Math.PI / 2, player.model.object3d.rotation.x - dt * 5);
   hud.update(game.character);
+  saveTimer += dt;
+  if (saveTimer > SAVE_EVERY) { saveTimer = 0; persist(); }
   player.updateCamera(engine.camera, input, dt);
 });
 
 engine.start();
 
 async function boot() {
-  const { name, look } = await showTitle(app);
-  game.character = newCharacter(name, look);
-  player = new Player(game.character, buildPlayer(look, 'beginner'));
-  enterMap('henesys');
-  hud.toast(`Welcome, ${name}! Talk to Chief Stan, then head east to the Hunting Ground.`, 5000);
+  const saved = load();
+  const pick = await showTitle(app, saved);
+  let mapId = 'henesys';
+  if (pick.continue) { game.character = saved.character; mapId = saved.mapId; }
+  else game.character = newCharacter(pick.name, pick.look);
+  const ch = game.character;
+  player = new Player(ch, buildPlayer(ch.look, ch.job));
+  player.onJump = () => sfx('jump');
+  enterMap(mapId);
+  hud.toast(pick.continue ? `Welcome back, ${ch.name}!` : `Welcome, ${ch.name}! Talk to Chief Stan, then head east to the Hunting Ground.`, 5000);
 }
 boot();
+
+addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
+if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 
 window.__game = {
   engine, input, game, enterMap, combat, ctx, hud,

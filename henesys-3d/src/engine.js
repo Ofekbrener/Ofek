@@ -34,8 +34,21 @@ export function createEngine(canvas) {
     if (render) renderer.render(scene, camera);
   }
 
+  // Adaptive resolution: step the render scale down when the phone cannot
+  // hold 45 fps for 3 s in a row.
+  const SCALES = [1, 0.8, 0.65];
+  let slowFor = 0, fpsAvg = 60;
+  function adapt(rawDt) {
+    if (rawDt <= 0 || rawDt > 0.5) return;
+    fpsAvg += (1 / rawDt - fpsAvg) * 0.1;
+    slowFor = fpsAvg < 45 ? slowFor + rawDt : 0;
+    const i = SCALES.indexOf(scale);
+    if (slowFor > 3 && i < SCALES.length - 1) { scale = SCALES[i + 1]; slowFor = 0; resize(); }
+  }
+
   function loop() {
     const now = performance.now() / 1000;
+    adapt(now - last);
     tick(now - last);
     last = now;
     requestAnimationFrame(loop);

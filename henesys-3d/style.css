@@ -133,3 +133,4 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #5fb4f5; col
 .look.on { background: #ffd9a8; box-shadow: 0 0 0 3px var(--orange); }
 .start { font: 22px var(--display); color: #fff; -webkit-text-stroke: 1px var(--ink); background: var(--orange); border: 3px solid var(--ink); border-radius: 999px; padding: 10px; box-shadow: 0 4px 0 var(--ink); }
 .fine { margin: 0; font-size: 11px; opacity: .7; max-width: 300px; }
+.title .cont { width: min(320px, calc(100vw - 32px)); }

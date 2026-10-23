@@ -1,0 +1,16 @@
+{
+  "name": "Henesys 3D",
+  "short_name": "Henesys",
+  "description": "A MapleStory Classic fan tribute for your phone.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#5fb4f5",
+  "theme_color": "#5fb4f5",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

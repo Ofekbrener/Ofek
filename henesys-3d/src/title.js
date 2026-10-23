@@ -1,12 +1,14 @@
 // Title screen: pick a name and one of three looks. Resolves { name, look }.
 import { LOOKS } from './assets/characters.js';
 
-export function showTitle(root) {
+/** saved: { character } from storage, or null. Resolves { continue: true } or { name, look }. */
+export function showTitle(root, saved = null) {
   const el = document.createElement('div');
   el.className = 'ui title';
   el.innerHTML = `
     <div class="logo"><span>Henesys</span><em>3D</em></div>
     <p class="tag">A MapleStory Classic tribute</p>
+    ${saved ? `<button class="start cont" id="t-cont">Continue as ${saved.character.name.replace(/[<>&"]/g, '')} (Lv. ${saved.character.level})</button><p class="tag">or start a new character</p>` : ''}
     <div class="card">
       <label for="t-name">Character name</label>
       <input id="t-name" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Beginner">
@@ -28,6 +30,7 @@ export function showTitle(root) {
     el.querySelectorAll('.look').forEach(x => x.classList.toggle('on', x === b));
   });
   return new Promise(resolve => {
+    el.querySelector('#t-cont')?.addEventListener('click', () => { el.remove(); resolve({ continue: true }); });
     el.querySelector('#t-start').onclick = () => {
       const name = el.querySelector('#t-name').value.trim().replace(/[^\w ]/g, '') || 'Beginner';
       el.remove();

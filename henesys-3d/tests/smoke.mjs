@@ -150,6 +150,17 @@ try {
   const after2 = await page.evaluate(() => ({ map: window.__game.map.id, exp: window.__game.game.character.exp, hp: window.__game.game.character.hp, max: window.__game.game.character.maxHp }));
   check(after2.map === 'henesys' && after2.exp === 90 && after2.hp === after2.max, `death returns to Henesys with full HP and 10% EXP lost (exp 100 -> ${after2.exp})`);
 
+  // --- progress survives a reload ---
+  await page.evaluate(() => { window.__game.enterMap('hunting'); });
+  await page.reload();
+  await page.waitForSelector('#t-cont', { timeout: 15000 });
+  check((await page.textContent('#t-cont')).includes('Tester (Lv. 10)'), 'title offers Continue as Tester (Lv. 10)');
+  await page.click('#t-cont');
+  await page.waitForFunction(() => window.__game?.player, null, { timeout: 15000 });
+  const restored = await page.evaluate(() => ({ lv: window.__game.game.character.level, job: window.__game.game.character.job, map: window.__game.map.id }));
+  check(restored.lv === 10 && restored.job === 'bowman' && restored.map === 'hunting', `reload restores level, job and map (${JSON.stringify(restored)})`);
+  await sleep(500);
+
   await page.screenshot({ path: shot });
   check(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('SMOKE OK');
