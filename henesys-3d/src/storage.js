@@ -27,6 +27,11 @@ export function load(store = store0()) {
     data.character.look = normalizeLook(data.character.look);
     const q = data.character.quests;
     if (!q || typeof q !== 'object' || Array.isArray(q)) data.character.quests = {};
+    else for (const k of Object.keys(q)) {
+      const e = q[k];
+      if (!e || !['active', 'done'].includes(e.state)) delete q[k];
+      else { e.count = Number.isFinite(e.count) ? e.count : 0; delete e.announced; }
+    }
     return { character: data.character, mapId: MAPS.includes(data.mapId) ? data.mapId : 'henesys' };
   } catch {
     return null;

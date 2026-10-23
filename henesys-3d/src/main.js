@@ -59,7 +59,8 @@ const game = {
 
 // ------------------------------------------------------------------ quests
 const JOB_NPCS = ['athena', 'balrog', 'grendel', 'darklord'];
-const NPC_NAMES = { stan: 'Chief Stan', mia: 'Mia', athena: 'Athena Pierce', balrog: 'Dances with Balrog', grendel: 'Grendel', darklord: 'Dark Lord' };
+const announced = new Set(); // quests whose "done" toast was shown this session (not saved)
+const NPC_NAMES = { stan: 'Chief Stan', mia: 'Mia', athena: 'Athena Pierce', balrog: 'Dances with Balrog', grendel: 'Grendel the Really Old', darklord: 'Dark Lord' };
 game.quests = {
   marker(npc) {
     const qs = availableQuests(game.character, npc);
@@ -67,9 +68,9 @@ game.quests = {
   },
   /** A quest dialog for this NPC if it has one to offer or take back, else null. */
   dialog(npc) {
-    // a job instructor offers the job change before any quest
-    if (JOB_NPCS.includes(npc) && canAdvance(game.character)) return null;
     const qs = availableQuests(game.character, npc);
+    // turning in a finished quest comes first; then a job instructor's job change
+    if (JOB_NPCS.includes(npc) && canAdvance(game.character) && !qs.some(x => x.status === 'ready')) return null;
     const q = qs.find(x => x.status === 'ready') ?? qs.find(x => x.status === 'available') ?? qs.find(x => x.status === 'active');
     if (!q) return null;
     const g = q.goal;
@@ -187,9 +188,9 @@ const ctx = {
     const ch = game.character;
     const before = ch.level;
     for (const d of onMobKilled(ch, mob.id)) fx.text(mob.position, 1.6, d.item, 'gain quest');
-    for (const q of activeQuests(ch)) if (q.status === 'ready' && !q.announced) {
+    for (const q of activeQuests(ch)) if (q.status === 'ready' && !announced.has(q.id)) {
       hud.toast(`${q.name}: done! Return to ${NPC_NAMES[q.npc]}.`, 4000);
-      ch.quests[q.id].announced = true;
+      announced.add(q.id);
     }
     const exp = killExp(mob.id);
     gainExp(ch, exp);
@@ -348,6 +349,7 @@ window.__game = {
   acceptQuest: id => acceptQuestUI(id),
   turnInQuest: id => turnIn(id),
   questStatus: id => questStatus(game.character, id),
+  npcDialogFor: npc => game.quests.dialog(npc),
   activeBuffIds: () => activeBuffs(game.character, game.time).map(b => b.id),
   /** Test hook: a fresh level-1 beginner with the same look. */
   resetCharacterForTest() {

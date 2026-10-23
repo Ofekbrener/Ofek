@@ -359,7 +359,7 @@ function attachGear(root, [from, name], slot) {
   if (!src || !bone) return;
   const g = src.clone(true);
   g.visible = true;
-  g.traverse(o => { o.visible = true; if (o.isMesh) o.castShadow = true; });
+  g.traverse(o => { o.visible = true; if (o.isMesh) o.castShadow = false; });
   bone.add(g);
 }
 
@@ -369,7 +369,12 @@ export function buildSkeletonMob(id) {
   const holder = new THREE.Group();
   holder.scale.setScalar(lib.scale * d.scale);
   const root = cloneSkinned(lib.gltf[d.base].scene);
-  root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; o.material = o.material.clone(); } });
+  // skinned bounds come from the bind pose; widen them so culling never clips a swing
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = o.isSkinnedMesh; o.material = o.material.clone();
+    if (o.isSkinnedMesh) { o.geometry.computeBoundingSphere(); o.geometry.boundingSphere = o.geometry.boundingSphere.clone(); o.geometry.boundingSphere.radius *= 1.6; }
+  });
   attachGear(root, d.weapon, 'handslot.r');
   if (d.offhand) attachGear(root, d.offhand, 'handslot.l');
   holder.add(root);

@@ -23,7 +23,6 @@ export function outline(mesh, scale = 1.04, mat = new THREE.MeshBasicMaterial({ 
   o.scale.setScalar(scale);
   o.userData.isOutline = true;
   mesh.add(o);
-  mesh.castShadow = true;
   return mesh;
 }
 

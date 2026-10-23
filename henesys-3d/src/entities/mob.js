@@ -93,10 +93,14 @@ export class Mob {
       if (Math.abs(this.knock.x) + Math.abs(this.knock.z) < 0.05) this.knock = null;
     }
     const p = resolve({ x: nx, z: nz }, this.radius, map.colliders, map.bounds);
-    // monsters cannot climb onto logs or rocks; they turn away instead
-    if (canStep(this.position.y, groundHeight(map.heightFns, p.x, p.z))) { this.position.x = p.x; this.position.z = p.z; }
+    // logs and rocks block monsters: slide along them on one axis, or give up the goal
+    const floorAt = (x, z) => groundHeight(map.heightFns, x, z);
+    if (canStep(this.position.y, floorAt(p.x, p.z))) { this.position.x = p.x; this.position.z = p.z; }
+    else if (canStep(this.position.y, floorAt(p.x, this.position.z))) this.position.x = p.x;
+    else if (canStep(this.position.y, floorAt(this.position.x, p.z))) this.position.z = p.z;
     else this.goal = null;
-    this.position.y = ease(this.position.y, groundHeight(map.heightFns, p.x, p.z), 12, dt);
+    // follow the ground under the monster's feet, never the spot it was refused
+    this.position.y = ease(this.position.y, floorAt(this.position.x, this.position.z), 12, dt);
     this.object3d.rotation.y = this.yaw;
     this.model.animate(tx != null ? 'move' : 'idle', dt, t);
   }

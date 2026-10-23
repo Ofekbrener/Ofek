@@ -50,6 +50,45 @@ try {
   check(saved.character.hp === saved.character.maxHp && saved.mapId === 'henesys' && saved.character.exp === 45, `death is saved once, in town, with full HP (${JSON.stringify({ hp: saved.character.hp, map: saved.mapId, exp: saved.character.exp })})`);
   await page.click('#h-revive');
 
+  // phase 2: a chasing monster cannot climb a 1 m log after the player
+  const climb = await page.evaluate(() => {
+    const g = window.__game;
+    g.enterMap('hunting'); g.engine.tick(1 / 30, false);
+    const m = g.map.mobs.find(x => x.alive), mx = m.position.x, mz = m.position.z, y0 = m.position.y;
+    const box = (px, pz) => Math.abs(px - (mx + 2.5)) <= 1 && Math.abs(pz - mz) <= 1 ? y0 + 1 : null;
+    g.map.heightFns.push(box);
+    m.state = 'chase'; m.leashFrom = { x: mx, z: mz };
+    for (let k = 0; k < 120; k++) { g.player.position.set(mx + 2.5, y0 + 1, mz); g.player.vy = 0; m.update(1 / 30, k / 30, g.player, g.map); }
+    g.map.heightFns.splice(g.map.heightFns.indexOf(box), 1);
+    return m.position.y - y0;
+  });
+  check(climb < 0.3, `a monster cannot climb onto a 1 m log (rose ${climb.toFixed(2)} m)`);
+
+  // phase 2: the "quest done" toast shows once, not on every later kill
+  const toasts = await page.evaluate(() => {
+    const g = window.__game, ch = g.game.character;
+    ch.quests = {}; g.acceptQuest('snailHunt'); ch.quests.snailHunt.count = 14;
+    g.enterMap('hunting'); g.engine.tick(1 / 30, false);
+    let n = 0;
+    for (let k = 0; k < 3; k++) {
+      const m = g.map.mobs.find(x => x.alive && /nail/i.test(x.id));
+      document.getElementById('h-toast').textContent = '';
+      m.takeHit(9999, m.position.x + 1, m.position.z); g.ctx.onKill(m);
+      if (document.getElementById('h-toast').textContent.includes('Return to')) n++;
+    }
+    return { n, saved: JSON.stringify(ch.quests) };
+  });
+  check(toasts.n === 1 && !toasts.saved.includes('announced'), `the quest-done toast shows once and stays out of the save (${JSON.stringify(toasts)})`);
+
+  // phase 2: a ready quest at a job instructor can be turned in before choosing a job
+  const ready = await page.evaluate(() => {
+    const g = window.__game, ch = g.game.character;
+    g.resetCharacterForTest(); g.debugSetLevel(10);
+    g.acceptQuest('caps'); g.game.character.quests.caps.count = 8;
+    return g.npcDialogFor('athena')?.choices?.map(c => c.label) ?? [];
+  });
+  check(ready.includes('Complete'), `Athena takes back a finished quest before the job talk (${ready})`);
+
   // #2 reset progress really deletes the save
   await page.click('#h-gear');
   await page.click('#h-reset');

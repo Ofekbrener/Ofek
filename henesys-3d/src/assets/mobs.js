@@ -453,6 +453,11 @@ export const MOB_IDS = Object.keys(BUILDERS);
 
 export function buildMob(id) {
   const model = BUILDERS[id]();
-  model.object3d.traverse(o => { if (o.isMesh && !o.userData.isOutline) o.castShadow = true; });
+  // only the big parts cast shadows: hooves, eyes and ears would double the draw calls for nothing
+  model.object3d.traverse(o => {
+    if (!o.isMesh) return;
+    if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+    o.castShadow = !o.userData.isOutline && o.geometry.boundingSphere.radius > 0.3;
+  });
   return model;
 }
