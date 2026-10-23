@@ -9,6 +9,7 @@ They are licensed CC0 1.0 Universal (public domain). Attribution is not required
 
 Sounds in sfx/:
 - jump, land, step, coin, ambience: Kenney Starter Kits (https://github.com/KenneyNL), MIT License, Copyright (c) 2023 Kenney.
-- Any other sfx/*.mp3: generated for this game with ElevenLabs sound effects.
+- swing: generated for this game with ElevenLabs sound effects.
+- All other sfx/*.mp3: designed for this game from scratch by tools/make-sfx.py (synthesis, no samples).
 
 Rebuild with `cd henesys-3d/tools && npm install && npm run assets`.

@@ -9,6 +9,7 @@ function ensure() {
   if (ctx || typeof AudioContext === 'undefined') return ctx;
   ctx = new AudioContext();
   master = ctx.createGain(); master.gain.value = 0.35; master.connect(ctx.destination);
+  decodeAll();
   return ctx;
 }
 addEventListener('pointerdown', () => { ensure(); ctx?.resume?.(); }, { once: false, passive: true });
@@ -72,8 +73,13 @@ export async function loadSamples(base = 'assets/sfx/') {
     await Promise.all(names.map(async n => {
       try { samples[n] = await (await fetch(base + n + '.mp3')).arrayBuffer(); } catch { /* keep the synth version */ }
     }));
+    decodeAll();
   } catch { /* no recorded sounds: synth only */ }
 }
+
+// Decode every recorded sound as soon as both the files and the AudioContext
+// exist, so even the first hit plays the recording.
+function decodeAll() { if (ctx) for (const n of Object.keys(samples)) decoded(n); }
 
 function decoded(name) {
   const s = samples[name];
