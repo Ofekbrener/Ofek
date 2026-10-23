@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { load, save, KEY } from '../src/storage.js';
+import { load, save, KEY, loadSettings, saveSettings } from '../src/storage.js';
 import { newCharacter, gainExp, advance } from '../src/rules/stats.js';
 
 function memStore() {
@@ -40,4 +40,13 @@ test('a custom appearance round-trips, and an old numeric look still loads', () 
   const old = newCharacter('Old', 1);
   s.setItem(KEY, JSON.stringify({ v: 1, character: old, mapId: 'henesys' }));
   assert.equal(load(s).character.look.hair, 0x2a2220);
+});
+
+test('old settings move to free controls once; a later choice sticks', () => {
+  const mem = new Map(), store = { getItem: k => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+  mem.set('henesys3d.settings', JSON.stringify({ sound: false, controls: 'classic' }));
+  const s = loadSettings(store);
+  assert.deepEqual([s.controls, s.sound, s.camV], ['free', false, 2]);
+  saveSettings({ ...s, controls: 'classic' }, store);
+  assert.equal(loadSettings(store).controls, 'classic');
 });

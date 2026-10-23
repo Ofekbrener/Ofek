@@ -80,6 +80,14 @@ try {
   });
   check(classic.back.z < 12 - 1 && classic.back.yaw === 0 && classic.back.anim === 'back', `stick down walks backwards facing forward (${JSON.stringify(classic.back)})`);
   check(classic.turned < -0.5, `stick right turns in place (${classic.turned.toFixed(2)} rad)`);
+  const still = await page.evaluate(() => {
+    const g = window.__game, i = g.input;
+    i.camYaw = 0.4; i.move.x = 1; i.move.y = 0;
+    for (let k = 0; k < 60; k++) g.engine.tick(1 / 30, false);
+    i.move.x = 0;
+    return i.camYaw;
+  });
+  check(still === 0.4, `free controls: walking never turns the camera by itself (${still})`);
   check(classic.off < 0.1, `the camera settles behind the back (off by ${classic.off.toFixed(2)} rad)`);
 
   // --- tap Chief Stan to open his dialog ---

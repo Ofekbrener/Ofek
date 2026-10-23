@@ -14,9 +14,9 @@ export function createInput(root) {
     // Walking directions are measured from this yaw. It locks while the stick is held,
     // so the follow camera can swing behind the player without changing their path.
     moveYaw: 0,
-    camPitch: 0.32,
+    camPitch: 0.55,
     zoom: 1,            // pinch zoom, 0.6 (close) .. 1.6 (far)
-    scheme: 'classic',  // 'classic' (tank) or 'free' (camera-relative)
+    scheme: 'free',     // 'classic' (tank) or 'free' (camera-relative)
     tapPoint: null,
     enabled: true,
   };

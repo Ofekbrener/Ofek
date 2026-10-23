@@ -1,6 +1,6 @@
 // Offline support. Online, every request goes to the network first so an
 // update is never mixed with old modules; the cache is the offline fallback.
-const CACHE = 'henesys3d-v7';
+const CACHE = 'henesys3d-v8';
 const CORE = ['./', './index.html', './style.css', './manifest.webmanifest', './vendor/three.module.min.js', './src/main.js'];
 
 self.addEventListener('install', e => {

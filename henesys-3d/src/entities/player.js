@@ -11,9 +11,9 @@ export const GRAVITY = 20;
 export const RADIUS = 0.4;
 // Highest ledge you can walk up without jumping.
 export const STEP = 0.45;
-export const CAM_DIST = 9;
-const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _ray = new THREE.Raycaster();
-const CAM_HEIGHT = 1.5;
+export const CAM_DIST = 12;
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _ray = new THREE.Raycaster();
+const CAM_HEIGHT = 1.2;
 
 export class Player {
   constructor(character, model) {
@@ -76,7 +76,7 @@ export class Player {
       dx = r.dx; dz = r.dz; mag = Math.hypot(dx, dz);
       this.backward = r.back;
     } else {
-      const yaw = input.moveYaw ?? input.camYaw;
+      const yaw = input.camYaw;
       const fx = -Math.sin(yaw), fz = -Math.cos(yaw);   // camera forward on the ground
       const rx = Math.cos(yaw), rz = -Math.sin(yaw);    // camera right
       const mx = this.dead ? 0 : input.move.x, my = this.dead ? 0 : input.move.y;
@@ -145,6 +145,12 @@ export class Player {
         let o = h.object; while (o && !occluders.includes(o)) o = o.parent;
         if (o) blocking.add(o);
       }
+    }
+    // anything that fills the near view (within 2.5 m of the camera's sight line) fades too
+    const cam = this.camLast;
+    if (cam) for (const o of occluders) {
+      const b = o.userData.bounds ??= new THREE.Box3().setFromObject(o);
+      for (let k = 0; k <= 3; k++) if (b.distanceToPoint(_v3.copy(cam).lerp(from, k * 0.2)) < 2.5) { blocking.add(o); break; }
     }
     for (const o of blocking) if (!this.faded.has(o)) this.faded.set(o, 1);
     for (const [o, a] of this.faded) {

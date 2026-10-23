@@ -105,8 +105,11 @@ try {
   });
   check(shop.rina && shop.mesos === 200 && shop.red === 15 && shop.weapon === 1 && shop.glow > 0 && shop.blue === 5, `Rina sells potions and a weapon upgrade (${JSON.stringify(shop)})`);
 
-  await sleep(500);
-  await page.evaluate(() => { for (const b of document.querySelectorAll('.dialog button')) if (b.textContent === 'Not now') b.click(); });
+  // the shop reopens itself after each purchase; close it until it stays closed
+  for (let k = 0; k < 6; k++) {
+    await sleep(400);
+    await page.evaluate(() => { for (const b of document.querySelectorAll('.dialog button')) if (b.textContent === 'Not now') b.click(); });
+  }
 
   // #2 reset progress really deletes the save
   await page.click('#h-gear');

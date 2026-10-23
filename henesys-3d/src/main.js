@@ -313,10 +313,8 @@ engine.onFrame((dt, t, realDt) => {
   saveTimer += dt;
   if (saveTimer > SAVE_EVERY) { saveTimer = 0; persist(); }
   const mag = Math.hypot(input.move.x, input.move.y);
-  // Classic: the camera always settles behind the back. Free: it follows only while walking.
-  input.camYaw = input.scheme === 'classic'
-    ? followYaw(input.camYaw, player.yaw, dt, { moving: true, forward: 1, dragging: input.camDragging })
-    : followYaw(input.camYaw, player.yaw, dt, { moving: mag > 0.15 && !player.dead, forward: mag ? input.move.y / mag : 0, dragging: input.camDragging });
+  // Classic: the camera settles behind the back. Free: only your finger turns it.
+  if (input.scheme === 'classic') input.camYaw = followYaw(input.camYaw, player.yaw, dt, { moving: !player.dead, forward: 1, dragging: input.camDragging });
   player.updateCamera(engine.camera, input, dt, map.occluders);
   fx.applyShake(engine.camera, realDt);
   dustT -= dt;
@@ -352,7 +350,7 @@ async function loadAssets() {
 }
 
 async function boot() {
-  input.scheme = settings.controls ?? 'classic';
+  input.scheme = settings.controls ?? 'free';
   await loadAssets();
   loadSamples();
   // A returning player goes straight back in; a new character needs Settings > Reset progress.

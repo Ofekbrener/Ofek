@@ -54,8 +54,13 @@ export function clear(store = store0()) {
 }
 
 export function loadSettings(store = store0()) {
-  try { return { sound: true, vibration: true, music: true, controls: 'classic', ...JSON.parse(store.getItem('henesys3d.settings') || '{}') }; }
-  catch { return { sound: true, vibration: true, music: true, controls: 'classic' }; }
+  const base = { sound: true, vibration: true, music: true, controls: 'free', camV: 2 };
+  try {
+    const saved = JSON.parse(store.getItem('henesys3d.settings') || '{}');
+    // settings from before camera v2 move to the new default: the stick walks where you push it
+    if (saved.camV !== 2) { saved.controls = 'free'; saved.camV = 2; }
+    return { ...base, ...saved };
+  } catch { return base; }
 }
 
 export function saveSettings(s, store = store0()) {
