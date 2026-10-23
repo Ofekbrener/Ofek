@@ -34,7 +34,33 @@ try {
   });
   check(inBounds, 'player stays inside map bounds after 400 frames with dt=10');
 
-  for (const step of (globalThis.SMOKE_STEPS || [])) await step({ page, touch });
+  // --- Henesys: houses block the player ---
+  const outside = await page.evaluate(() => {
+    const g = window.__game, house = g.map.colliders.find(c => c.type === 'circle' && Math.hypot(c.x + 15, c.z + 7) < 0.1);
+    g.player.place(-10, -7, g.map);
+    g.input.camYaw = 0; g.input.move.x = -1; g.input.move.y = 0;
+    for (let i = 0; i < 90; i++) g.engine.tick(1 / 30);
+    g.input.move.x = 0;
+    return Math.hypot(g.player.position.x - house.x, g.player.position.z - house.z) >= house.r;
+  });
+  check(outside, 'player stays outside the mushroom house');
+
+  // --- tap Chief Stan to open his dialog ---
+  const at = await page.evaluate(() => {
+    const g = window.__game, stan = g.map.npcs.find(n => n.id === 'stan');
+    g.player.place(stan.position.x + 2.5, stan.position.z + 2.5, g.map);
+    g.input.camYaw = Math.PI / 4; g.input.camPitch = 0.3;
+    for (let i = 0; i < 60; i++) g.engine.tick(1 / 30);
+    const v = stan.position.clone(); v.y += 1; v.project(g.engine.camera);
+    return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight };
+  });
+  await touch('touchStart', [{ x: at.x, y: at.y, id: 5 }]);
+  await sleep(60);
+  await touch('touchEnd', []);
+  await sleep(300);
+  check(await page.isVisible('.dialog'), 'tapping Chief Stan opens his dialog');
+  await page.screenshot({ path: shot.replace(/\.png$/, '-dialog.png') });
+  while (await page.isVisible('.dialog')) { await page.click('.dlg-btns button.pick'); await sleep(100); }
 
   await page.screenshot({ path: shot });
   check(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));

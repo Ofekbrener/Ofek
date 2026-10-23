@@ -1,50 +1,74 @@
-// Boot: engine, input, map, player, frame loop.
+// Boot and game loop: maps, player, NPC taps, portals.
 import * as THREE from 'three';
 import { createEngine } from './engine.js';
 import { createInput } from './input.js';
 import { Player } from './entities/player.js';
-import { newCharacter } from './rules/stats.js';
+import { newCharacter, advance } from './rules/stats.js';
+import { buildPlayer } from './assets/characters.js';
+import { buildHenesys } from './world/henesys.js';
+import { dialogOpen } from './dialog.js';
+import { TALK_RANGE } from './entities/npc.js';
 
 const engine = createEngine(document.getElementById('game'));
 const input = createInput(document.getElementById('app'));
 
-// Temporary test map, replaced by Henesys in a later task.
-function buildTestMap() {
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x8fd0ff);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x88aa66, 1.2));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(5, 10, 4); scene.add(sun);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshLambertMaterial({ color: 0x7ccf4e }));
-  ground.rotation.x = -Math.PI / 2; scene.add(ground);
-  const box = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 4), new THREE.MeshLambertMaterial({ color: 0xc08050 }));
-  box.position.set(6, 1.5, -6); scene.add(box);
-  const tree = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 4), new THREE.MeshLambertMaterial({ color: 0x8a5a30 }));
-  tree.position.set(-6, 2, -6); scene.add(tree);
-  return {
-    id: 'test', scene,
-    colliders: [{ type: 'box', x: 6, z: -6, hw: 2, hd: 2 }, { type: 'circle', x: -6, z: -6, r: 1 }],
-    bounds: { minX: -30, maxX: 30, minZ: -30, maxZ: 30 },
-    heightFns: [], spawn: { x: 0, z: 0 }, portals: [], npcs: [],
-  };
+const game = {
+  character: newCharacter('Beginner', 0),
+  advance(job) {
+    if (advance(game.character, job)) player.model.setWeapon(job);
+  },
+};
+
+const builders = { henesys: () => buildHenesys(game) };
+const maps = {};
+let map = null;
+
+const player = new Player(game.character, buildPlayer(game.character.look, game.character.job));
+
+function enterMap(id, at) {
+  map = maps[id] ??= builders[id]();
+  map.scene.add(player.object3d);
+  const p = at ?? map.spawn;
+  player.place(p.x, p.z, map);
+  engine.setScene(map.scene);
 }
 
-function placeholderModel() {
-  const object3d = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.8, 4, 12), new THREE.MeshLambertMaterial({ color: 0xffffff }));
-  object3d.position.y = 0.8;
-  return { object3d, height: 1.6, animate() {} };
+const raycaster = new THREE.Raycaster();
+function handleTap() {
+  const tap = input.takeTap();
+  if (!tap || dialogOpen() || !map.npcs) return;
+  const ndc = new THREE.Vector2(tap.x / innerWidth * 2 - 1, -(tap.y / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(ndc, engine.camera);
+  const hit = raycaster.intersectObjects(map.npcs.map(n => n.hitbox), false)[0];
+  const npc = hit?.object.userData.npc;
+  if (npc && npc.position.distanceTo(player.position) < TALK_RANGE + 2) npc.onTap();
 }
 
-const map = buildTestMap();
-const player = new Player(newCharacter('Player', 0), placeholderModel());
-map.scene.add(player.object3d);
-player.place(map.spawn.x, map.spawn.z, map);
-engine.setScene(map.scene);
+function checkPortals() {
+  for (const p of map.portals) {
+    if (Math.hypot(player.position.x - p.x, player.position.z - p.z) < p.r && builders[p.to]) {
+      enterMap(p.to, p.arrive);
+      return;
+    }
+  }
+}
 
 engine.onFrame((dt, t) => {
   input.poll();
+  if (dialogOpen()) { input.move.x = 0; input.move.y = 0; input.clear(); }
   player.update(dt, input, map, t);
+  for (const n of map.npcs ?? []) n.update(dt, t, player);
+  handleTap();
+  checkPortals();
+  map.animate?.(t, engine.camera);
+  if (map.sun) {
+    map.sun.position.set(player.position.x + 6, player.position.y + 12, player.position.z + 8);
+    map.sun.target.position.copy(player.position);
+  }
   player.updateCamera(engine.camera, input, dt);
 });
+
+enterMap('henesys');
 engine.start();
 
-window.__game = { engine, input, player, get map() { return map; } };
+window.__game = { engine, input, player, game, enterMap, get map() { return map; } };
