@@ -1,5 +1,5 @@
 // Character stats, levelling and damage. Pure: no Three.js, no DOM.
-import { EXP_TABLE, MAX_LEVEL, JOBS, SKILLS, CRIT_CHANCE, CRIT_MULT } from '../config.js';
+import { EXP_TABLE, MAX_LEVEL, JOBS, SKILLS, CRIT_CHANCE, CRIT_MULT, MOBS, EXP_MULT } from '../config.js';
 
 const BASE_STAT = 12;
 
@@ -65,3 +65,5 @@ export function advance(c, job) {
   }
   return true;
 }
+
+export const killExp = mobId => MOBS[mobId].exp * EXP_MULT;

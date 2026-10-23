@@ -1,8 +1,8 @@
 // Keeps each hunting zone populated: fills on the first update, then
 // respawns a mob RESPAWN seconds after each death. Pure.
-export const ZONE_CAP = 6;
-export const TOTAL_CAP = 15;
-export const RESPAWN = 7;
+export const ZONE_CAP = 8;
+export const TOTAL_CAP = 20;
+export const RESPAWN = 4;
 
 export class Spawner {
   constructor(zones, rng = Math.random) {

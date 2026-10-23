@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newCharacter, gainExp, damageRange, rollDamage, deathPenalty, canAdvance, advance } from '../src/rules/stats.js';
+import { newCharacter, gainExp, damageRange, rollDamage, deathPenalty, canAdvance, advance, killExp } from '../src/rules/stats.js';
 import { EXP_TABLE, MOBS } from '../src/config.js';
 
 test('exp table starts with the classic values', () => {
@@ -53,4 +53,9 @@ test('job advance only from beginner at 10+', () => {
   advance(c, 'bowman');
   assert.equal(c.job, 'bowman');
   assert.equal(canAdvance(c), false);
+});
+
+test('kills pay 4x the classic EXP', () => {
+  assert.equal(killExp('snail'), 12);
+  assert.equal(killExp('orangeMushroom'), 60);
 });

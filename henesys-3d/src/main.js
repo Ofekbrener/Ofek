@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createEngine } from './engine.js';
 import { createInput } from './input.js';
 import { Player } from './entities/player.js';
-import { newCharacter, advance, gainExp, deathPenalty } from './rules/stats.js';
+import { newCharacter, advance, gainExp, deathPenalty, killExp } from './rules/stats.js';
 import { rollDrops } from './rules/drops.js';
 import { Spawner } from './rules/spawner.js';
 import { JOBS, MOBS } from './config.js';
@@ -103,8 +103,14 @@ function enterMap(id, at) {
 }
 
 const SAVE_EVERY = 15;
-let saveTimer = 0, resetting = false;
-function persist() { if (player && !player.dead && !resetting) save(game.character, map?.id ?? 'henesys'); }
+let saveTimer = 0, resetting = false, warnedNoSave = false;
+function persist() {
+  if (!player || player.dead || resetting) return;
+  if (!save(game.character, map?.id ?? 'henesys') && !warnedNoSave) {
+    warnedNoSave = true;
+    hud.toast("This browser blocks saving, so your progress won't be saved. Private browsing often does this.", 6000);
+  }
+}
 
 const raycaster = new THREE.Raycaster();
 function handleTap() {
@@ -133,8 +139,9 @@ const ctx = {
   onKill(mob) {
     const ch = game.character;
     const before = ch.level;
-    gainExp(ch, mob.def.exp);
-    fx.text(player.position, 2.3, `+${mob.def.exp} EXP`, 'gain');
+    const exp = killExp(mob.id);
+    gainExp(ch, exp);
+    fx.text(player.position, 2.3, `+${exp} EXP`, 'gain');
     map.spawner.onDeath(mob.zone);
     const y = groundHeight(map.heightFns, mob.position.x, mob.position.z);
     for (const loot of rollDrops(mob.id)) {
@@ -142,6 +149,7 @@ const ctx = {
       map.scene.add(d.object3d); map.drops.push(d);
     }
     if (ch.level > before) { fx.levelUp(map.scene, player); game.onLevelUp?.(); }
+    persist();
   },
 };
 
@@ -165,6 +173,7 @@ function updateMobs(dt, t) {
       if (d.loot.kind === 'mesos') { ch.mesos += d.loot.amount; fx.text(d.position, 0.8, `+${d.loot.amount} mesos`, 'gain meso'); }
       else { ch.potions[d.loot.item]++; fx.text(d.position, 0.8, d.loot.item === 'red' ? 'Red Potion' : 'Blue Potion', 'gain'); }
       ctx.sfx('pickup');
+      persist();
     }
     d.object3d.removeFromParent(); map.drops.splice(i, 1);
   }
@@ -207,8 +216,9 @@ engine.onFrame((dt, t) => {
 engine.start();
 
 async function boot() {
+  // A returning player goes straight back in; a new character needs Settings > Reset progress.
   const saved = load();
-  const pick = await showTitle(app, saved);
+  const pick = saved ? { continue: true } : await showTitle(app);
   let mapId = 'henesys';
   if (pick.continue) { game.character = saved.character; mapId = saved.mapId; }
   else game.character = newCharacter(pick.name, pick.look);
@@ -216,11 +226,12 @@ async function boot() {
   player = new Player(ch, buildPlayer(ch.look, ch.job));
   player.onJump = () => sfx('jump');
   enterMap(mapId);
-  hud.toast(pick.continue ? `Welcome back, ${ch.name}!` : `Welcome, ${ch.name}! Talk to Chief Stan, then head east to the Hunting Ground.`, 5000);
+  if (!warnedNoSave) hud.toast(pick.continue ? `Welcome back, ${ch.name}!` : `Welcome, ${ch.name}! Talk to Chief Stan, then head east to the Hunting Ground.`, 5000);
 }
 boot();
 
 addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
+addEventListener('pagehide', persist);
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 
 window.__game = {

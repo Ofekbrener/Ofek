@@ -27,8 +27,8 @@ export function createHud(root, { onReset, onToggle, settings }) {
       <h2>Settings</h2>
       <label><input type="checkbox" id="h-sound"> Sound</label>
       <label><input type="checkbox" id="h-vib"> Vibration</label>
-      <button id="h-reset" class="danger">Reset progress</button>
-      <div id="h-confirm" hidden><p>Delete your character and start over?</p><button id="h-yes" class="danger">Delete</button> <button id="h-no">Keep</button></div>
+      <button id="h-reset" class="danger">New character (reset)</button>
+      <div id="h-confirm" hidden><p>Delete this character and make a new one?</p><button id="h-yes" class="danger">Delete</button> <button id="h-no">Keep</button></div>
       <button id="h-close">Close</button>
     </div>
     <div class="ui panel death" id="h-death" hidden>

@@ -31,5 +31,8 @@ export const SKILLS = {
   slashBlast:  { name: 'Slash Blast',  mp: 10, range: 3.2, hits: 1, multiplier: 1.1,  aoe: true,  cooldown: 0.9 },
 };
 
+// Kills pay EXP_MULT times the classic values, like a permanent 4x EXP event.
+export const EXP_MULT = 4;
+
 export const CRIT_CHANCE = 0.05;
 export const CRIT_MULT = 1.5;
