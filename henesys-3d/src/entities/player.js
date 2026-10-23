@@ -60,6 +60,7 @@ export class Player {
     this.position.set(x, groundHeight(map.heightFns, x, z), z);
     this.vy = 0;
     this.camFocus.copy(this.position);
+    this.faded?.clear(); this.camLast = null;
   }
 
   faceTowards(x, z) {
@@ -131,19 +132,32 @@ export class Player {
   }
 
   /** occluders: big meshes (trees, houses) the camera should not hide behind. */
+  /** Trees between the camera and the player turn see-through; the camera keeps its distance. */
+  fadeOccluders(occluders, dist, dt) {
+    const from = _v1.set(this.position.x, this.position.y + 1, this.position.z);
+    const to = _v2.copy(this.camLast ?? from);
+    const len = Math.min(dist + 1, to.distanceTo(from));
+    this.faded ??= new Map();
+    const blocking = new Set();
+    if (len > 0.5) {
+      _ray.set(from, to.sub(from).normalize()); _ray.far = len;
+      for (const h of _ray.intersectObjects(occluders, true)) {
+        let o = h.object; while (o && !occluders.includes(o)) o = o.parent;
+        if (o) blocking.add(o);
+      }
+    }
+    for (const o of blocking) if (!this.faded.has(o)) this.faded.set(o, 1);
+    for (const [o, a] of this.faded) {
+      const next = ease(a, blocking.has(o) ? 0.25 : 1, 8, dt);
+      setOpacity(o, next);
+      if (next > 0.98 && !blocking.has(o)) { setOpacity(o, 1); this.faded.delete(o); }
+      else this.faded.set(o, next);
+    }
+  }
+
   updateCamera(camera, input, dt, occluders = null) {
     let dist = CAM_DIST * (input.zoom ?? 1);
-    if (occluders?.length) {
-      // pull the camera in front of anything between it and the player
-      const pitch0 = input.camPitch, yaw0 = input.camYaw;
-      const from = _v1.set(this.camFocus.x, this.camFocus.y + CAM_HEIGHT, this.camFocus.z);
-      const dir = _v2.set(Math.sin(yaw0) * Math.cos(pitch0), Math.sin(pitch0), Math.cos(yaw0) * Math.cos(pitch0));
-      _ray.set(from, dir); _ray.far = dist;
-      const hit = _ray.intersectObjects(occluders, true)[0];
-      const want = hit ? Math.max(2.2, hit.distance - 0.5) : dist;
-      this.camDist = ease(this.camDist ?? want, want, want < (this.camDist ?? want) ? 18 : 4, dt);
-      dist = this.camDist;
-    }
+    if (occluders?.length) this.fadeOccluders(occluders, dist, dt);
     this.camFocus.x = ease(this.camFocus.x, this.position.x, 10, dt);
     this.camFocus.z = ease(this.camFocus.z, this.position.z, 10, dt);
     this.camFocus.y = ease(this.camFocus.y, this.position.y, 6, dt);
@@ -155,5 +169,20 @@ export class Player {
       this.camFocus.z + Math.cos(yaw) * horiz,
     );
     camera.lookAt(this.camFocus.x, this.camFocus.y + CAM_HEIGHT, this.camFocus.z);
+    (this.camLast ??= new THREE.Vector3()).copy(camera.position);
   }
+}
+
+/** Fade a prop by swapping in private transparent copies of its materials; 1 restores the shared ones. */
+function setOpacity(obj, a) {
+  obj.traverse(m => {
+    if (!m.isMesh) return;
+    if (a >= 1) { if (m.userData.solidMat) { for (const x of [m.material].flat()) x.dispose(); m.material = m.userData.solidMat; delete m.userData.solidMat; } return; }
+    if (!m.userData.solidMat) {
+      m.userData.solidMat = m.material;
+      m.material = Array.isArray(m.material) ? m.material.map(x => x.clone()) : m.material.clone();
+      for (const x of [m.material].flat()) { x.transparent = true; x.depthWrite = false; }
+    }
+    for (const x of [m.material].flat()) x.opacity = a;
+  });
 }

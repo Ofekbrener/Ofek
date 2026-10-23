@@ -6,6 +6,7 @@ import { JOBS, SKILLS, MOB_VOICE } from './config.js';
 import { rollDamage, skillState } from './rules/stats.js';
 import { applyBuff, endBuff, modifiers } from './rules/buffs.js';
 import { toon } from './assets/toon.js';
+import { shuriken, metal } from './assets/shuriken.js';
 
 export const BASIC_COOLDOWN = 0.45;
 export const GLOBAL_LOCK = 0.25;
@@ -13,34 +14,56 @@ export const INVULN = 1;
 const MELEE_DELAY = 0.2;
 const PROJECTILE_SPEED = 24;
 
-// projectile looks
-const arrowGeo = (() => {
-  const shaft = new THREE.CylinderGeometry(0.018, 0.018, 0.7, 5).rotateX(Math.PI / 2);
-  return shaft;
-})();
-const arrowMat = toon(0xc89050);
-const glowArrowMat = toon(0xffe066, { emissive: 0xc08000 });
-const shellGeo = new THREE.SphereGeometry(0.14, 10, 8);
-const shellMat = toon(0x5fae3e);
+// ------------------------------------------------------------ projectile looks
+// Each factory returns an Object3D whose forward (+z) points along the flight.
+const shaftGeo = new THREE.CylinderGeometry(0.022, 0.022, 0.8, 6).rotateX(Math.PI / 2);
+const headGeo = new THREE.ConeGeometry(0.06, 0.16, 6).rotateX(Math.PI / 2).translate(0, 0, 0.48);
+const featherGeo = new THREE.PlaneGeometry(0.12, 0.2).rotateX(Math.PI / 2).translate(0, 0, -0.32);
 const orbGeo = new THREE.SphereGeometry(0.2, 14, 10);
+const glowGeo = new THREE.SphereGeometry(0.42, 14, 10);
+const shellGeo = new THREE.SphereGeometry(0.2, 12, 10);
+const swirlGeo = new THREE.TorusGeometry(0.12, 0.03, 6, 16, Math.PI * 1.6);
 const enemyOrbMat = new THREE.MeshBasicMaterial({ color: 0xc060ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
-const orbMat = new THREE.MeshBasicMaterial({ color: 0x8fd8ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
-const starGeo = (() => {
-  const s = new THREE.Shape();
-  for (let i = 0; i < 8; i++) { const r = i % 2 ? 0.07 : 0.24, a = i / 8 * Math.PI * 2; i ? s.lineTo(Math.cos(a) * r, Math.sin(a) * r) : s.moveTo(r, 0); }
-  return new THREE.ShapeGeometry(s);
-})();
-const starMat = new THREE.MeshBasicMaterial({ color: 0xe8eef8, side: THREE.DoubleSide });
+const additive = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false });
+const MAT = {
+  wood: toon(0xb07a40), feather: toon(0xe8352a, { side: THREE.DoubleSide }),
+  goldShaft: toon(0xffe066, { emissive: 0xc08000 }), goldHead: toon(0xfff1a0, { emissive: 0xffc040 }), goldFeather: toon(0xffffff, { side: THREE.DoubleSide }),
+  goldGlow: additive(0xffd23f, 0.35), core: additive(0xffffff, 1), boltGlow: additive(0x6fc8ff, 0.55),
+  shell: toon(0x5fae3e), swirl: toon(0xd8f0a0),
+};
+
+function arrow(gold = false) {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(shaftGeo, gold ? MAT.goldShaft : MAT.wood));
+  g.add(new THREE.Mesh(headGeo, gold ? MAT.goldHead : metal));
+  const f1 = new THREE.Mesh(featherGeo, gold ? MAT.goldFeather : MAT.feather), f2 = f1.clone(); f2.rotation.z = Math.PI / 2;
+  g.add(f1, f2);
+  if (gold) { g.scale.setScalar(1.8); g.add(new THREE.Mesh(glowGeo, MAT.goldGlow)); }
+  return g;
+}
+function energyOrb() {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(orbGeo, MAT.core), new THREE.Mesh(glowGeo, MAT.boltGlow));
+  g.userData.pulse = true;
+  return g;
+}
+function shell() {
+  const g = new THREE.Group(); const m = new THREE.Mesh(shellGeo, MAT.shell); m.scale.set(1, 1, 0.8);
+  const swirl = new THREE.Mesh(swirlGeo, MAT.swirl); swirl.position.z = 0.15;
+  g.add(m, swirl); g.userData.spinner = g; return g;
+}
 
 const PROJECTILE = {
-  bow: { geo: arrowGeo, mat: arrowMat, trail: 0xfff6c0 },
-  doubleShot: { geo: arrowGeo, mat: arrowMat, trail: 0x9fe8ff },
-  arrowBlow: { geo: arrowGeo, mat: glowArrowMat, trail: 0xffd23f, scale: [2.2, 2.2, 1.4] },
-  threeSnails: { geo: shellGeo, mat: shellMat, trail: 0xfff6c0 },
-  energyBolt: { geo: orbGeo, mat: orbMat, trail: 0x6fc8ff, big: true },
-  luckySeven: { geo: starGeo, mat: starMat, trail: 0xffffff, spin: true },
+  bow: { make: () => arrow(), trail: 0xfff6c0, speed: 30 },
+  doubleShot: { make: () => arrow(), trail: 0x9fe8ff, speed: 30 },
+  arrowBlow: { make: () => arrow(true), trail: 0xffd23f, speed: 26, heavy: true },
+  threeSnails: { make: shell, trail: 0xd8f0a0, speed: 16, spin: true },
+  energyBolt: { make: energyOrb, trail: 0x6fc8ff, speed: 18, big: true },
+  luckySeven: { make: () => shuriken({ glow: true }), trail: 0xe8f4ff, speed: 17, spin: true, star: true },
 };
-const SKILL_SOUND = { luckySeven: 'throw', threeSnails: 'throw', thunderbolt: 'thunder', spin: 'spin', energyBolt: 'bolt', magicClaw: 'bolt', doubleShot: 'arrow', arrowBlow: 'arrow', arrowRain: 'arrow' };
+const SKILL_SOUND = { luckySeven: 'throw', threeSnails: 'throw', doubleStab: 'stab', powerStrike: 'slash', slashBlast: 'slash', thunderbolt: 'thunder', spin: 'spin', energyBolt: 'bolt', magicClaw: 'bolt', doubleShot: 'arrow', arrowBlow: 'arrow', arrowRain: 'arrow' };
+// basic attack sound per weapon
+const WEAPON_SOUND = { knife: 'swing', sword: 'slash', staff: 'staff', bow: 'arrow', daggers: 'stab' };
 const SKILL_SFX = { buff: 'buff', heal: 'heal', aoe: 'heavy', rain: 'arrow', projectile: 'arrow', melee: 'heavy' };
 
 const REASON = { mp: 'Not enough MP', cooldown: 'Not ready yet', job: 'Not your skill', locked: lv => `Unlocks at Lv. ${lv}` };
@@ -64,6 +87,7 @@ export function createCombat(fx) {
     fx.damage(mob.position, mob.model.height + 0.4, dmg.amount, dmg.crit, i);
     const chest = mob.position.clone(); chest.y += mob.model.height * 0.5;
     fx.impact(chest, dmg.crit, p.heavy, p.color);
+    if (p.look?.star) ctx.sfx?.('tink');
     ctx.sfx?.(dmg.crit ? 'crit' : 'hit');
     if (Math.random() < 0.35 || killed) ctx.sfx?.(MOB_VOICE[mob.id]);
     if (killed) ctx.onKill(mob);
@@ -79,12 +103,11 @@ export function createCombat(fx) {
   function launch(ctx, mob, skillId, look, hits) {
     const mods = modifiers(ctx.character, ctx.now());
     for (let h = 0; h < hits; h++) {
-      const mesh = new THREE.Mesh(look.geo, look.mat);
-      if (look.scale) mesh.scale.set(...look.scale);
-      mesh.position.copy(ctx.player.position).add(new THREE.Vector3(Math.sin(ctx.player.yaw) * 0.5, 1.1, Math.cos(ctx.player.yaw) * 0.5));
+      const mesh = look.make();
       mesh.visible = false;
       ctx.map.scene.add(mesh);
-      pending.push({ delay: MELEE_DELAY + h * 0.12, mob, dmg: rollDamage(ctx.character, skillId, Math.random, mods), i: h, mesh, trail: look.trail, spin: look.spin, big: look.big, heavy: skillId === 'arrowBlow' });
+      // released from the throwing hand when the animation lets go
+      pending.push({ delay: (look.star ? 0.22 : MELEE_DELAY) + h * 0.14, mob, dmg: rollDamage(ctx.character, skillId, Math.random, mods), i: h, mesh, look, launched: false, heavy: !!look.heavy });
     }
   }
 
@@ -118,7 +141,7 @@ export function createCombat(fx) {
       }
       lock = GLOBAL_LOCK;
       player.model.attack(skillId ?? undefined);
-      ctx.sfx?.(skill ? (SKILL_SOUND[skillId] ?? SKILL_SFX[skill.kind]) : job.weapon === 'bow' ? 'arrow' : 'swing');
+      ctx.sfx?.(skill ? (SKILL_SOUND[skillId] ?? SKILL_SFX[skill.kind]) : WEAPON_SOUND[job.weapon] ?? 'swing');
 
       const kind = skill?.kind ?? (job.weapon === 'bow' ? 'projectile' : 'melee');
       // attacking reveals you; casting a buff or heal does not
@@ -157,6 +180,8 @@ export function createCombat(fx) {
           return 1;
         }
         const look = PROJECTILE[skillId] ?? PROJECTILE.bow;
+        if (look.star) ctx.player.model.holdStar?.(0.22 + (hits - 1) * 0.14);
+        if (look.star) fx.particles.burst(player.position.clone().setY(player.position.y + 1.2), { count: 6, color: 0xe8f4ff, speed: 2, up: 1, size: 0.3, life: 0.25, gravity: 0, additive: true });
         launch(ctx, found[0], skillId, look, hits);
         return 1;
       }
@@ -194,18 +219,24 @@ export function createCombat(fx) {
         p.delay -= dt;
         if (p.delay > 0) continue;
         if (!p.mesh) { pending.splice(k, 1); land(ctx, p); continue; }
-        // projectile: fly toward the (moving) target's chest
-        p.mesh.visible = true;
+        // projectile: appears in the hand, then flies at the (moving) target's chest
+        if (!p.launched) {
+          p.launched = true; p.mesh.visible = true;
+          if (!ctx.player.model.handPosition?.(p.mesh.position)) p.mesh.position.copy(ctx.player.position).add(new THREE.Vector3(Math.sin(ctx.player.yaw) * 0.5, 1.1, Math.cos(ctx.player.yaw) * 0.5));
+        }
         const to = p.mob.position.clone(); to.y += p.mob.model.height * 0.5;
-        const d = to.clone().sub(p.mesh.position), dist = d.length(), step = PROJECTILE_SPEED * dt;
-        if (p.spin) { p.mesh.lookAt(ctx.player.position.x, 50, ctx.player.position.z); p.mesh.rotateZ(performance.now() / 40); }
-        else p.mesh.lookAt(to);
+        const d = to.clone().sub(p.mesh.position), dist = d.length(), step = (p.look?.speed ?? PROJECTILE_SPEED) * dt;
+        p.mesh.lookAt(to);
+        // stars face the camera so you see the whole star spinning, like the 2D game
+        if (p.look?.star && ctx.camera) { p.mesh.quaternion.copy(ctx.camera.quaternion); p.mesh.userData.spinner.rotation.z -= dt * 28; }
+        else if (p.look?.spin) p.mesh.userData.spinner.rotation.x += dt * 20;
+        if (p.look?.big) p.mesh.scale.setScalar(1 + Math.sin(performance.now() / 50) * 0.12);
         if (dist <= step || !p.mob.alive) {
           p.mesh.removeFromParent(); pending.splice(k, 1);
           land(ctx, p);
         } else {
           p.mesh.position.addScaledVector(d, step / dist);
-          fx.particles.burst(p.mesh.position, { count: p.big ? 2 : 1, color: p.trail, shape: 'dot', speed: 0.2, up: 0, size: p.big || p.heavy ? 0.7 : 0.4, life: 0.25, gravity: 0, additive: true });
+          fx.particles.burst(p.mesh.position, { count: p.look?.big ? 2 : 1, color: p.look?.trail ?? 0xffffff, shape: 'dot', speed: 0.2, up: 0, size: p.look?.big || p.heavy ? 0.8 : 0.5, life: 0.3, gravity: 0, additive: true });
         }
       }
 

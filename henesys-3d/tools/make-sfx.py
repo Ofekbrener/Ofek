@@ -4,7 +4,7 @@ small reverb, rendered to mono MP3 in tools/sfx-src/.
 
     pip install numpy scipy && python3 henesys-3d/tools/make-sfx.py
 """
-import os, subprocess, tempfile
+import os, sys, subprocess, tempfile
 import numpy as np
 from scipy.signal import butter, sosfilt, fftconvolve
 from scipy.io import wavfile
@@ -98,10 +98,37 @@ def _():
     return mix((0, twang), (0.03, whoosh))
 
 @sound('throw')
-def _():
-    whoosh = swept_noise(1500, 5000, .16, .5) * np.hanning(int(SR * .16))
-    shing = sum(np.sin(2 * np.pi * f * t(.25)) for f in (3100, 4650)) * env(.25, k=14) * .2
-    return mix((0, whoosh), (0.05, shing))
+def _():  # throwing star: flick of the wrist, a whirring spin, a bright metal ring
+    flick = swept_noise(800, 4200, .07, .6) * np.hanning(int(SR * .07)) * .8
+    d = .32; x = t(d)
+    whirr = bp(noise(d), 2200, 6500) * (0.5 + 0.5 * np.sign(np.sin(2 * np.pi * 34 * x))) * np.linspace(1, .2, len(x)) * .6
+    shing = sum(np.sin(2 * np.pi * f * t(.35)) * a for f, a in ((3520, .25), (5280, .15), (7040, .08))) * env(.35, k=11)
+    return reverb(mix((0, flick), (0.03, whirr), (0.02, shing)), .25, .12)
+
+@sound('tink')
+def _():  # star striking: hard metal tick with a short ring
+    tick = hp(noise(.01), 3000) * env(.01, k=300)
+    ring = bell(2637, .25, k=16, ratios=(1, 2.4, 3.9), amps=(1, .4, .2)) * .5
+    return mix((0, tick), (0.002, ring))
+
+@sound('slash')
+def _():  # sword: heavy whoosh then a steel scrape
+    whoosh = swept_noise(250, 1800, .22, .7) * np.hanning(int(SR * .22)) * 1.3
+    scrape = bp(noise(.12), 2500, 7000) * env(.12, a=.01, k=18) * .35
+    ring = sum(np.sin(2 * np.pi * f * t(.3)) for f in (1240, 1790)) * env(.3, k=12) * .12
+    return reverb(mix((0, whoosh), (0.1, scrape), (0.1, ring)), .3, .12)
+
+@sound('stab')
+def _():  # daggers: two fast high whips
+    def whip(): return swept_noise(1200, 5000, .09, .5) * np.hanning(int(SR * .09))
+    shing = bell(4186, .15, k=20) * .15
+    return mix((0, whip()), (0.08, whip() * .8), (0.1, shing))
+
+@sound('staff')
+def _():  # staff: soft wooden whoosh and a small sparkle
+    whoosh = swept_noise(200, 1200, .25, .8) * np.hanning(int(SR * .25))
+    twinkle = mix(*[(0.08 + i * .04, bell(note(n), .3, k=9) * .18) for i, n in enumerate((88, 95))])
+    return reverb(mix((0, whoosh), (0, twinkle)), .4, .2)
 
 @sound('bolt')
 def _():
@@ -236,6 +263,8 @@ def _(): return sweep(700, 900, .04) * env(.04, k=60) * .5
 
 if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
+    only = set(sys.argv[1:])
     for name, fn in SOUNDS.items():
+        if only and name not in only: continue
         render(name, fn())
         print('made', name)

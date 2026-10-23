@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { normalizeLook } from '../rules/appearance.js';
+import { shuriken } from './shuriken.js';
 
 const BASES = ['Knight', 'Barbarian', 'Mage', 'Rogue', 'Rogue_Hooded', 'Skeleton_Minion', 'Skeleton_Warrior', 'Skeleton_Mage'];
 const HEIGHT = 1.75;
@@ -290,6 +291,29 @@ export function buildHero(look, job = 'beginner') {
   holder.add(root);
   const model = {
     object3d: holder, height: HEIGHT,
+    /** World position of the right hand (weapon slot); returns false if unknown. */
+    handPosition(out) {
+      let bone = null;
+      root.traverse(o => { if (!bone && (o.name === 'handslotr' || o.name === 'handslot.r')) bone = o; });
+      if (!bone) return false;
+      bone.getWorldPosition(out);
+      return true;
+    },
+    /** Swap the right-hand knife for a throwing star for `secs` (Lucky Seven wind-up). */
+    holdStar(secs) {
+      const bone = root.getObjectByName('handslotr') ?? root.getObjectByName('handslot.r');
+      const knife = root.getObjectByName('Knife');
+      if (!bone) return;
+      if (!bone.userData.star) {
+        const s = shuriken(); bone.add(s);
+        s.scale.setScalar(0.9 / bone.getWorldScale(new THREE.Vector3()).x);
+        bone.userData.star = s;
+      }
+      const star = bone.userData.star;
+      star.visible = true; if (knife) knife.visible = false;
+      clearTimeout(bone.userData.starTimer);
+      bone.userData.starTimer = setTimeout(() => { star.visible = false; if (knife) knife.visible = true; }, secs * 1000);
+    },
     animate: (...a) => anim.animate(...a),
     attack: id => anim.attack(id), hit: () => anim.hit(), cheer: () => anim.cheer(), die: () => anim.die(), revive: () => anim.revive(),
     get attacking() { return anim.attacking; },

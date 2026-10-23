@@ -183,6 +183,7 @@ function checkPortals() {
 
 const ctx = {
   now: () => game.time,
+  camera: engine.camera,
   get player() { return player; }, get character() { return game.character; }, get map() { return map; },
   sfx,
   onKill(mob) {
