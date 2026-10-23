@@ -28,9 +28,11 @@
     import * as THREE from 'three';
     import { addDaylight } from './src/assets/toon.js';
     import { buildMob, MOB_IDS } from './src/assets/mobs.js';
-    import { buildCharacter, CHARACTER_IDS } from './src/assets/characters.js';
+    import { loadKayKit, buildHero, buildNpc, NPC_IDS } from './src/assets/kaykit.js';
+    await loadKayKit();
+    const HEROES = ['beginner', 'warrior', 'magician', 'bowman', 'thief'];
 
-    const MODELS = Object.fromEntries([...MOB_IDS.map(id => [id, () => buildMob(id)]), ...CHARACTER_IDS.map(id => [id, () => buildCharacter(id)])]);
+    const MODELS = Object.fromEntries([...MOB_IDS.map(id => [id, () => buildMob(id)]), ...HEROES.map(j => ['hero_' + j, () => buildHero({ hairStyle: ['rogue', 'knight', 'mage', 'barbarian', 'hooded'][HEROES.indexOf(j)], hair: 0xc0392b, shirt: 0x3d6fd1 }, j)]), ...NPC_IDS.map(id => ['npc_' + id, () => buildNpc(id)])]);
 
     const canvas = document.getElementById('game');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });

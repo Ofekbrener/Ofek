@@ -7,7 +7,7 @@ import { newCharacter, advance, gainExp, deathPenalty, killExp } from './rules/s
 import { rollDrops } from './rules/drops.js';
 import { Spawner } from './rules/spawner.js';
 import { JOBS, MOBS } from './config.js';
-import { buildPlayer } from './assets/characters.js';
+import { loadKayKit, buildHero } from './assets/kaykit.js';
 import { buildHenesys } from './world/henesys.js';
 import { buildHuntingGround } from './world/hunting-ground.js';
 import { buildMob } from './assets/mobs.js';
@@ -56,7 +56,7 @@ const game = {
 
 const hud = createHud(app, {
   settings,
-  onToggle(key, val) { settings[key] = val; configureAudio(settings); saveSettings(settings); },
+  onToggle(key, val) { settings[key] = val; configureAudio(settings); saveSettings(settings); if (key === 'controls') input.scheme = val; },
   onReset() { resetting = true; clear(); location.reload(); },
 });
 
@@ -75,6 +75,7 @@ function drinkPotions() {
 
 async function die() {
   player.dead = true;
+  player.model.die?.();
   const lost = deathPenalty(game.character);
   // Save the outcome now, so closing the app on the death notice cannot apply the penalty twice.
   save({ ...game.character, hp: game.character.maxHp }, 'henesys');
@@ -82,7 +83,7 @@ async function die() {
   const ch = game.character;
   ch.hp = ch.maxHp;
   player.dead = false;
-  player.model.object3d.rotation.x = 0;
+  player.model.revive?.();
   enterMap('henesys');
 }
 
@@ -151,7 +152,7 @@ const ctx = {
       const d = new Drop(loot, mob.position.x, mob.position.z, y);
       map.scene.add(d.object3d); map.drops.push(d);
     }
-    if (ch.level > before) { fx.levelUp(map.scene, player); game.onLevelUp?.(); }
+    if (ch.level > before) { fx.levelUp(map.scene, player); player.model.cheer?.(); game.onLevelUp?.(); }
     persist();
   },
 };
@@ -210,12 +211,14 @@ engine.onFrame((dt, t, realDt) => {
     map.sun.target.position.copy(player.position);
   }
   if (game.character.hp <= 0 && !player.dead) die();
-  if (player.dead) player.model.object3d.rotation.x = Math.max(-Math.PI / 2, player.model.object3d.rotation.x - dt * 5);
   hud.update(game.character);
   saveTimer += dt;
   if (saveTimer > SAVE_EVERY) { saveTimer = 0; persist(); }
   const mag = Math.hypot(input.move.x, input.move.y);
-  input.camYaw = followYaw(input.camYaw, player.yaw, dt, { moving: mag > 0.15 && !player.dead, forward: mag ? input.move.y / mag : 0, dragging: input.camDragging });
+  // Classic: the camera always settles behind the back. Free: it follows only while walking.
+  input.camYaw = input.scheme === 'classic'
+    ? followYaw(input.camYaw, player.yaw, dt, { moving: true, forward: 1, dragging: input.camDragging })
+    : followYaw(input.camYaw, player.yaw, dt, { moving: mag > 0.15 && !player.dead, forward: mag ? input.move.y / mag : 0, dragging: input.camDragging });
   player.updateCamera(engine.camera, input, dt);
   fx.applyShake(engine.camera, realDt);
   dustT -= dt;
@@ -224,7 +227,31 @@ engine.onFrame((dt, t, realDt) => {
 
 engine.start();
 
+async function loadAssets() {
+  const el = document.createElement('div');
+  el.className = 'ui loading';
+  el.innerHTML = '<div class="logo small"><span>Henesys</span> <em>3D</em></div><div class="bar"><i></i></div><p>Loading…</p>';
+  app.appendChild(el);
+  for (;;) {
+    try {
+      await loadKayKit(k => { el.querySelector('i').style.width = Math.round(k * 100) + '%'; });
+      el.remove();
+      return;
+    } catch (err) {
+      el.querySelector('p').textContent = 'Could not load the game files. Check your connection.';
+      const retry = document.createElement('button');
+      retry.className = 'start'; retry.textContent = 'Retry';
+      el.appendChild(retry);
+      await new Promise(r => { retry.onclick = r; });
+      retry.remove();
+      el.querySelector('p').textContent = 'Loading…';
+    }
+  }
+}
+
 async function boot() {
+  input.scheme = settings.controls ?? 'classic';
+  await loadAssets();
   // A returning player goes straight back in; a new character needs Settings > Reset progress.
   const saved = load();
   const pick = saved ? { continue: true } : await showTitle(app);
@@ -232,7 +259,7 @@ async function boot() {
   if (pick.continue) { game.character = saved.character; mapId = saved.mapId; }
   else game.character = newCharacter(pick.name, pick.look);
   const ch = game.character;
-  player = new Player(ch, buildPlayer(ch.look, ch.job));
+  player = new Player(ch, buildHero(ch.look, ch.job));
   player.onJump = () => sfx('jump');
   enterMap(mapId);
   if (!warnedNoSave) hud.toast(pick.continue ? `Welcome back, ${ch.name}!` : `Welcome, ${ch.name}! Talk to Chief Stan, then head east to the Hunting Ground.`, 5000);

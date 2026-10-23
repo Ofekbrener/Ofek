@@ -72,7 +72,7 @@ async function main() {
   for (const n of CHARACTERS) {
     const doc = await io.read(path.join(adv, `${n}.glb`));
     dropAnimations(doc);
-    await doc.transform(prune(), dedup(), quantize({ quantizePosition: 14, quantizeNormal: 8, quantizeTexcoord: 12 }));
+    await doc.transform(prune(), dedup(), quantize({ pattern: /^(NORMAL|TEXCOORD_0|JOINTS_0|WEIGHTS_0)$/, quantizeNormal: 8, quantizeTexcoord: 12 }));
     await io.write(path.join(OUT, 'chars', `${n}.glb`), doc);
   }
 
@@ -91,7 +91,7 @@ async function main() {
     const file = findFile(hex, `${n}.gltf`);
     if (!file) throw new Error('missing prop ' + n);
     const doc = await io.read(file);
-    await doc.transform(prune(), dedup(), quantize({ quantizePosition: 14, quantizeNormal: 8, quantizeTexcoord: 12 }));
+    await doc.transform(prune(), dedup(), quantize({ pattern: /^(NORMAL|TEXCOORD_0|JOINTS_0|WEIGHTS_0)$/, quantizeNormal: 8, quantizeTexcoord: 12 }));
     await io.write(path.join(OUT, 'props', `${n}.glb`), doc);
   }
 

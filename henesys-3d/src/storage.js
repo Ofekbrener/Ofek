@@ -45,8 +45,8 @@ export function clear(store = store0()) {
 }
 
 export function loadSettings(store = store0()) {
-  try { return { sound: true, vibration: true, ...JSON.parse(store.getItem('henesys3d.settings') || '{}') }; }
-  catch { return { sound: true, vibration: true }; }
+  try { return { sound: true, vibration: true, controls: 'classic', ...JSON.parse(store.getItem('henesys3d.settings') || '{}') }; }
+  catch { return { sound: true, vibration: true, controls: 'classic' }; }
 }
 
 export function saveSettings(s, store = store0()) {

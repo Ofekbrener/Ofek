@@ -49,7 +49,7 @@ try {
     return out;
   });
   check(r.hitStop, 'a landed hit triggers hit stop');
-  check(/x\s*3/i.test(r.combo), `three quick kills show a combo (${r.combo})`);
+  check(Number((r.combo.match(/x\s*(\d+)/) || [])[1]) >= 3, `three quick kills show a combo (${r.combo})`);
   check(r.particles <= r.pool, `particles stay within the pool (${r.particles}/${r.pool})`);
   check(r.magnet === true, 'a coin within 5 m flies to the player');
   check(r.flash && r.slow && r.full, `level up flashes, slows time and refills HP/MP (${JSON.stringify({ f: r.flash, s: r.slow, full: r.full })})`);

@@ -1,12 +1,12 @@
 // Character creator: name, hair style and colour, skin, eyes, shirt, and
 // pants or skirt, with a live rotating 3D preview. Resolves { name, look }.
 import * as THREE from 'three';
-import { buildPlayer } from './assets/characters.js';
+import { buildHero } from './assets/kaykit.js';
 import { addDaylight, disposeObject } from './assets/toon.js';
 import { HAIR_STYLES, PALETTES, defaultAppearance, randomAppearance } from './rules/appearance.js';
 
 const hex = n => '#' + n.toString(16).padStart(6, '0');
-const STYLE_NAMES = { short: 'Short', long: 'Long', pigtails: 'Pigtails', spiky: 'Spiky', bald: 'Bald' };
+const STYLE_NAMES = { rogue: 'Long', knight: 'Short', mage: 'Neat', barbarian: 'Beard', hooded: 'Hood' };
 
 function swatches(key, list) {
   return `<div class="swatches" data-key="${key}">${list.map(c => `<button class="sw" data-v="${c}" style="background:${hex(c)}" aria-label="${key} ${hex(c)}"></button>`).join('')}</div>`;
@@ -45,12 +45,12 @@ export function showTitle(root) {
   const disc = new THREE.Mesh(new THREE.CircleGeometry(1.1, 40), new THREE.MeshToonMaterial({ color: 0x7fcf52 }));
   disc.rotation.x = -Math.PI / 2; scene.add(disc);
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
-  camera.position.set(0, 1.25, 4.6); camera.lookAt(0, 0.8, 0);
+  camera.position.set(0, 1.3, 4.4); camera.lookAt(0, 0.9, 0);
   let model = null, yaw = 0.4, spin = 0.5, drag = null, raf = 0, t = 0, last = performance.now();
 
   function rebuild() {
     if (model) { scene.remove(model.object3d); disposeObject(model.object3d); }
-    model = buildPlayer({ ...look }, 'beginner');
+    model = buildHero({ ...look }, 'beginner');
     scene.add(model.object3d);
   }
   function resize() {

@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { addDaylight } from '../assets/toon.js';
 import { mushroomHouse, lollipopTree, giantMushroom, grassTufts, flowers, fence, signpost, portal, paintedGround, dirtPath, dirtDisc, hill, skyAndHills } from '../assets/props.js';
-import { buildNpc } from '../assets/characters.js';
+import { buildNpc } from '../assets/kaykit.js';
 import { Npc } from '../entities/npc.js';
 import { canAdvance } from '../rules/stats.js';
 
@@ -85,7 +85,7 @@ export function buildHenesys(game) {
       `Welcome to Henesys, ${c().name}! I am Chief Stan.`,
       'East through the gate lies the Hunting Ground. Snails near the gate, Orange Mushrooms deep inside.',
       'Tap Attack near a monster to fight. Drink potions when your HP runs low.',
-      'Reach level 10 and visit Athena Pierce on the hill, or Dances with Balrog by the plaza.',
+      'At level 10, pick a job: Athena Pierce (Bowman), Dances with Balrog (Warrior), Grendel (Magician) or Dark Lord (Thief).',
     ] })),
     new Npc('mia', 'Mia', buildNpc('mia'), 6, -5, -0.8, () => ({ lines: [
       'Have you seen the Orange Mushrooms? They look cute until they bump into you!',
@@ -94,6 +94,14 @@ export function buildHenesys(game) {
       'I am Athena Pierce, the Bowman Instructor.',
       'Bowmen strike from afar with Double Shot and Arrow Blow.',
     ])),
+    new Npc('grendel', 'Grendel the Really Old', buildNpc('grendel'), -9, -13, 0.5, () => jobTalk('magician', [
+      'I am Grendel the Really Old. I came from Ellinia to teach magic.',
+      'Magicians cast Energy Bolt, Magic Claw, Heal and Thunderbolt.',
+    ])),
+    new Npc('darklord', 'Dark Lord', buildNpc('darklord'), 12, -6, -1.2, () => jobTalk('thief', [
+      'Dark Lord. Kerning City sent me.',
+      'Thieves throw Lucky Seven, strike with Double Stab, and vanish with Dark Sight.',
+    ])),
     new Npc('balrog', 'Dances with Balrog', buildNpc('balrog'), 9, 6, -2.2, () => jobTalk('warrior', [
       'I am Dances with Balrog. I came from Perion to train warriors.',
       'Warriors fight up close with Power Strike and Slash Blast.',
@@ -101,7 +109,8 @@ export function buildHenesys(game) {
   ];
   function jobTalk(job, intro) {
     const ch = c();
-    if (canAdvance(ch)) return { lines: [...intro, `Do you want to become a ${job === 'bowman' ? 'Bowman' : 'Warrior'}?`], choices: [{ label: `Become a ${job === 'bowman' ? 'Bowman' : 'Warrior'}`, onPick: () => game.advance(job) }] };
+    const title = { bowman: 'Bowman', warrior: 'Warrior', magician: 'Magician', thief: 'Thief' }[job];
+    if (canAdvance(ch)) return { lines: [...intro, `Do you want to become a ${title}?`], choices: [{ label: `Become a ${title}`, onPick: () => game.advance(job) }] };
     if (ch.job === job) return { lines: ['Keep training. The Hunting Ground still has much to teach you.'] };
     if (ch.job !== 'beginner') return { lines: [...intro.slice(0, 1), 'You have already chosen your path.'] };
     return { lines: [...intro, `Come back when you reach level 10. You are level ${ch.level} now.`] };

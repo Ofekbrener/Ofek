@@ -9,13 +9,14 @@ try {
   await page.waitForSelector('#t-start', { timeout: 15000 });
   await page.fill('#t-name', 'Tester');
   check(await page.isVisible('#t-preview'), 'the character creator shows a 3D preview');
-  await page.click('.chip[data-v="spiky"]');
+  await page.click('.chip[data-v="barbarian"]');
   await page.click('[data-key="hair"] .sw[data-v="' + 0xc0392b + '"]');
   await page.click('.chip[data-v="skirt"]');
   await page.click('#t-start');
   await page.waitForFunction(() => window.__game?.player, null, { timeout: 15000 });
   const made = await page.evaluate(() => window.__game.game.character);
-  check(made.name === 'Tester' && made.look.hairStyle === 'spiky' && made.look.hair === 0xc0392b && made.look.bottom === 'skirt', 'the creator sets name, hair style, hair colour and skirt');
+  await page.evaluate(() => { window.__game.input.scheme = 'free'; });
+  check(made.name === 'Tester' && made.look.hairStyle === 'barbarian' && made.look.hair === 0xc0392b && made.look.bottom === 'skirt', 'the creator sets name, hair style, hair colour and skirt');
   await sleep(500);
 
   // --- movement + camera with two simultaneous touches ---
@@ -59,17 +60,27 @@ try {
   });
   check(outside, 'player stays outside the mushroom house');
 
-  // --- walking turns the camera behind the player ---
-  const behind = await page.evaluate(() => {
-    const g = window.__game;
-    g.player.place(0, 12, g.map);
-    g.input.camYaw = 0; g.input.move.x = 1; g.input.move.y = 0;
-    for (let i = 0; i < 150; i++) g.engine.tick(1 / 30, false);
-    g.input.move.x = 0;
-    const d = g.player.yaw + Math.PI - g.input.camYaw;
-    return Math.abs(Math.atan2(Math.sin(d), Math.cos(d)));
+  // --- Classic controls: back walks backwards, sideways turns, camera settles behind ---
+  const classic = await page.evaluate(() => {
+    const g = window.__game, i = g.input;
+    i.scheme = 'classic';
+    g.player.place(0, 12, g.map); g.player.targetYaw = g.player.yaw = 0;
+    i.move.x = 0; i.move.y = -1;
+    for (let k = 0; k < 30; k++) g.engine.tick(1 / 30, false);
+    const back = { z: g.player.position.z, yaw: g.player.yaw, anim: g.player.anim };
+    i.move.y = 0; i.move.x = 1;
+    for (let k = 0; k < 15; k++) g.engine.tick(1 / 30, false);
+    const turned = g.player.yaw;
+    i.move.x = 0;
+    for (let k = 0; k < 40; k++) g.engine.tick(1 / 30, false);
+    const d = g.player.yaw + Math.PI - i.camYaw;
+    const off = Math.abs(Math.atan2(Math.sin(d), Math.cos(d)));
+    i.scheme = 'free';
+    return { back, turned, off };
   });
-  check(behind < 0.35, `walking swings the camera behind the player (off by ${behind.toFixed(2)} rad)`);
+  check(classic.back.z < 12 - 1 && classic.back.yaw === 0 && classic.back.anim === 'back', `stick down walks backwards facing forward (${JSON.stringify(classic.back)})`);
+  check(classic.turned < -0.5, `stick right turns in place (${classic.turned.toFixed(2)} rad)`);
+  check(classic.off < 0.1, `the camera settles behind the back (off by ${classic.off.toFixed(2)} rad)`);
 
   // --- tap Chief Stan to open his dialog ---
   const at = await page.evaluate(() => {

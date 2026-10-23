@@ -27,6 +27,7 @@ export function createHud(root, { onReset, onToggle, settings }) {
       <h2>Settings</h2>
       <label><input type="checkbox" id="h-sound"> Sound</label>
       <label><input type="checkbox" id="h-vib"> Vibration</label>
+      <label>Controls <select id="h-ctl"><option value="classic">Classic: up walks, sideways turns</option><option value="free">Free: walk where you push</option></select></label>
       <button id="h-reset" class="danger">New character (reset)</button>
       <div id="h-confirm" hidden><p>Delete this character and make a new one?</p><button id="h-yes" class="danger">Delete</button> <button id="h-no">Keep</button></div>
       <button id="h-close">Close</button>
@@ -47,6 +48,8 @@ export function createHud(root, { onReset, onToggle, settings }) {
   $('h-close').onclick = () => { panel.hidden = true; };
   $('h-sound').onchange = e => onToggle('sound', e.target.checked);
   $('h-vib').onchange = e => onToggle('vibration', e.target.checked);
+  $('h-ctl').value = settings.controls ?? 'classic';
+  $('h-ctl').onchange = e => onToggle('controls', e.target.value);
   $('h-reset').onclick = () => { $('h-confirm').hidden = false; };
   $('h-no').onclick = () => { $('h-confirm').hidden = true; };
   $('h-yes').onclick = () => { panel.hidden = true; onReset(); };

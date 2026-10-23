@@ -14,7 +14,9 @@ export function createInput(root) {
     // Walking directions are measured from this yaw. It locks while the stick is held,
     // so the follow camera can swing behind the player without changing their path.
     moveYaw: 0,
-    camPitch: 0.35,
+    camPitch: 0.32,
+    zoom: 1,            // pinch zoom, 0.6 (close) .. 1.6 (far)
+    scheme: 'classic',  // 'classic' (tank) or 'free' (camera-relative)
     tapPoint: null,
     enabled: true,
   };
@@ -24,6 +26,8 @@ export function createInput(root) {
   const pointers = new Map(); // pointerId -> { role, x0, y0, x, y, t0 }
 
   const stick = root.querySelector('#stick');
+  let pinchDist = 0;
+  const pinchPair = () => { const cams = [...pointers.values()].filter(p => p.role === 'cam'); return cams.length >= 2 ? cams : null; };
   const knob = root.querySelector('#stick-knob');
 
   function stickVector(p) {
@@ -64,7 +68,11 @@ export function createInput(root) {
     const dx = e.clientX - p.x, dy = e.clientY - p.y;
     p.x = e.clientX; p.y = e.clientY;
     if (p.role === 'stick') stickVector(p);
-    else {
+    else if (pinchPair()) {
+      const [a, b] = pinchPair(), d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinchDist) state.zoom = Math.min(1.6, Math.max(0.6, state.zoom * pinchDist / d));
+      pinchDist = d;
+    } else {
       state.camYaw -= dx * 0.008;
       state.camPitch = Math.min(1.1, Math.max(0.05, state.camPitch + dy * 0.005));
     }
@@ -75,13 +83,14 @@ export function createInput(root) {
     if (!p) return;
     pointers.delete(e.pointerId);
     if (p.role === 'btn') { held.delete(p.name); p.el.classList.remove('active'); return; }
+    if (p.role === 'cam') pinchDist = 0;
     if (p.role === 'stick') {
       state.move.x = 0; state.move.y = 0;
       if (knob) knob.style.transform = '';
       if (stick) stick.classList.remove('on');
     }
     const moved = Math.hypot(p.x - p.x0, p.y - p.y0);
-    if (moved < TAP_SLOP && performance.now() - p.t0 < 350) state.tapPoint = { x: p.x, y: p.y };
+    if (moved < TAP_SLOP && performance.now() - p.t0 < 600) state.tapPoint = { x: p.x, y: p.y };
   }
   addEventListener('pointerup', release);
   addEventListener('pointercancel', release);
@@ -100,6 +109,8 @@ export function createInput(root) {
     keys.delete(e.code);
     if (keyMap[e.code]) held.delete(keyMap[e.code]);
   });
+
+  addEventListener('wheel', e => { state.zoom = Math.min(1.6, Math.max(0.6, state.zoom * (1 + Math.sign(e.deltaY) * 0.08))); }, { passive: true });
 
   // Prevent page scroll / zoom while playing.
   document.addEventListener('touchmove', e => { if (e.cancelable && !e.target.closest('.scroll')) e.preventDefault(); }, { passive: false });

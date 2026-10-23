@@ -3,13 +3,14 @@
 import * as THREE from 'three';
 import { resolve, groundHeight } from '../rules/collision.js';
 import { ease } from '../ease.js';
+import { classicStep } from '../rules/controls.js';
 
 export const WALK_SPEED = 5;
 export const JUMP_VELOCITY = 7;
 export const GRAVITY = 20;
 export const RADIUS = 0.4;
-const CAM_DIST = 6;
-const CAM_HEIGHT = 1.4;
+export const CAM_DIST = 9;
+const CAM_HEIGHT = 1.5;
 
 export class Player {
   constructor(character, model) {
@@ -26,6 +27,8 @@ export class Player {
     this.anim = 'idle';
     this.knock = null;
     this.lungeT = 0;
+    this.speedMod = 1;   // Haste
+    this.backward = false;
   }
 
   /** Short step forward with each melee swing. */
@@ -51,16 +54,26 @@ export class Player {
   }
 
   update(dt, input, map, t) {
-    const yaw = input.moveYaw ?? input.camYaw;
-    const fx = -Math.sin(yaw), fz = -Math.cos(yaw);   // camera forward on the ground
-    const rx = Math.cos(yaw), rz = -Math.sin(yaw);    // camera right
-    const mx = input.move.x, my = input.move.y;
-    const mag = Math.min(1, Math.hypot(mx, my));
-    const dx = (fx * my + rx * mx), dz = (fz * my + rz * mx);
+    let mag, dx, dz;
+    if (input.scheme === 'classic' && !this.dead) {
+      // stick up/down walks along the facing, left/right turns in place
+      const r = classicStep(input.move, this.targetYaw, dt);
+      this.targetYaw = r.yaw; this.yaw = r.yaw;
+      dx = r.dx; dz = r.dz; mag = Math.hypot(dx, dz);
+      this.backward = r.back;
+    } else {
+      const yaw = input.moveYaw ?? input.camYaw;
+      const fx = -Math.sin(yaw), fz = -Math.cos(yaw);   // camera forward on the ground
+      const rx = Math.cos(yaw), rz = -Math.sin(yaw);    // camera right
+      const mx = this.dead ? 0 : input.move.x, my = this.dead ? 0 : input.move.y;
+      mag = Math.min(1, Math.hypot(mx, my));
+      dx = (fx * my + rx * mx); dz = (fz * my + rz * mx);
+      if (mag > 0.05) this.targetYaw = Math.atan2(dx, dz);
+      this.backward = false;
+    }
 
     if (mag > 0.05) {
-      this.targetYaw = Math.atan2(dx, dz);
-      const step = WALK_SPEED * dt;
+      const step = WALK_SPEED * this.speedMod * dt;
       const next = resolve({ x: this.position.x + dx * step, z: this.position.z + dz * step }, RADIUS, map.colliders, map.bounds);
       this.position.x = next.x; this.position.z = next.z;
     } else {
@@ -99,19 +112,20 @@ export class Player {
       this.onGround = false;
     }
 
-    this.anim = !this.onGround ? 'jump' : (this.speed > 0.15 ? 'walk' : 'idle');
-    this.model.animate(this.anim, dt, t, this.speed);
+    this.anim = !this.onGround ? 'jump' : this.speed > 0.15 ? (this.backward ? 'back' : 'walk') : 'idle';
+    this.model.animate(this.anim, dt, t, this.speed * this.speedMod);
   }
 
   updateCamera(camera, input, dt) {
+    const dist = CAM_DIST * (input.zoom ?? 1);
     this.camFocus.x = ease(this.camFocus.x, this.position.x, 10, dt);
     this.camFocus.z = ease(this.camFocus.z, this.position.z, 10, dt);
     this.camFocus.y = ease(this.camFocus.y, this.position.y, 6, dt);
     const pitch = input.camPitch, yaw = input.camYaw;
-    const horiz = Math.cos(pitch) * CAM_DIST;
+    const horiz = Math.cos(pitch) * dist;
     camera.position.set(
       this.camFocus.x + Math.sin(yaw) * horiz,
-      this.camFocus.y + CAM_HEIGHT + Math.sin(pitch) * CAM_DIST,
+      this.camFocus.y + CAM_HEIGHT + Math.sin(pitch) * dist,
       this.camFocus.z + Math.cos(yaw) * horiz,
     );
     camera.lookAt(this.camFocus.x, this.camFocus.y + CAM_HEIGHT, this.camFocus.z);
