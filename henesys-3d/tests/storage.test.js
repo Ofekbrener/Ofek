@@ -34,7 +34,7 @@ test('a character round-trips with its map', () => {
 
 test('a custom appearance round-trips, and an old numeric look still loads', () => {
   const s = memStore();
-  const c = newCharacter('Ofek', { hairStyle: 'spiky', hair: 0xc0392b, skin: 0xa8673c, eyes: 0x2f7de1, shirt: 0xf2c832, pants: 0x2a2a30, bottom: 'skirt' });
+  const c = newCharacter('Ofek', { hairStyle: 'barbarian', hair: 0xc0392b, skin: 0xa8673c, eyes: 0x2f7de1, shirt: 0xf2c832, pants: 0x2a2a30, bottom: 'skirt' });
   save(c, 'henesys', s);
   assert.deepEqual(load(s).character.look, c.look);
   const old = newCharacter('Old', 1);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { PALETTES, HAIR_STYLES, defaultAppearance, randomAppearance, normalizeLook } from '../src/rules/appearance.js';
 
 test('palettes have the promised sizes', () => {
-  assert.equal(HAIR_STYLES.length, 5);
+  assert.deepEqual(HAIR_STYLES, ['rogue', 'knight', 'mage', 'barbarian', 'hooded']);
   assert.equal(PALETTES.hair.length, 8);
   assert.equal(PALETTES.skin.length, 5);
   assert.equal(PALETTES.eyes.length, 5);
@@ -13,13 +13,14 @@ test('palettes have the promised sizes', () => {
 
 test('old numeric looks map to a full appearance', () => {
   const a = normalizeLook(2);
-  assert.equal(a.hairStyle, 'short');
+  assert.equal(a.hairStyle, 'rogue');
   assert.equal(typeof a.hair, 'number');
   assert.deepEqual(Object.keys(a).sort(), ['bottom', 'eyes', 'hair', 'hairStyle', 'pants', 'shirt', 'skin']);
 });
 
 test('bad fields fall back to defaults, good fields survive', () => {
   const d = defaultAppearance();
+  assert.equal(normalizeLook({ hairStyle: 'spiky' }).hairStyle, 'barbarian');
   const a = normalizeLook({ hairStyle: 'mohawk', hair: PALETTES.hair[3], skin: 'pink', bottom: 'skirt' });
   assert.equal(a.hairStyle, d.hairStyle);
   assert.equal(a.hair, PALETTES.hair[3]);

@@ -1,6 +1,8 @@
 // Character appearance: palettes for the creator and validation for saves. Pure.
 
-export const HAIR_STYLES = ['short', 'long', 'pigtails', 'spiky', 'bald'];
+// Each style is one of the KayKit heads.
+export const HAIR_STYLES = ['rogue', 'knight', 'mage', 'barbarian', 'hooded'];
+const OLD_STYLES = { short: 'rogue', long: 'rogue', pigtails: 'rogue', spiky: 'barbarian', bald: 'knight' };
 
 export const PALETTES = {
   hair: [0x7a4a24, 0x2a2220, 0xf1c34e, 0xc0392b, 0xe8e8f0, 0x3d6fd1, 0xf28cb8, 0x58b04a],
@@ -12,7 +14,7 @@ export const PALETTES = {
 const BOTTOMS = ['pants', 'skirt'];
 
 export const defaultAppearance = () => ({
-  hairStyle: 'short', hair: PALETTES.hair[0], skin: PALETTES.skin[0], eyes: PALETTES.eyes[0],
+  hairStyle: 'rogue', hair: PALETTES.hair[0], skin: PALETTES.skin[0], eyes: PALETTES.eyes[0],
   shirt: PALETTES.shirt[0], pants: PALETTES.pants[0], bottom: 'pants',
 });
 
@@ -30,7 +32,7 @@ export function normalizeLook(look) {
   if (!look || typeof look !== 'object') return d;
   const pick = (key, list) => (list.includes(look[key]) ? look[key] : d[key]);
   return {
-    hairStyle: pick('hairStyle', HAIR_STYLES),
+    hairStyle: OLD_STYLES[look.hairStyle] ?? pick('hairStyle', HAIR_STYLES),
     hair: pick('hair', PALETTES.hair),
     skin: pick('skin', PALETTES.skin),
     eyes: pick('eyes', PALETTES.eyes),

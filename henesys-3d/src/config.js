@@ -17,19 +17,40 @@ export const EXP_TABLE = (() => {
   return t;
 })();
 
+// weapon: which KayKit weapon and attack animation family the job uses.
 export const JOBS = {
-  beginner: { name: 'Beginner', weapon: 'club',  range: 1.6, stat: 'str', skills: ['threeSnails'] },
-  bowman:   { name: 'Bowman',   weapon: 'bow',   range: 10,  stat: 'dex', skills: ['doubleShot', 'arrowBlow'] },
-  warrior:  { name: 'Warrior',  weapon: 'sword', range: 2.2, stat: 'str', skills: ['powerStrike', 'slashBlast'] },
+  beginner: { name: 'Beginner', weapon: 'knife',  range: 1.6, stat: 'str', skills: ['threeSnails'] },
+  warrior:  { name: 'Warrior',  weapon: 'sword',  range: 2.2, stat: 'str', skills: ['powerStrike', 'slashBlast', 'rage', 'spin'] },
+  magician: { name: 'Magician', weapon: 'staff',  range: 2.0, stat: 'int', skills: ['energyBolt', 'magicClaw', 'heal', 'thunderbolt'] },
+  bowman:   { name: 'Bowman',   weapon: 'bow',    range: 10,  stat: 'dex', skills: ['doubleShot', 'arrowBlow', 'focus', 'arrowRain'] },
+  thief:    { name: 'Thief',    weapon: 'daggers', range: 1.9, stat: 'luk', skills: ['luckySeven', 'doubleStab', 'haste', 'darkSight'] },
 };
 
+// kind: melee | projectile | aoe (around the player) | rain (around the target) | buff | heal
 export const SKILLS = {
-  threeSnails: { name: 'Three Snails', mp: 3,  range: 6,   hits: 1, multiplier: 1.3,  aoe: false, cooldown: 0.6 },
-  doubleShot:  { name: 'Double Shot',  mp: 6,  range: 10,  hits: 2, multiplier: 0.8,  aoe: false, cooldown: 0.6 },
-  arrowBlow:   { name: 'Arrow Blow',   mp: 8,  range: 10,  hits: 1, multiplier: 1.8,  aoe: false, cooldown: 0.8 },
-  powerStrike: { name: 'Power Strike', mp: 6,  range: 2.4, hits: 1, multiplier: 2.0,  aoe: false, cooldown: 0.6 },
-  slashBlast:  { name: 'Slash Blast',  mp: 10, range: 3.2, hits: 1, multiplier: 1.1,  aoe: true,  cooldown: 0.9 },
+  threeSnails: { name: 'Three Snails', short: 'Snail',   job: 'beginner', level: 1,  kind: 'projectile', mp: 3,  cooldown: 0.6, range: 6,   hits: 1, multiplier: 1.3 },
+
+  powerStrike: { name: 'Power Strike', short: 'Power',   job: 'warrior',  level: 10, kind: 'melee',      mp: 5,  cooldown: 0.6, range: 2.4, hits: 1, multiplier: 2.2 },
+  slashBlast:  { name: 'Slash Blast',  short: 'Slash',   job: 'warrior',  level: 13, kind: 'aoe',        mp: 9,  cooldown: 0.9, range: 3.4, hits: 1, multiplier: 1.3 },
+  rage:        { name: 'Rage',         short: 'Rage',    job: 'warrior',  level: 16, kind: 'buff',       mp: 12, cooldown: 1,   duration: 30, effect: { dmg: 1.25 } },
+  spin:        { name: 'Spin',         short: 'Spin',    job: 'warrior',  level: 20, kind: 'aoe',        mp: 16, cooldown: 1.6, range: 3.6, hits: 3, multiplier: 0.9 },
+
+  energyBolt:  { name: 'Energy Bolt',  short: 'Bolt',    job: 'magician', level: 10, kind: 'projectile', mp: 4,  cooldown: 0.5, range: 9,   hits: 1, multiplier: 1.9 },
+  magicClaw:   { name: 'Magic Claw',   short: 'Claw',    job: 'magician', level: 13, kind: 'projectile', mp: 7,  cooldown: 0.6, range: 8,   hits: 2, multiplier: 1.25 },
+  heal:        { name: 'Heal',         short: 'Heal',    job: 'magician', level: 16, kind: 'heal',       mp: 14, cooldown: 1.5 },
+  thunderbolt: { name: 'Thunderbolt',  short: 'Thunder', job: 'magician', level: 20, kind: 'aoe',        mp: 18, cooldown: 1.4, range: 7,   hits: 1, multiplier: 1.7 },
+
+  doubleShot:  { name: 'Double Shot',  short: 'Double',  job: 'bowman',   level: 10, kind: 'projectile', mp: 5,  cooldown: 0.6, range: 10,  hits: 2, multiplier: 0.9 },
+  arrowBlow:   { name: 'Arrow Blow',   short: 'Blow',    job: 'bowman',   level: 13, kind: 'projectile', mp: 8,  cooldown: 0.8, range: 11,  hits: 1, multiplier: 2.0 },
+  focus:       { name: 'Focus',        short: 'Focus',   job: 'bowman',   level: 16, kind: 'buff',       mp: 12, cooldown: 1,   duration: 30, effect: { crit: 0.2 } },
+  arrowRain:   { name: 'Arrow Rain',   short: 'Rain',    job: 'bowman',   level: 20, kind: 'rain',       mp: 18, cooldown: 1.6, range: 12,  hits: 3, multiplier: 0.8, radius: 3.2 },
+
+  luckySeven:  { name: 'Lucky Seven',  short: 'Lucky7',  job: 'thief',    level: 10, kind: 'projectile', mp: 5,  cooldown: 0.5, range: 8,   hits: 2, multiplier: 1.0 },
+  doubleStab:  { name: 'Double Stab',  short: 'Stab',    job: 'thief',    level: 13, kind: 'melee',      mp: 6,  cooldown: 0.5, range: 2.0, hits: 2, multiplier: 1.15 },
+  haste:       { name: 'Haste',        short: 'Haste',   job: 'thief',    level: 16, kind: 'buff',       mp: 10, cooldown: 1,   duration: 30, effect: { speed: 1.4 } },
+  darkSight:   { name: 'Dark Sight',   short: 'Dark',    job: 'thief',    level: 20, kind: 'buff',       mp: 14, cooldown: 1,   duration: 8,  effect: { hidden: true } },
 };
+for (const s of Object.values(SKILLS)) s.aoe = s.kind === 'aoe' || s.kind === 'rain';
 
 // Kills pay EXP_MULT times the classic values, like a permanent 4x EXP event.
 export const EXP_MULT = 4;
