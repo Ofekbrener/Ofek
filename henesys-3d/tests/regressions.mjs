@@ -19,9 +19,10 @@ try {
     g.engine.tick(1 / 30, false);
     let fadeOk = true;
     const geo0 = g.engine.renderer.info.memory.geometries;
-    g.engine.tick(1 / 30);
-    const geoStart = g.engine.renderer.info.memory.geometries;
+    let geoStart = 0;
     for (let round = 0; round < 6; round++) {
+      // measure from the second round, once the zones are full and steady
+      if (round === 1) { g.engine.tick(1 / 30); geoStart = g.engine.renderer.info.memory.geometries; }
       for (const m of g.map.mobs.filter(x => x.alive)) {
         m.takeHit(9999, m.position.x + 1, m.position.z);
         g.ctx.onKill(m);

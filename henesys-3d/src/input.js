@@ -3,7 +3,7 @@
 // so a thumb on the joystick and a thumb on a button work together.
 // WASD / arrows / space / J / K / L work on desktop for testing.
 
-const BUTTONS = ['attack', 'jump', 'skill1', 'skill2', 'red', 'blue'];
+const BUTTONS = ['attack', 'jump', 'skill1', 'skill2', 'skill3', 'skill4', 'red', 'blue'];
 const STICK_RADIUS = 55;
 const TAP_SLOP = 10;
 
@@ -99,7 +99,7 @@ export function createInput(root) {
     state.move.x = 0; state.move.y = 0;
   });
 
-  const keyMap = { Space: 'jump', KeyJ: 'attack', KeyK: 'skill1', KeyL: 'skill2', Digit1: 'red', Digit2: 'blue' };
+  const keyMap = { Space: 'jump', KeyJ: 'attack', KeyK: 'skill1', KeyL: 'skill2', KeyU: 'skill3', KeyI: 'skill4', Digit1: 'red', Digit2: 'blue' };
   addEventListener('keydown', e => {
     if (e.repeat || e.target.closest?.('input')) return;
     keys.add(e.code);

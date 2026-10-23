@@ -51,7 +51,7 @@ export class Mob {
     if (this.state === 'chase') {
       const fromStart = Math.hypot(this.position.x - this.leashFrom.x, this.position.z - this.leashFrom.z);
       const toPlayer = Math.hypot(player.position.x - this.position.x, player.position.z - this.position.z);
-      if (fromStart > LEASH || toPlayer > LEASH + 5 || player.dead) { this.state = 'wander'; this.goal = null; this.leashFrom = null; }
+      if (fromStart > LEASH || toPlayer > LEASH + 5 || player.dead || player.hidden) { this.state = 'wander'; this.goal = null; this.leashFrom = null; }
       else if (toPlayer > this.radius + 0.3) { tx = player.position.x; tz = player.position.z; sp = speed * 1.6; }
     }
     if (this.state === 'wander') {

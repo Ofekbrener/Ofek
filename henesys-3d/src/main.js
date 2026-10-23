@@ -23,6 +23,7 @@ import { showTitle } from './title.js';
 import { EXP_TABLE } from './config.js';
 import { load, save, clear, loadSettings, saveSettings } from './storage.js';
 import { sfx, configureAudio } from './audio.js';
+import { modifiers, activeBuffs } from './rules/buffs.js';
 import { dialogOpen } from './dialog.js';
 import { TALK_RANGE } from './entities/npc.js';
 
@@ -37,6 +38,7 @@ configureAudio(settings);
 
 const game = {
   character: newCharacter('Beginner', 0),
+  time: 0, // simulation clock (s) for buffs and skill cooldowns
   advance(job) {
     if (!advance(game.character, job)) return;
     player.model.setWeapon(job);
@@ -137,6 +139,7 @@ function checkPortals() {
 }
 
 const ctx = {
+  now: () => game.time,
   get player() { return player; }, get character() { return game.character; }, get map() { return map; },
   sfx,
   onKill(mob) {
@@ -186,8 +189,7 @@ function updateMobs(dt, t) {
 function handleCombatInput() {
   if (dialogOpen() || player.dead) return;
   const skills = JOBS[game.character.job].skills;
-  if (input.pressed('skill1') && skills[0]) combat.tryAttack(ctx, skills[0]);
-  else if (input.pressed('skill2') && skills[1]) combat.tryAttack(ctx, skills[1]);
+  for (let i = 0; i < 4; i++) if (input.pressed('skill' + (i + 1)) && skills[i]) { combat.tryAttack(ctx, skills[i]); return; }
   else if (input.pressed('attack') || input.held('attack')) combat.tryAttack(ctx);
 }
 
@@ -211,7 +213,11 @@ engine.onFrame((dt, t, realDt) => {
     map.sun.target.position.copy(player.position);
   }
   if (game.character.hp <= 0 && !player.dead) die();
-  hud.update(game.character);
+  game.time += dt;
+  const mods = modifiers(game.character, game.time);
+  player.speedMod = mods.speed;
+  player.setHidden?.(mods.hidden);
+  hud.update(game.character, { buffs: activeBuffs(game.character, game.time), cooldown: id => combat.cooldownLeft(id, game.time) });
   saveTimer += dt;
   if (saveTimer > SAVE_EVERY) { saveTimer = 0; persist(); }
   const mag = Math.hypot(input.move.x, input.move.y);
@@ -256,7 +262,7 @@ async function boot() {
   const saved = load();
   const pick = saved ? { continue: true } : await showTitle(app);
   let mapId = 'henesys';
-  if (pick.continue) { game.character = saved.character; mapId = saved.mapId; }
+  if (pick.continue) { game.character = saved.character; game.character.buffs = {}; mapId = saved.mapId; }
   else game.character = newCharacter(pick.name, pick.look);
   const ch = game.character;
   player = new Player(ch, buildHero(ch.look, ch.job));
@@ -275,5 +281,17 @@ window.__game = {
   expToNext: () => EXP_TABLE[game.character.level],
   get player() { return player; }, get map() { return map; },
   /** Test hook: jump straight to a level. */
+  skillIds: () => JOBS[game.character.job].skills,
+  activeBuffIds: () => activeBuffs(game.character, game.time).map(b => b.id),
+  /** Test hook: a fresh level-1 beginner with the same look. */
+  resetCharacterForTest() {
+    const look = game.character.look;
+    game.character = newCharacter('Tester', look);
+    player.character = game.character;
+    player.model.object3d.removeFromParent();
+    player.model = buildHero(look, 'beginner');
+    player.object3d.add(player.model.object3d);
+    combat.reset();
+  },
   debugSetLevel(n) { const ch = game.character; gainExp(ch, EXP_TABLE.slice(ch.level, n).reduce((a, b) => a + b, 0) - ch.exp); },
 };

@@ -1,25 +1,53 @@
-// Player attacks (melee swings, arrows, thrown shells), skill MP and
-// cooldowns, and monster contact damage with 1 s of invulnerability.
+// Player attacks and skills, and monster contact damage with 1 s of
+// invulnerability. Skills are data (config.SKILLS); this file turns each
+// skill kind into targets, projectiles, buffs and heals.
 import * as THREE from 'three';
 import { JOBS, SKILLS } from './config.js';
-import { rollDamage } from './rules/stats.js';
+import { rollDamage, skillState } from './rules/stats.js';
+import { applyBuff, endBuff, modifiers } from './rules/buffs.js';
 import { toon } from './assets/toon.js';
 
 export const BASIC_COOLDOWN = 0.45;
+export const GLOBAL_LOCK = 0.25;
 export const INVULN = 1;
 const MELEE_DELAY = 0.2;
-const PROJECTILE_SPEED = 26;
+const PROJECTILE_SPEED = 24;
 
-const arrowGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.7, 5).rotateX(Math.PI / 2);
+// projectile looks
+const arrowGeo = (() => {
+  const shaft = new THREE.CylinderGeometry(0.018, 0.018, 0.7, 5).rotateX(Math.PI / 2);
+  return shaft;
+})();
 const arrowMat = toon(0xc89050);
+const glowArrowMat = toon(0xffe066, { emissive: 0xc08000 });
 const shellGeo = new THREE.SphereGeometry(0.14, 10, 8);
 const shellMat = toon(0x5fae3e);
-const glowArrowMat = toon(0xffe066, { emissive: 0xc08000 });
+const orbGeo = new THREE.SphereGeometry(0.2, 14, 10);
+const orbMat = new THREE.MeshBasicMaterial({ color: 0x8fd8ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+const starGeo = (() => {
+  const s = new THREE.Shape();
+  for (let i = 0; i < 8; i++) { const r = i % 2 ? 0.07 : 0.24, a = i / 8 * Math.PI * 2; i ? s.lineTo(Math.cos(a) * r, Math.sin(a) * r) : s.moveTo(r, 0); }
+  return new THREE.ShapeGeometry(s);
+})();
+const starMat = new THREE.MeshBasicMaterial({ color: 0xe8eef8, side: THREE.DoubleSide });
 
-/** ctx (per call): { player, character, map, onKill(mob), sfx(name) } */
+const PROJECTILE = {
+  bow: { geo: arrowGeo, mat: arrowMat, trail: 0xfff6c0 },
+  doubleShot: { geo: arrowGeo, mat: arrowMat, trail: 0x9fe8ff },
+  arrowBlow: { geo: arrowGeo, mat: glowArrowMat, trail: 0xffd23f, scale: [2.2, 2.2, 1.4] },
+  threeSnails: { geo: shellGeo, mat: shellMat, trail: 0xfff6c0 },
+  energyBolt: { geo: orbGeo, mat: orbMat, trail: 0x6fc8ff, big: true },
+  luckySeven: { geo: starGeo, mat: starMat, trail: 0xffffff, spin: true },
+};
+const SKILL_SFX = { buff: 'buff', heal: 'heal', aoe: 'heavy', rain: 'arrow', projectile: 'arrow', melee: 'heavy' };
+
+const REASON = { mp: 'Not enough MP', cooldown: 'Not ready yet', job: 'Not your skill', locked: lv => `Unlocks at Lv. ${lv}` };
+
+/** ctx (per call): { player, character, map, onKill(mob), sfx(name), now() } */
 export function createCombat(fx) {
-  let cooldown = 0, invuln = 0;
-  const pending = []; // { delay, mob, dmg, i, mesh?, from, to }
+  let basic = 0, lock = 0, invuln = 0;
+  const cooldowns = {};
+  const pending = []; // { delay, mob, dmg, i, mesh?, trail?, heavy }
 
   function inRange(player, mobs, range) {
     return mobs.filter(m => m.alive && Math.hypot(m.position.x - player.position.x, m.position.z - player.position.z) <= range + m.radius)
@@ -32,61 +60,128 @@ export function createCombat(fx) {
     const killed = mob.takeHit(dmg.amount, ctx.player.position.x, ctx.player.position.z, p.heavy ? 2 : 1);
     fx.damage(mob.position, mob.model.height + 0.4, dmg.amount, dmg.crit, i);
     const chest = mob.position.clone(); chest.y += mob.model.height * 0.5;
-    fx.impact(chest, dmg.crit, p.heavy);
+    fx.impact(chest, dmg.crit, p.heavy, p.color);
     ctx.sfx?.(dmg.crit ? 'crit' : 'hit');
     if (killed) ctx.onKill(mob);
   }
 
-  return {
-    get cooldown() { return cooldown; },
-    get invulnerable() { return invuln > 0; },
+  function queueHits(ctx, mob, skillId, hits, delay, extra = {}) {
+    const mods = modifiers(ctx.character, ctx.now());
+    for (let h = 0; h < hits; h++) {
+      pending.push({ delay: delay + h * (extra.gap ?? 0.12), mob, dmg: rollDamage(ctx.character, skillId, Math.random, mods), i: h, ...extra });
+    }
+  }
 
-    /** Returns the number of targets, or -1 if the attack could not start. */
+  function launch(ctx, mob, skillId, look, hits) {
+    const mods = modifiers(ctx.character, ctx.now());
+    for (let h = 0; h < hits; h++) {
+      const mesh = new THREE.Mesh(look.geo, look.mat);
+      if (look.scale) mesh.scale.set(...look.scale);
+      mesh.position.copy(ctx.player.position).add(new THREE.Vector3(Math.sin(ctx.player.yaw) * 0.5, 1.1, Math.cos(ctx.player.yaw) * 0.5));
+      mesh.visible = false;
+      ctx.map.scene.add(mesh);
+      pending.push({ delay: MELEE_DELAY + h * 0.12, mob, dmg: rollDamage(ctx.character, skillId, Math.random, mods), i: h, mesh, trail: look.trail, spin: look.spin, big: look.big, heavy: skillId === 'arrowBlow' });
+    }
+  }
+
+  return {
+    get cooldown() { return basic; },
+    get invulnerable() { return invuln > 0; },
+    /** Seconds until a skill is ready (0 when ready). */
+    cooldownLeft(id, now) { return Math.max(0, (cooldowns[id] ?? 0) - now); },
+
+    /** Returns the number of targets (0 for buffs and heals), or -1 if nothing happened. */
     tryAttack(ctx, skillId = null) {
-      if (cooldown > 0) return -1;
-      const { player, character, map } = ctx;
-      const job = JOBS[character.job], skill = skillId ? SKILLS[skillId] : null;
-      if (skill && character.mp < skill.mp) {
-        fx.text(player.position, 2.1, 'Not enough MP', 'warn');
-        cooldown = 0.3;
-        return -1;
-      }
-      if (skill) character.mp -= skill.mp;
-      const range = skill ? skill.range : job.range;
-      const found = inRange(player, map.mobs ?? [], range);
-      const targets = skill?.aoe ? found : found.slice(0, 1);
-      cooldown = skill?.cooldown ?? BASIC_COOLDOWN;
-      player.model.attack();
-      if (targets[0]) player.faceTowards(targets[0].position.x, targets[0].position.z);
-      const ranged = job.weapon === 'bow' || skillId === 'threeSnails';
-      const heavy = skillId === 'powerStrike' || skillId === 'arrowBlow' || skillId === 'slashBlast';
-      ctx.sfx?.(ranged ? 'arrow' : heavy ? 'heavy' : 'swing');
-      if (!ranged) {
-        player.lunge();
-        setTimeout(() => fx.swipe(player, skillId === 'powerStrike' ? 0xffb050 : 0xfff6c0, heavy), 110);
-      }
-      if (skillId === 'slashBlast') setTimeout(() => fx.shockwave(player.position, range), 150);
-      for (const mob of targets) {
-        for (let h = 0; h < (skill?.hits ?? 1); h++) {
-          const dmg = rollDamage(character, skillId);
-          const p = { delay: MELEE_DELAY + h * 0.12, mob, dmg, i: h, heavy };
-          if (ranged) {
-            p.mesh = new THREE.Mesh(skillId === 'threeSnails' ? shellGeo : arrowGeo, skillId === 'threeSnails' ? shellMat : skillId === 'arrowBlow' ? glowArrowMat : arrowMat);
-            if (skillId === 'arrowBlow') p.mesh.scale.set(2.2, 2.2, 1.4);
-            p.trail = skillId === 'arrowBlow' ? 0xffd23f : skillId === 'doubleShot' ? 0x9fe8ff : 0xfff6c0;
-            p.from = player.position.clone().add(new THREE.Vector3(0, 1.0, 0));
-            p.mesh.position.copy(p.from);
-            p.mesh.visible = false;
-            map.scene.add(p.mesh);
-          }
-          pending.push(p);
+      if (lock > 0 || ctx.player.dead) return -1;
+      const { player, character: c, map } = ctx;
+      const now = ctx.now();
+      const job = JOBS[c.job];
+      const skill = skillId ? SKILLS[skillId] : null;
+
+      if (skill) {
+        const st = skillState(c, skillId, now, cooldowns);
+        if (!st.ok) {
+          if (st.reason !== 'cooldown') fx.text(player.position, 2.2, st.reason === 'locked' ? REASON.locked(skill.level) : REASON[st.reason], 'warn');
+          return -1;
         }
+        c.mp -= skill.mp;
+        cooldowns[skillId] = now + skill.cooldown;
+      } else {
+        if (basic > 0) return -1;
+        basic = BASIC_COOLDOWN;
       }
-      return targets.length;
+      lock = GLOBAL_LOCK;
+      if (skillId !== 'darkSight') endBuff(c, 'darkSight');
+      player.model.attack(skillId ?? undefined);
+      ctx.sfx?.(skill ? SKILL_SFX[skill.kind] : job.weapon === 'bow' ? 'arrow' : 'swing');
+
+      const kind = skill?.kind ?? (job.weapon === 'bow' ? 'projectile' : 'melee');
+
+      if (kind === 'buff') {
+        applyBuff(c, skillId, now);
+        fx.aura(player, skillId);
+        return 0;
+      }
+      if (kind === 'heal') {
+        const amount = 40 + (c.int ?? 4) * 3;
+        c.hp = Math.min(c.maxHp, c.hp + amount);
+        fx.heal(player, amount);
+        return 0;
+      }
+
+      const range = skill?.range ?? job.range;
+      const found = inRange(player, map.mobs ?? [], range);
+      if (found[0]) player.faceTowards(found[0].position.x, found[0].position.z);
+      const hits = skill?.hits ?? 1;
+
+      if (kind === 'melee') {
+        player.lunge();
+        const heavy = skillId === 'powerStrike';
+        setTimeout(() => fx.swipe(player, heavy ? 0xffb050 : skillId === 'doubleStab' ? 0xc8a0ff : 0xfff6c0, heavy), 110);
+        if (found[0]) queueHits(ctx, found[0], skillId, hits, MELEE_DELAY, { heavy, gap: skillId === 'doubleStab' ? 0.14 : 0.12 });
+        return found[0] ? 1 : 0;
+      }
+
+      if (kind === 'projectile') {
+        if (!found[0]) return 0;
+        if (skillId === 'magicClaw') {
+          setTimeout(() => fx.claw(found[0]), 180);
+          queueHits(ctx, found[0], skillId, hits, 0.25, { color: 0xc080ff, gap: 0.1 });
+          return 1;
+        }
+        const look = PROJECTILE[skillId] ?? PROJECTILE.bow;
+        launch(ctx, found[0], skillId, look, hits);
+        return 1;
+      }
+
+      if (kind === 'aoe') {
+        if (skillId === 'thunderbolt') {
+          for (const m of found) { setTimeout(() => fx.lightning(m.position), 150 + Math.random() * 150); queueHits(ctx, m, skillId, hits, 0.3, { heavy: true, color: 0xbfe8ff }); }
+          fx.flash('#d8f0ff', 0.35);
+        } else if (skillId === 'spin') {
+          for (let k = 0; k < 3; k++) setTimeout(() => fx.shockwave(player.position, range, 0xffd090), 120 + k * 180);
+          for (const m of found) queueHits(ctx, m, skillId, hits, 0.2, { gap: 0.18 });
+        } else {
+          player.lunge();
+          setTimeout(() => fx.swipe(player, 0x9fe8ff, true), 110);
+          setTimeout(() => fx.shockwave(player.position, range), 150);
+          for (const m of found) queueHits(ctx, m, skillId, hits, MELEE_DELAY, { heavy: true });
+        }
+        return found.length;
+      }
+
+      if (kind === 'rain') {
+        const center = found[0]?.position.clone() ?? player.position.clone().add(new THREE.Vector3(Math.sin(player.yaw) * 5, 0, Math.cos(player.yaw) * 5));
+        fx.arrowRain(center, skill.radius);
+        const inside = (map.mobs ?? []).filter(m => m.alive && Math.hypot(m.position.x - center.x, m.position.z - center.z) <= skill.radius + m.radius);
+        for (const m of inside) queueHits(ctx, m, skillId, hits, 0.45, { gap: 0.15 });
+        return inside.length;
+      }
+      return 0;
     },
 
     update(dt, ctx) {
-      cooldown -= dt; invuln -= dt;
+      basic -= dt; lock -= dt; invuln -= dt;
       for (let k = pending.length - 1; k >= 0; k--) {
         const p = pending[k];
         p.delay -= dt;
@@ -96,19 +191,20 @@ export function createCombat(fx) {
         p.mesh.visible = true;
         const to = p.mob.position.clone(); to.y += p.mob.model.height * 0.5;
         const d = to.clone().sub(p.mesh.position), dist = d.length(), step = PROJECTILE_SPEED * dt;
-        p.mesh.lookAt(to);
+        if (p.spin) { p.mesh.lookAt(ctx.player.position.x, 50, ctx.player.position.z); p.mesh.rotateZ(performance.now() / 40); }
+        else p.mesh.lookAt(to);
         if (dist <= step || !p.mob.alive) {
           p.mesh.removeFromParent(); pending.splice(k, 1);
           land(ctx, p);
         } else {
           p.mesh.position.addScaledVector(d, step / dist);
-          fx.particles.burst(p.mesh.position, { count: 1, color: p.trail, shape: 'dot', speed: 0.2, up: 0, size: p.heavy ? 0.7 : 0.4, life: 0.25, gravity: 0, additive: true });
+          fx.particles.burst(p.mesh.position, { count: p.big ? 2 : 1, color: p.trail, shape: 'dot', speed: 0.2, up: 0, size: p.big || p.heavy ? 0.7 : 0.4, life: 0.25, gravity: 0, additive: true });
         }
       }
 
-      // contact damage
+      // contact damage (Dark Sight hides you from monsters)
       const { player, character, map } = ctx;
-      if (invuln > 0 || character.hp <= 0) return;
+      if (invuln > 0 || character.hp <= 0 || modifiers(character, ctx.now()).hidden) return;
       for (const m of map.mobs ?? []) {
         if (!m.alive) continue;
         const dx = player.position.x - m.position.x, dz = player.position.z - m.position.z, d = Math.hypot(dx, dz);
@@ -119,6 +215,7 @@ export function createCombat(fx) {
           fx.damage(player.position, 2.0, amount, false, 0, true);
           player.model.hit();
           player.knockFrom(m.position.x, m.position.z);
+          m.model.lunge?.();
           fx.flash('#ff3b30', 0.25);
           ctx.sfx?.('hurt');
           break;
@@ -126,9 +223,9 @@ export function createCombat(fx) {
       }
     },
 
-    reset(map) {
+    reset() {
       for (const p of pending) p.mesh?.removeFromParent();
-      pending.length = 0; cooldown = 0;
+      pending.length = 0; basic = 0; lock = 0;
     },
   };
 }

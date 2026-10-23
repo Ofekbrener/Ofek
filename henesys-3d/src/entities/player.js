@@ -31,6 +31,16 @@ export class Player {
     this.backward = false;
   }
 
+  /** Dark Sight: fade the model to a ghost while monsters cannot see you. */
+  setHidden(hidden) {
+    if (this.hidden === hidden) return;
+    this.hidden = hidden;
+    this.model.object3d.traverse(o => {
+      if (!o.material) return;
+      o.material.transparent = hidden; o.material.opacity = hidden ? 0.35 : 1; o.material.needsUpdate = true;
+    });
+  }
+
   /** Short step forward with each melee swing. */
   lunge() { this.lungeT = 0.13; }
 

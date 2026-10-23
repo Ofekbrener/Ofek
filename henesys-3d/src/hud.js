@@ -2,7 +2,6 @@
 // toasts, the settings panel and the death notice.
 import { EXP_TABLE, JOBS, SKILLS, MAX_LEVEL } from './config.js';
 
-const SHORT = { threeSnails: 'Snail', doubleShot: 'Double', arrowBlow: 'Blow', powerStrike: 'Power', slashBlast: 'Slash' };
 
 export function createHud(root, { onReset, onToggle, settings }) {
   const el = document.createElement('div');
@@ -18,7 +17,7 @@ export function createHud(root, { onReset, onToggle, settings }) {
     </div>
     <div class="gauge exp"><i id="h-exp"></i><span id="h-expt"></span></div>
     <div class="topbar">
-      <div class="mapname" id="h-map"></div>
+      <div class="mapcol"><div class="mapname" id="h-map"></div><div class="buffs" id="h-buffs"></div></div>
       <div class="mesos"><span class="coin"></span><b id="h-mesos">0</b></div>
       <button class="ui gear" id="h-gear" aria-label="Settings">⚙</button>
     </div>
@@ -39,7 +38,7 @@ export function createHud(root, { onReset, onToggle, settings }) {
     </div>`;
   root.appendChild(el);
   const $ = id => el.querySelector('#' + id);
-  const s1 = document.getElementById('btn-skill1'), s2 = document.getElementById('btn-skill2');
+  const skillBtns = [1, 2, 3, 4].map(i => document.getElementById('btn-skill' + i));
   const cntRed = document.getElementById('cnt-red'), cntBlue = document.getElementById('cnt-blue');
 
   const panel = $('h-settings');
@@ -58,13 +57,31 @@ export function createHud(root, { onReset, onToggle, settings }) {
   const set = (key, val, fn) => { if (last[key] !== val) { last[key] = val; fn(val); } };
 
   return {
-    update(c) {
+    update(c, extra = {}) {
       set('lv', c.level, v => { $('h-lv').textContent = v; });
       set('name', c.name, v => { $('h-name').textContent = v; });
-      set('job', c.job, v => {
-        $('h-job').textContent = JOBS[v].name;
-        const sk = JOBS[v].skills;
-        [s1, s2].forEach((b, i) => { b.disabled = !sk[i]; b.textContent = sk[i] ? SHORT[sk[i]] : '—'; b.title = sk[i] ? SKILLS[sk[i]].name : ''; });
+      set('job', c.job, v => { $('h-job').textContent = JOBS[v].name; });
+      // skill buttons: name, lock level, cooldown sweep
+      const sk = JOBS[c.job].skills;
+      skillBtns.forEach((b, i) => {
+        const id = sk[i], s = id && SKILLS[id];
+        const locked = !s || c.level < s.level;
+        set('sk' + i, `${id}|${locked}`, () => {
+          b.disabled = !s;
+          b.classList.toggle('locked', !!s && locked);
+          b.querySelector('span').textContent = !s ? '—' : locked ? `Lv ${s.level}` : s.short;
+          b.title = s ? s.name : '';
+        });
+        if (s && !locked) {
+          const left = extra.cooldown?.(id) ?? 0;
+          b.style.setProperty('--cd', s.cooldown ? Math.min(1, left / s.cooldown) : 0);
+          b.classList.toggle('nomp', c.mp < s.mp);
+        }
+      });
+      // buff icons with seconds left
+      const buffs = extra.buffs ?? [];
+      set('buffs', buffs.map(x => x.id + Math.ceil(x.left)).join(), () => {
+        $('h-buffs').innerHTML = buffs.map(x => `<span class="buff b-${x.id}">${SKILLS[x.id].short}<b>${Math.ceil(x.left)}</b></span>`).join('');
       });
       set('hp', c.hp + '/' + c.maxHp, v => { $('h-hp').style.width = (c.hp / c.maxHp * 100) + '%'; $('h-hpt').textContent = 'HP ' + v; });
       set('mp', c.mp + '/' + c.maxMp, v => { $('h-mp').style.width = (c.mp / c.maxMp * 100) + '%'; $('h-mpt').textContent = 'MP ' + v; });
