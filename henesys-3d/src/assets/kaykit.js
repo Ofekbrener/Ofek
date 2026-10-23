@@ -83,14 +83,22 @@ function paintCells(g, cells, target) {
   }
 }
 
+// Recoloured atlases are 1024² canvases (about 4 MB each), so keep only the
+// most recent few; evicted textures are freed on the GPU.
 const recolourCache = new Map();
+const RECOLOUR_KEEP = 8;
+export const recolourCacheSize = () => recolourCache.size;
 /**
  * One recoloured texture per (source atlas, look). roles maps each role to the
  * cells it owns in that atlas: { skin: [...], hair: [...], shirt: [...], pants: [...] }.
  */
 function recoloured(srcTex, key, roles, look) {
   const k = key + JSON.stringify(look);
-  if (recolourCache.has(k)) return recolourCache.get(k);
+  if (recolourCache.has(k)) {
+    const hit = recolourCache.get(k);
+    recolourCache.delete(k); recolourCache.set(k, hit); // most recently used last
+    return hit;
+  }
   const c = atlasCanvas(srcTex), g = c.getContext('2d', { willReadFrequently: true });
   if (look.skin != null && roles.skin?.length) paintCells(g, roles.skin, look.skin);
   if (look.hair != null && roles.hair?.length) paintCells(g, roles.hair, look.hair);
@@ -100,6 +108,11 @@ function recoloured(srcTex, key, roles, look) {
   tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace;
   tex.magFilter = srcTex.magFilter; tex.minFilter = srcTex.minFilter;
   recolourCache.set(k, tex);
+  while (recolourCache.size > RECOLOUR_KEEP) {
+    const [oldKey, old] = recolourCache.entries().next().value;
+    recolourCache.delete(oldKey);
+    old.dispose();
+  }
   return tex;
 }
 
@@ -146,6 +159,8 @@ function rolesFor(meshes) {
   return roles;
 }
 
+const rolesCache = new Map(); // atlas + parts -> role cells; independent of the look
+
 function assemble(look, outfitKey, extraGear = []) {
   const outfit = OUTFIT[outfitKey];
   const root = cloneSkinned(lib.gltf[outfit.base].scene);
@@ -173,7 +188,9 @@ function assemble(look, outfitKey, extraGear = []) {
   const byTex = new Map();
   root.traverse(o => { if (o.isMesh && o.visible && o.material?.map) { const t = o.material.map; if (!byTex.has(t)) byTex.set(t, []); byTex.get(t).push(o); } });
   for (const [tex, meshes] of byTex) {
-    const roles = rolesFor(meshes.filter(m => m.isSkinnedMesh));
+    const skinned = meshes.filter(m => m.isSkinnedMesh);
+    const rkey = tex.uuid + skinned.map(m => m.name).sort().join();
+    const roles = rolesCache.get(rkey) ?? rolesCache.set(rkey, rolesFor(skinned)).get(rkey);
     const map = recoloured(tex, tex.uuid, roles, look);
     for (const m of meshes) { m.material = m.material.clone(); m.material.map = map; }
   }

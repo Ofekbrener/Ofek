@@ -87,6 +87,8 @@ export function createCombat(fx) {
   return {
     get cooldown() { return basic; },
     get invulnerable() { return invuln > 0; },
+    /** True during the short pause after any action. */
+    get locked() { return lock > 0; },
     /** Seconds until a skill is ready (0 when ready). */
     cooldownLeft(id, now) { return Math.max(0, (cooldowns[id] ?? 0) - now); },
 
@@ -111,11 +113,12 @@ export function createCombat(fx) {
         basic = BASIC_COOLDOWN;
       }
       lock = GLOBAL_LOCK;
-      if (skillId !== 'darkSight') endBuff(c, 'darkSight');
       player.model.attack(skillId ?? undefined);
       ctx.sfx?.(skill ? SKILL_SFX[skill.kind] : job.weapon === 'bow' ? 'arrow' : 'swing');
 
       const kind = skill?.kind ?? (job.weapon === 'bow' ? 'projectile' : 'melee');
+      // attacking reveals you; casting a buff or heal does not
+      if (kind !== 'buff' && kind !== 'heal') endBuff(c, 'darkSight');
 
       if (kind === 'buff') {
         applyBuff(c, skillId, now);

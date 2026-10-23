@@ -41,6 +41,39 @@ try {
     for (const b of wantBuffs) check(r.buffs.includes(b), `${job}: ${b} is active`);
     if (job === 'magician') check(r.used.find(u => u.id === 'heal').healed, 'magician: Heal restores HP');
   }
+  // holding Attack must not swallow a skill tap (warrior Rage on U)
+  await page.evaluate(() => { const g = window.__game; g.resetCharacterForTest(); g.debugSetLevel(10); g.game.advance('warrior'); g.debugSetLevel(20); g.game.character.mp = 999; g.game.character.maxMp = 999; });
+  await page.keyboard.down('KeyJ');
+  await sleep(300);
+  await page.keyboard.press('KeyU');
+  // software rendering runs only a few frames a second here, so wait on game state
+  const fired = await page.waitForFunction(() => window.__game.activeBuffIds().includes('rage'), null, { timeout: 8000 }).then(() => true, () => false);
+  await page.keyboard.up('KeyJ');
+  check(fired, 'a skill tap fires while Attack is held');
+
+  // a buff does not cancel Dark Sight; an attack does
+  const ds = await page.evaluate(() => {
+    const g = window.__game, c = g.combat;
+    g.resetCharacterForTest(); g.debugSetLevel(10); g.game.advance('thief'); g.debugSetLevel(20);
+    const ch = g.game.character; ch.mp = ch.maxMp = 999;
+    const t = () => { for (let k = 0; k < 40; k++) g.engine.tick(1 / 30, false); };
+    c.tryAttack(g.ctx, 'darkSight'); t();
+    c.tryAttack(g.ctx, 'haste'); t();
+    const afterBuff = g.activeBuffIds().includes('darkSight');
+    c.tryAttack(g.ctx); t();
+    return { afterBuff, afterAttack: g.activeBuffIds().includes('darkSight') };
+  });
+  check(ds.afterBuff && !ds.afterAttack, `Dark Sight survives Haste and ends on attack (${JSON.stringify(ds)})`);
+
+  // the creator's recolour cache stays small however many looks are tried
+  const cache = await page.evaluate(async () => {
+    const k = await import('./src/assets/kaykit.js');
+    const { PALETTES } = await import('./src/rules/appearance.js');
+    for (let i = 0; i < 24; i++) k.buildHero({ hair: PALETTES.hair[i % 8], shirt: PALETTES.shirt[(i * 3) % 8], pants: PALETTES.pants[(i * 5) % 8] }, 'beginner');
+    return k.recolourCacheSize();
+  });
+  check(cache <= 8, `recolour cache stays bounded (${cache} textures)`);
+
   await page.screenshot({ path: process.argv[2] || '/tmp/henesys-jobs.png' });
   check(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('JOBS OK');

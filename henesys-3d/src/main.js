@@ -187,11 +187,21 @@ function updateMobs(dt, t) {
   }
 }
 
-function handleCombatInput() {
-  if (dialogOpen() || player.dead) return;
+// A skill tap waits up to 0.4 s for the short lock after the previous action,
+// so it is never lost to a held Attack button.
+let queuedSkill = null, queuedFor = 0;
+function handleCombatInput(dt) {
+  if (dialogOpen() || player.dead) { queuedSkill = null; return; }
   const skills = JOBS[game.character.job].skills;
-  for (let i = 0; i < 4; i++) if (input.pressed('skill' + (i + 1)) && skills[i]) { combat.tryAttack(ctx, skills[i]); return; }
-  else if (input.pressed('attack') || input.held('attack')) combat.tryAttack(ctx);
+  for (let i = 0; i < 4; i++) if (input.pressed('skill' + (i + 1)) && skills[i]) { queuedSkill = skills[i]; queuedFor = 0.4; }
+  if (queuedSkill) {
+    const locked = combat.locked;
+    const r = combat.tryAttack(ctx, queuedSkill);
+    queuedFor -= dt;
+    if (r !== -1 || !locked || queuedFor <= 0) queuedSkill = null;
+    return;
+  }
+  if (input.pressed('attack') || input.held('attack')) combat.tryAttack(ctx);
 }
 
 let dustT = 0;
@@ -202,7 +212,7 @@ engine.onFrame((dt, t, realDt) => {
   drinkPotions();
   player.update(dt, input, map, t);
   for (const n of map.npcs ?? []) n.update(dt, t, player);
-  handleCombatInput();
+  handleCombatInput(dt);
   updateMobs(dt, t);
   combat.update(dt, ctx);
   fx.update(dt, map.mobs ?? []);
