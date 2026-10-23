@@ -25,6 +25,8 @@ export function load(store = store0()) {
     const data = JSON.parse(store.getItem(KEY));
     if (!data || data.v !== 1 || !valid(data.character)) return null;
     data.character.look = normalizeLook(data.character.look);
+    const q = data.character.quests;
+    if (!q || typeof q !== 'object' || Array.isArray(q)) data.character.quests = {};
     return { character: data.character, mapId: MAPS.includes(data.mapId) ? data.mapId : 'henesys' };
   } catch {
     return null;

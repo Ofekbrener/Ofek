@@ -15,7 +15,7 @@
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
-  color-scheme: light;
+  color-scheme: light only;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #5fb4f5; color: var(--ink); font-family: var(--body); user-select: none; -webkit-user-select: none; touch-action: none; }

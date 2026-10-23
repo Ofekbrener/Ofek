@@ -6,6 +6,15 @@ export const MOBS = {
   redSnail:       { name: 'Red Snail',       level: 4, hp: 45, exp: 8,  atk: 10, speed: 1.0, zone: 1, mesos: [4, 12],  drops: [{ item: 'red', chance: 0.08 }, { item: 'blue', chance: 0.04 }] },
   slime:          { name: 'Slime',           level: 6, hp: 50, exp: 10, atk: 12, speed: 1.4, zone: 1, mesos: [5, 15],  drops: [{ item: 'blue', chance: 0.08 }] },
   orangeMushroom: { name: 'Orange Mushroom', level: 8, hp: 80, exp: 15, atk: 18, speed: 1.6, zone: 2, mesos: [8, 20],  drops: [{ item: 'red', chance: 0.1 }, { item: 'blue', chance: 0.06 }] },
+
+  pig:            { name: 'Pig',             level: 7,  hp: 70,   exp: 3,  atk: 16, speed: 2.0, mesos: [6, 16],    drops: [{ item: 'red', chance: 0.1 }] },
+  ribbonPig:      { name: 'Ribbon Pig',      level: 10, hp: 120,  exp: 5,  atk: 22, speed: 2.2, mesos: [9, 22],    drops: [{ item: 'red', chance: 0.1 }, { item: 'blue', chance: 0.05 }] },
+  stump:          { name: 'Stump',           level: 10, hp: 150,  exp: 5,  atk: 24, speed: 0.9, mesos: [10, 24],   drops: [{ item: 'blue', chance: 0.08 }] },
+  greenMushroom:  { name: 'Green Mushroom',  level: 15, hp: 250,  exp: 7,  atk: 34, speed: 1.6, mesos: [15, 35],   drops: [{ item: 'red', chance: 0.1 }, { item: 'blue', chance: 0.08 }] },
+  hornyMushroom:  { name: 'Horny Mushroom',  level: 22, hp: 450,  exp: 11, atk: 48, speed: 1.8, mesos: [25, 55],   drops: [{ item: 'red', chance: 0.12 }, { item: 'blue', chance: 0.1 }] },
+  skeletonMinion: { name: 'Skeleton Minion', level: 25, hp: 900,  exp: 15, atk: 60, speed: 1.8, mesos: [40, 80],   drops: [{ item: 'red', chance: 0.12 }, { item: 'blue', chance: 0.1 }] },
+  skeletonWarrior:{ name: 'Skeleton Warrior',level: 28, hp: 1300, exp: 20, atk: 75, speed: 1.6, mesos: [55, 110],  drops: [{ item: 'red', chance: 0.15 }, { item: 'blue', chance: 0.1 }] },
+  skeletonMage:   { name: 'Skeleton Mage',   level: 30, hp: 1100, exp: 23, atk: 70, speed: 1.4, mesos: [60, 120],  drops: [{ item: 'red', chance: 0.12 }, { item: 'blue', chance: 0.15 }] },
 };
 
 export const MAX_LEVEL = 30;

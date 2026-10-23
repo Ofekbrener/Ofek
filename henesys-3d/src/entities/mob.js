@@ -2,7 +2,7 @@
 // hit, gives up 15 m from where the fight started, fades out on death.
 import * as THREE from 'three';
 import { MOBS } from '../config.js';
-import { resolve, groundHeight } from '../rules/collision.js';
+import { resolve, groundHeight, canStep } from '../rules/collision.js';
 import { ease } from '../ease.js';
 
 export const LEASH = 15;
@@ -85,7 +85,9 @@ export class Mob {
       if (Math.abs(this.knock.x) + Math.abs(this.knock.z) < 0.05) this.knock = null;
     }
     const p = resolve({ x: nx, z: nz }, this.radius, map.colliders, map.bounds);
-    this.position.x = p.x; this.position.z = p.z;
+    // monsters cannot climb onto logs or rocks; they turn away instead
+    if (canStep(this.position.y, groundHeight(map.heightFns, p.x, p.z))) { this.position.x = p.x; this.position.z = p.z; }
+    else this.goal = null;
     this.position.y = ease(this.position.y, groundHeight(map.heightFns, p.x, p.z), 12, dt);
     this.object3d.rotation.y = this.yaw;
     this.model.animate(tx != null ? 'move' : 'idle', dt, t);

@@ -5,6 +5,7 @@ import { addDaylight, toon } from '../assets/toon.js';
 import { grassTufts, flowers, fence, signpost, portal, paintedGround, dirtPath, hill, skyAndHills } from '../assets/props.js';
 import { mulberry } from './henesys.js';
 import { prop } from '../assets/kaykit.js';
+import { platformHeight } from '../rules/collision.js';
 
 const HALF = 40;
 
@@ -23,6 +24,7 @@ export function buildHuntingGround() {
     item.object3d.position.set(x, y, z); item.object3d.rotation.y = ry;
     scene.add(item.object3d);
     if (item.collider) colliders.push({ ...item.collider, x, z });
+    if (item.platform) heightFns.push(platformHeight(item.platform, x, z, y, ry));
   };
 
   scene.add(paintedGround(200, 'ground-hunting', (c, toPx, ppm) => {
@@ -47,7 +49,9 @@ export function buildHuntingGround() {
   for (let i = 0; i < 10; i++) {
     const x = -34 + rnd() * 70, z = (rnd() - 0.5) * 70;
     const name = i % 3 === 0 ? 'resource_lumber' : ['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E'][i % 5];
-    place(prop(name, { scale: 0.9 + rnd() * 0.9, solid: 0.7 }), x, z, rnd() * 6, groundAt(x, z));
+    // logs and low rocks are platforms you can jump onto; big rocks stay solid
+    const sc = 0.9 + rnd() * 0.9;
+    place(prop(name, { scale: sc, solid: 0.7, platform: name === 'resource_lumber' || name === 'rock_single_A' }), x, z, rnd() * 6, groundAt(x, z));
   }
 
   const f = fence([[-HALF, 4], [-HALF, HALF], [HALF, HALF], [HALF, -HALF], [-HALF, -HALF], [-HALF, -4]]);

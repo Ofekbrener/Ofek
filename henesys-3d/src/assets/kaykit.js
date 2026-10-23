@@ -328,11 +328,14 @@ export function buildNpc(id) {
  * A KayKit prop at game scale. Returns { object3d, collider } where the collider
  * is a circle covering `solid` of the footprint (trees: just the trunk).
  */
-export function prop(name, { scale = 1, solid = 0.8, shadow = true } = {}) {
+export function prop(name, { scale = 1, solid = 0.8, shadow = true, platform = false } = {}) {
   const o = lib.props[name].clone();
   o.scale.setScalar(PROP_SCALE * scale);
   o.traverse(m => { if (m.isMesh) { m.castShadow = shadow; m.receiveShadow = true; } });
   const box = new THREE.Box3().setFromObject(o), size = box.getSize(new THREE.Vector3());
   const r = Math.max(size.x, size.z) / 2 * solid;
+  // platform: something you can jump onto and stand on (logs, low rocks) instead of a wall
+  if (platform) return { object3d: o, collider: null, platform: { hw: size.x / 2 * 0.95, hd: size.z / 2 * 0.95, top: size.y }, height: size.y };
   return { object3d: o, collider: solid > 0 ? { type: 'circle', r } : null, height: size.y };
 }
+

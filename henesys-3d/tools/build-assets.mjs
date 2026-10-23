@@ -18,7 +18,17 @@ const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 const PACKS = {
   adv: { repo: 'KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0', dir: 'addons/kaykit_character_pack_adventures/Characters/gltf' },
   hex: { repo: 'KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0', dir: 'addons/kaykit_medieval_hexagon_pack/Assets/gltf' },
+  skel: { repo: 'KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0', dir: 'addons/kaykit_character_pack_skeletons/Characters/gltf' },
+  platformer: { repo: 'KenneyNL/Starter-Kit-3D-Platformer', dir: 'sounds' },
+  city: { repo: 'KenneyNL/Starter-Kit-City-Builder', dir: 'sounds' },
 };
+
+export const SKELETONS = ['Skeleton_Minion', 'Skeleton_Warrior', 'Skeleton_Mage'];
+// Kenney Starter Kit sounds (MIT). [pack, file, output name, seconds to keep]
+export const SOUNDS = [
+  ['platformer', 'jump.ogg', 'jump'], ['platformer', 'land.ogg', 'land'], ['platformer', 'walking.ogg', 'step'],
+  ['platformer', 'coin.ogg', 'coin'], ['city', 'ambience.ogg', 'ambience', 40],
+];
 
 export const CHARACTERS = ['Knight', 'Barbarian', 'Mage', 'Rogue', 'Rogue_Hooded'];
 export const CLIPS = [
@@ -86,6 +96,25 @@ async function main() {
   await anim.transform(resample({ tolerance: 1e-3 }), prune({ keepLeaves: true }), dedup());
   await io.write(path.join(OUT, 'anims.glb'), anim);
 
+  const skel = fetchPack(PACKS.skel, 'skel');
+  for (const n of SKELETONS) {
+    const doc = await io.read(path.join(skel, `${n}.glb`));
+    dropAnimations(doc);
+    await doc.transform(prune(), dedup(), quantize({ pattern: /^(NORMAL|TEXCOORD_0|JOINTS_0|WEIGHTS_0)$/, quantizeNormal: 8, quantizeTexcoord: 12 }));
+    await io.write(path.join(OUT, 'chars', `${n}.glb`), doc);
+  }
+
+  // sounds: ogg -> mono mp3 so iPhones can play them too
+  fs.mkdirSync(path.join(OUT, 'sfx'), { recursive: true });
+  const sfxDirs = { platformer: fetchPack(PACKS.platformer, 'platformer'), city: fetchPack(PACKS.city, 'city') };
+  for (const [pack, file, name, secs] of SOUNDS) {
+    const t = secs ? `-t ${secs} -af "afade=t=out:st=${secs - 2}:d=2"` : '';
+    execSync(`ffmpeg -loglevel error -y -i ${path.join(sfxDirs[pack], file)} ${t} -ac 1 -ar 44100 -b:a ${secs ? 48 : 64}k ${path.join(OUT, 'sfx', name + '.mp3')}`);
+  }
+  // sounds made with ElevenLabs live in tools/sfx-src/*.mp3 and are copied as they are
+  const extra = path.join(HERE, 'sfx-src');
+  if (fs.existsSync(extra)) for (const f of fs.readdirSync(extra)) if (f.endsWith('.mp3')) fs.copyFileSync(path.join(extra, f), path.join(OUT, 'sfx', f));
+
   const hex = fetchPack(PACKS.hex, 'hex');
   for (const list of Object.values(PROPS)) for (const n of list) {
     const file = findFile(hex, `${n}.gltf`);
@@ -102,6 +131,11 @@ They are licensed CC0 1.0 Universal (public domain). Attribution is not required
 
 - KayKit Character Pack: Adventures 1.0 (chars/, anims.glb)
 - KayKit Medieval Hexagon Pack 1.0 (props/)
+- KayKit Character Pack: Skeletons 1.0 (chars/Skeleton_*.glb)
+
+Sounds in sfx/:
+- jump, land, step, coin, ambience: Kenney Starter Kits (https://github.com/KenneyNL), MIT License, Copyright (c) 2023 Kenney.
+- Any other sfx/*.mp3: generated for this game with ElevenLabs sound effects.
 
 Rebuild with \`cd henesys-3d/tools && npm install && npm run assets\`.
 `);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolve, groundHeight } from '../src/rules/collision.js';
+import { resolve, groundHeight, platformHeight, canStep } from '../src/rules/collision.js';
 
 const bounds = { minX: -30, maxX: 30, minZ: -30, maxZ: 30 };
 
@@ -31,4 +31,17 @@ test('groundHeight takes the highest surface that covers the point, else 0', () 
   assert.equal(groundHeight([hill, ledge], 1, 0), 2);
   assert.equal(groundHeight([hill, ledge], 10, 0), 1);
   assert.equal(groundHeight([hill, ledge], -10, 0), 0);
+});
+
+test('a rotated log is a platform with its top as the floor', () => {
+  const log = platformHeight({ hw: 2, hd: 0.5, top: 1 }, 10, 0, 0, Math.PI / 2);
+  assert.equal(log(10, 1.5), 1);      // along the rotated long side
+  assert.equal(log(11.5, 0), null);   // off the short side
+  assert.equal(groundHeight([log], 10, 0), 1);
+});
+
+test('a 1 m ledge blocks walking but a 0.3 m one does not', () => {
+  assert.equal(canStep(0, 1), false);
+  assert.equal(canStep(0, 0.3), true);
+  assert.equal(canStep(1.2, 1), true); // already above it, after a jump
 });

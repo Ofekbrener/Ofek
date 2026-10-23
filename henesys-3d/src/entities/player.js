@@ -1,7 +1,7 @@
 // The player: camera-relative movement, jumping, collision, and the
 // third-person follow camera. Everything eases; nothing snaps.
 import * as THREE from 'three';
-import { resolve, groundHeight } from '../rules/collision.js';
+import { resolve, groundHeight, canStep } from '../rules/collision.js';
 import { ease } from '../ease.js';
 import { classicStep } from '../rules/controls.js';
 
@@ -9,6 +9,8 @@ export const WALK_SPEED = 5;
 export const JUMP_VELOCITY = 7;
 export const GRAVITY = 20;
 export const RADIUS = 0.4;
+// Highest ledge you can walk up without jumping.
+export const STEP = 0.45;
 export const CAM_DIST = 9;
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _ray = new THREE.Raycaster();
 const CAM_HEIGHT = 1.5;
@@ -86,7 +88,8 @@ export class Player {
     if (mag > 0.05) {
       const step = WALK_SPEED * this.speedMod * dt;
       const next = resolve({ x: this.position.x + dx * step, z: this.position.z + dz * step }, RADIUS, map.colliders, map.bounds);
-      this.position.x = next.x; this.position.z = next.z;
+      // a ledge taller than STEP blocks you unless you jump onto it
+      if (canStep(this.position.y, groundHeight(map.heightFns, next.x, next.z), STEP)) { this.position.x = next.x; this.position.z = next.z; }
     } else {
       const fixed = resolve({ x: this.position.x, z: this.position.z }, RADIUS, map.colliders, map.bounds);
       this.position.x = fixed.x; this.position.z = fixed.z;

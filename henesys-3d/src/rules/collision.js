@@ -30,3 +30,19 @@ export function groundHeight(heightFns, x, z) {
   }
   return h;
 }
+
+/**
+ * Height function for a box you can stand on (a log, a flat rock) centred at
+ * (x, z) on ground height y, rotated by ry. pl: { hw, hd, top }.
+ */
+export function platformHeight(pl, x, z, y, ry) {
+  const c = Math.cos(ry), s = Math.sin(ry);
+  return (px, pz) => {
+    const dx = px - x, dz = pz - z;
+    const lx = dx * c - dz * s, lz = dx * s + dz * c;
+    return Math.abs(lx) <= pl.hw && Math.abs(lz) <= pl.hd ? y + pl.top : null;
+  };
+}
+
+/** Can a walker standing at height y step to a spot whose ground is `floor`? */
+export const canStep = (y, floor, step = 0.45) => floor <= y + step;
