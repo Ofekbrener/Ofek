@@ -47,14 +47,36 @@ function updateCamera(dt) {
 
 // ---------- flow ----------
 const ui = document.getElementById('menu');
-function newRun() {
+// Checkpoint: saved at the start of every wave, so a run can resume from the wave you died on.
+const SAVE_KEY = 'ozCheckpoint';
+function saveCheckpoint() {
+  const P = G.player; const {magnetPulse, ...up} = UP;
+  const cp = {wave: G.wave, weapon: P.weapon, maxHp: P.maxHp, coins: G.coins, score: G.score, kills: G.kills, reroll: DRAFT.rerollCost, up};
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(cp)); } catch (e) {}
+}
+function loadCheckpoint() { try { const c = JSON.parse(localStorage.getItem(SAVE_KEY)); return c && c.wave > 1 ? c : null; } catch (e) { return null; } }
+function clearCheckpoint() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+function newRun(cp = null) {
   AU.resume(); clearZombies(); clearPickups(); clearFX(); resetUpgrades();
   for (const b of G.barrels) { scene.remove(b.m); } G.barrels = []; for (const [x, z] of [[-6, -3], [6.5, 3.5], [-3, 9.5], [3.5, -10], [-12, 4], [12, -3]]) addBarrel(x, z);
   Object.assign(G, {wave: 0, score: 0, coins: 0, kills: 0, combo: 0, hitstop: 0, trauma: 0, slowT: 0, timeScale: 1, flash: 0, hurtFlash: 0});
   DRAFT.rerollCost = 10;
   makePlayer(); G.cam.x = 0; G.cam.z = 2;
+  if (cp) { // resume: same weapon, upgrades, coins and score, full hearts, the wave you died on
+    Object.assign(UP, cp.up); equipWeapon(cp.weapon); G.player.maxHp = G.player.hp = cp.maxHp;
+    Object.assign(G, {wave: cp.wave - 1, coins: cp.coins, score: cp.score, kills: cp.kills}); DRAFT.rerollCost = cp.reroll;
+  } else clearCheckpoint();
   ui.hidden = true; document.getElementById('draft').hidden = true; G.state = 'playing';
   AU.ambience(true); startWave();
+}
+function menuButtons(primaryLabel) {
+  const cp = loadCheckpoint();
+  return cp ? `<button id="go">Continue from wave ${cp.wave}</button><button id="fresh" class="ghost">New run from wave 1</button>`
+    : `<button id="go">${primaryLabel}</button>`;
+}
+function wireMenu() {
+  const cp = loadCheckpoint(), go = document.getElementById('go'), fresh = document.getElementById('fresh');
+  go.disabled = false; go.onclick = () => newRun(cp); if (fresh) fresh.onclick = () => newRun(null); go.focus();
 }
 function waveCleared() {
   slowmo(.8); G.flash = .5; shake(.5); AU.play('waveClear', {vol: .9}); AU.duck(.2, 1.2);
@@ -66,8 +88,8 @@ function gameOver() {
   G.state = 'dead'; ui.hidden = false;
   let best = 0; try { best = +localStorage.getItem('ozBest') || 0; if (G.score > best) { localStorage.setItem('ozBest', G.score); } } catch (e) {}
   ui.innerHTML = `<h1>YOU FELL</h1><p class="big">Wave ${G.wave} · ${G.score} points · ${G.kills} kills</p>
-    <p>${G.score > best ? 'New best score!' : 'Best: ' + best}</p><button id="go">Play again</button>`;
-  document.getElementById('go').onclick = newRun; document.getElementById('go').focus();
+    <p>${G.score > best ? 'New best score!' : 'Best: ' + best}</p>${menuButtons('Play again')}`;
+  wireMenu();
 }
 
 // ---------- loop ----------
@@ -116,6 +138,6 @@ window.simulate = function (secs, step = 1 / 60) {
     await Promise.all([loadModels(tick), AU.load(tick)]);
   } catch (e) { console.error(e); go.textContent = 'Could not load the game files'; return; }
   buildArena(); renderWeaponArt(); makePlayer(); G.player.z = 0; G.player.face = Math.PI / 2;
-  G.state = 'menu'; go.disabled = false; go.textContent = 'Play'; go.onclick = newRun; go.focus();
+  G.state = 'menu'; go.outerHTML = menuButtons('Play'); wireMenu();
   requestAnimationFrame(frame);
 })();
