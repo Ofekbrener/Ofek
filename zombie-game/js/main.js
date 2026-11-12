@@ -22,10 +22,14 @@ cv3.addEventListener('mousedown', e => { if (e.button === 0) startAttack(); });
 cv3.addEventListener('contextmenu', e => { e.preventDefault(); dash(); });
 cv3.addEventListener('touchstart', e => {
   HUD.touch = true; HUD.layout();
+  // Only the on-screen buttons act. A touch anywhere else starts the move stick right under the thumb,
+  // so resting or re-placing the thumb never swings the weapon by itself.
   for (const t of e.changedTouches) {
-    if (t.clientX < W * .45 && !INPUT.joy) { INPUT.joy = {id: t.identifier, ox: t.clientX, oy: t.clientY, x: t.clientX, y: t.clientY}; continue; }
-    const b = HUD.btn, near = (bb, pad = 16) => Math.hypot(t.clientX - bb.x, t.clientY - bb.y) < bb.r + pad;
-    if (near(b.jmp)) jump(); else if (UP.dash && near(b.dash)) dash(); else startAttack();
+    const b = HUD.btn, near = (bb, pad = 18) => Math.hypot(t.clientX - bb.x, t.clientY - bb.y) < bb.r + pad;
+    if (near(b.atk)) startAttack();
+    else if (near(b.jmp)) jump();
+    else if (UP.dash && near(b.dash)) dash();
+    else if (!INPUT.joy) INPUT.joy = {id: t.identifier, ox: t.clientX, oy: t.clientY, x: t.clientX, y: t.clientY};
   }
   e.preventDefault();
 }, {passive: false});

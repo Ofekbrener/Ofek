@@ -3,7 +3,8 @@
 const hudCv = document.getElementById('hud'), hx = hudCv.getContext('2d');
 const face = new Image(); face.src = 'assets/face.png';
 const HUD = {bannerT: 0, bannerTxt: '', bannerSub: '', bannerCol: '#ffcc33', touch: false,
-  btn: {atk: {r: 50, lab: 'ATTACK', col: '#ffcc33'}, jmp: {r: 36, lab: 'JUMP', col: '#8fd0ff'}, dash: {r: 32, lab: 'DASH', col: '#b9a3ff'}}};
+  btn: {atk: {r: 56, lab: 'ATTACK', col: '#ffcc33'}, jmp: {r: 38, lab: 'JUMP', col: '#8fd0ff'}, dash: {r: 34, lab: 'DASH', col: '#b9a3ff'}}};
+try { HUD.touch = matchMedia('(pointer: coarse)').matches; } catch (e) {} // phones show the buttons from the first frame
 HUD.resize = () => { hudCv.width = W * DPR; hudCv.height = H * DPR; };
 HUD.banner = (t, s, c) => { HUD.bannerT = 2.2; HUD.bannerTxt = t; HUD.bannerSub = s; HUD.bannerCol = c; };
 HUD.layout = () => { const b = HUD.btn, R = W - 24, B = H - 24; b.atk.x = R - 50; b.atk.y = B - 60; b.jmp.x = R - 150; b.jmp.y = B - 30; b.dash.x = R - 130; b.dash.y = B - 130; };
