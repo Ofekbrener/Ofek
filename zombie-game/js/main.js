@@ -142,7 +142,7 @@ window.simulate = function (secs, step = 1 / 60) {
   try {
     await Promise.all([loadModels(tick), AU.load(tick)]);
   } catch (e) { console.error(e); go.textContent = 'Could not load the game files'; return; }
-  buildArena(); measureClipHits(); renderWeaponArt(); makePlayer(); G.player.z = 0; G.player.face = Math.PI / 2;
+  buildArena(); renderWeaponArt(); makePlayer(); G.player.z = 0; G.player.face = Math.PI / 2;
   G.state = 'menu'; go.outerHTML = menuButtons('Play'); wireMenu();
   requestAnimationFrame(frame);
 })();

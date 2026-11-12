@@ -1,44 +1,34 @@
 // Player: movement, jump/slam, dash, and a combo chain built from the kit's authored clips.
 // Every weapon has its own combo, trail, on-hit effect and 4th-hit finisher.
 'use strict';
-// combo kinds: Slash, SlashM (mirrored slash = backhand), Stab, Punch, and one finisher per weapon
+// combo kinds: Slash, Stab, Punch (a short jab or butt strike), and one finisher per weapon
 const WEAPONS = {
-  Knife: {name: 'KNIFE', cls: 'blade', dmg: 1, range: 1.9, arc: 1.15, speed: 1.5, kb: 4, lunge: 4, twist: .55,
-    combo: ['Stab', 'Stab', 'Slash', 'Flurry'], fin: 'FLURRY', finText: '5 rapid stabs', swing: 'swingLight', hit: ['hitKnife', 'gore'],
-    col: 0xdfe8ff, trail: {col: 0xe8f2ff, width: 1.7, base: .15, fx: 'glint'}, desc: 'Fast. Double damage chance from behind.'},
-  Spear: {name: 'SPEAR', cls: 'pierce', dmg: 2, range: 3.2, arc: .42, speed: 1.0, kb: 7, lunge: 9, twist: .3,
+  Knife: {name: 'KNIFE', cls: 'blade', dmg: 1, range: 1.9, arc: 1.15, speed: 1.5, kb: 4, lunge: 4, twist: .3,
+    combo: ['Stab', 'Slash', 'Stab', 'Flurry'], fin: 'FLURRY', finText: '5 rapid stabs', swing: 'swingLight', hit: ['hitKnife', 'gore'],
+    col: 0xdfe8ff, trail: {col: 0xe8f2ff, width: 1.25, base: .15, fx: 'glint'}, desc: 'Fast. Double damage chance from behind.'},
+  Spear: {name: 'SPEAR', cls: 'pierce', dmg: 2, range: 3.2, arc: .42, speed: 1.0, kb: 7, lunge: 9, twist: .2,
     combo: ['Stab', 'Stab', 'Stab', 'Javelin'], fin: 'JAVELIN', finText: 'throw it through the horde, it comes back', swing: 'swingBlade', hit: ['hitFlesh', 'gore'],
-    col: 0x7fe0ff, trail: {col: 0x7fe0ff, width: 1.15, base: .6, fx: 'streak'}, desc: 'Long reach. Pierces every zombie in a line.'},
-  WoodenBat_Barbed: {name: 'BARBED BAT', cls: 'blunt', dmg: 2, range: 2.2, arc: 1.45, speed: .95, kb: 13, lunge: 4, twist: 1,
-    combo: ['Slash', 'SlashM', 'Slash', 'HomeRun'], fin: 'HOME RUN', finText: 'one zombie flies 15 m and flattens others', swing: 'swingHeavy', hit: ['hitHeavy', 'hitWood'],
-    col: 0xffc080, trail: {col: 0xd99a55, width: 1.35, base: .45, fx: 'splinter'}, desc: 'Huge knockback.'},
-  WoodenBat_Saw: {name: 'SAW BAT', cls: 'saw', dmg: 2, range: 2.2, arc: 1.4, speed: 1.05, kb: 6, lunge: 3, twist: .7,
-    combo: ['Slash', 'SlashM', 'Slash', 'Grinder'], fin: 'GRINDER', finText: 'a spinning 6-hit grind', swing: 'swingHeavy', hit: ['hitSaw', 'gore'],
-    col: 0xff6a6a, trail: {col: 0xff3a3a, width: 1.3, base: .45, fx: 'sparks'}, desc: 'Bleed stacks: up to 3 damage per second.'},
-  Axe: {name: 'FIRE AXE', cls: 'heavy', dmg: 3, range: 2.2, arc: 1.2, speed: .8, kb: 8, lunge: 5, twist: .9, glow: 0xff6a1a,
-    combo: ['Slash', 'SlashM', 'Slash', 'FireLine'], fin: 'FIRE LINE', finText: 'a 6 m wall of fire', swing: 'swingHeavy', hit: ['hitAxe', 'bone'],
-    col: 0xffa040, trail: {col: 0xff6a1a, width: 1.9, base: .55, fx: 'fire'}, desc: 'Sets zombies on fire. Cuts heads off.'},
-  Guitar: {name: 'GUITAR', cls: 'blunt', dmg: 2, range: 2.4, arc: 1.7, speed: 1.0, kb: 11, lunge: 3, twist: .85,
-    combo: ['Slash', 'SlashM', 'Slash', 'PowerChord'], fin: 'POWER CHORD', finText: 'a 5.5 m shockwave that knocks everyone down', swing: 'swingWide', hit: ['guitarHit', 'hitWood'],
-    col: 0xd38cff, trail: {col: 0xc070ff, width: 1.5, base: .3, fx: 'notes'}, desc: 'Every hit stuns for 1 s.'},
+    col: 0x7fe0ff, trail: {col: 0x7fe0ff, width: 1.0, base: .6, fx: 'streak'}, desc: 'Long reach. Pierces every zombie in a line.'},
+  WoodenBat_Barbed: {name: 'BARBED BAT', cls: 'blunt', dmg: 2, range: 2.2, arc: 1.45, speed: .95, kb: 13, lunge: 4, twist: .45,
+    combo: ['Slash', 'Punch', 'Slash', 'HomeRun'], fin: 'HOME RUN', finText: 'one zombie flies 15 m and flattens others', swing: 'swingHeavy', hit: ['hitHeavy', 'hitWood'],
+    col: 0xffc080, trail: {col: 0xd99a55, width: 1.08, base: .45, fx: 'splinter'}, desc: 'Huge knockback.'},
+  WoodenBat_Saw: {name: 'SAW BAT', cls: 'saw', dmg: 2, range: 2.2, arc: 1.4, speed: 1.05, kb: 6, lunge: 3, twist: .4,
+    combo: ['Slash', 'Punch', 'Slash', 'Grinder'], fin: 'GRINDER', finText: 'a spinning 6-hit grind', swing: 'swingHeavy', hit: ['hitSaw', 'gore'],
+    col: 0xff6a6a, trail: {col: 0xff3a3a, width: 1.08, base: .45, fx: 'sparks'}, desc: 'Bleed stacks: up to 3 damage per second.'},
+  Axe: {name: 'FIRE AXE', cls: 'heavy', dmg: 3, range: 2.2, arc: 1.2, speed: .8, kb: 8, lunge: 5, twist: .45, glow: 0xff6a1a,
+    combo: ['Slash', 'Punch', 'Slash', 'FireLine'], fin: 'FIRE LINE', finText: 'a 6 m wall of fire', swing: 'swingHeavy', hit: ['hitAxe', 'bone'],
+    col: 0xffa040, trail: {col: 0xff6a1a, width: 1.25, base: .55, fx: 'fire'}, desc: 'Sets zombies on fire. Cuts heads off.'},
+  Guitar: {name: 'GUITAR', cls: 'blunt', dmg: 2, range: 2.4, arc: 1.7, speed: 1.0, kb: 11, lunge: 3, twist: .45,
+    combo: ['Slash', 'Punch', 'Slash', 'PowerChord'], fin: 'POWER CHORD', finText: 'a 5.5 m shockwave that knocks everyone down', swing: 'swingWide', hit: ['guitarHit', 'hitWood'],
+    col: 0xd38cff, trail: {col: 0xc070ff, width: 1.15, base: .3, fx: 'notes'}, desc: 'Every hit stuns for 1 s.'},
 };
 const INFUSE = {fire: {col: 0xff6a1a, fx: 'fire', name: 'FIRE'}, frost: {col: 0x8fe8ff, fx: 'frost', name: 'FROST'}, storm: {col: 0xbfe0ff, fx: 'storm', name: 'STORM'}};
 // finisher -> clip, speed multiplier, repeats, spin turns
 const FIN = {Flurry: {clip: 'Stab', spd: 2.3, rep: 5}, Javelin: {clip: 'Punch', spd: 1}, HomeRun: {clip: 'Slash', spd: .75},
   Grinder: {clip: 'Slash', spd: .55, spin: 2, ticks: 6}, FireLine: {clip: 'Slash', spd: .7}, PowerChord: {clip: 'Slash', spd: .8}};
-const CLIP_HIT = {Slash: .42, Stab: .45, Punch: .4, Run_Slash: .4, Run_Stab: .45}; // replaced at load by the measured peak
+// Hit frames: each clip raises the arm in a first burst, then strikes in a second burst; these are the strike peaks.
+const CLIP_HIT = {Slash: .31, Stab: .28, Punch: .36, Run_Slash: .36, Run_Stab: .32};
 const WEAPON_MESHES = ['Axe', 'Guitar', 'Knife', 'Pistol', 'Rifle', 'Shotgun', 'SMG', 'Spear', 'WoodenBat_Barbed', 'WoodenBat_Saw'];
-
-// Hit frame = the moment the weapon arm moves fastest in the authored clip.
-function measureClipHits() {
-  for (const clip of MODELS.Characters_Matt.animations) {
-    if (!(clip.name in CLIP_HIT)) continue;
-    const tr = clip.tracks.find(t => t.name === 'UpperArmL.quaternion'); if (!tr) continue;
-    const v = tr.values, t = tr.times, q1 = new THREE.Quaternion(), q2 = new THREE.Quaternion(); let best = 0, bt = 0;
-    for (let i = 1; i < t.length; i++) { q1.fromArray(v, (i - 1) * 4); q2.fromArray(v, i * 4); const s = q1.angleTo(q2) / Math.max(1e-3, t[i] - t[i - 1]); if (s > best) { best = s; bt = t[i]; } }
-    if (bt > 0) CLIP_HIT[clip.name] = clamp(bt / clip.duration, .2, .7);
-  }
-}
 
 function makePlayer() {
   if (G.player) G.player.rig.dispose();
@@ -67,7 +57,7 @@ function nearestZombie(maxD) {
 }
 function startAttack() {
   const P = G.player; if (P.dead || G.state !== 'playing') return;
-  if (P.atk) { if (P.atk.ct > P.atk.hitAt * .6) P.queued = true; return; }
+  if (P.atk) { if (P.atk.ct > P.atk.hitAt * .5) P.queued = true; return; }
   if (P.hurtT > 0 || P.javelin) return;
   if (P.air) { if (!P.slam) { P.slam = true; P.vy = -20; P.rig.play('Slash', {loop: false, restart: true, speed: 1.6, fade: .05}); AU.play('swingHeavy', {rate: .8}); } return; }
   const w = weapon(); if (G.time - P.lastAtkEnd > .6) P.combo = 0;
@@ -78,11 +68,10 @@ function startAttack() {
   let clip = F ? F.clip : kind === 'Stab' ? 'Stab' : kind === 'Punch' ? 'Punch' : 'Slash';
   if (!F && P.spd > 3 && (clip === 'Slash' || clip === 'Stab')) clip = 'Run_' + clip; // legs keep running while the arm swings
   const base = w.speed * atkSpeed() * (F ? F.spd : 1);
-  P.rig.play(clip, {loop: false, restart: true, speed: base * .6, fade: .06});
+  P.rig.play(clip, {loop: false, restart: true, speed: base * .75, fade: .1});
   const clipDur = P.rig.dur(clip);
   P.atk = {kind, clip, ct: 0, clipDur, hitAt: CLIP_HIT[clip] * clipDur, base, hit: false, swung: false, dir, fin: F || null,
     rep: F && F.rep ? F.rep : 1, ticks: F && F.ticks ? F.ticks : 0, tickN: 0, spin: F && F.spin ? F.spin : 0};
-  P.rig.body.scale.x = kind === 'SlashM' ? -1 : 1; // mirrored slash reads as a backhand
   P.face = dir; P.queued = false; P.vx *= .4; P.vz *= .4;
   if (F) { AU.play('pEffort', {vol: .7, bus: 'voice', max: 1}); popText(P.x, P.z, w.fin + '!', '#' + new THREE.Color(w.col).getHexString(), 34, 3.2); }
   else if (Math.random() < .3) AU.play('pEffort', {vol: .5, bus: 'voice', max: 1});
@@ -271,25 +260,26 @@ function updatePlayer(dt) {
   let twistT = 0, leanT = 0;
   if (P.atk) {
     const a = P.atk, w = weapon();
-    const pre = a.ct < a.hitAt, ts = a.base * (pre ? .6 : 1.7);
+    const pre = a.ct < a.hitAt, ts = a.base * (pre ? .75 : 1.3);
     if (rig.cur) rig.cur.timeScale = ts;
     a.ct += dt * ts;
     P.face += angDiff(P.face, a.dir) * damp(.0001, dt);
-    if (!a.swung && a.ct >= a.hitAt - .12 * a.clipDur) { a.swung = true; AU.play(a.fin && a.spin ? 'swingWide' : w.swing, {vol: .9, rate: w.cls === 'heavy' ? .85 : 1, max: 4}); }
+    if (!a.swung && a.ct >= a.hitAt - .06 * a.clipDur) { a.swung = true; AU.play(a.fin && a.spin ? 'swingWide' : w.swing, {vol: .9, rate: w.cls === 'heavy' ? .85 : 1, max: 4}); }
     if (!a.hit && a.ct >= a.hitAt) { a.hit = true; strike(a); }
     // spinning finishers hit on a timer while the body turns
     if (a.spin) { const k = clamp(a.ct / a.clipDur, 0, 1); rig.body.rotation.y = easeOutCubic(k) * Math.PI * 2 * a.spin;
       if (a.ticks && a.ct >= a.hitAt * .5 && a.tickN < a.ticks && a.ct >= a.hitAt * .5 + a.tickN * (a.clipDur - a.hitAt * .5) / a.ticks) {
         a.tickN++; hitArea(P.x, P.z, 0, w.range * UP.range, 9, 1 + UP.dmg, {kind: 'Grinder', w, light: true}); AU.play('hitMetal', {vol: .5, rate: 1.4 + a.tickN * .05, dur: .2, max: 4}); sparks(P.x, P.z, P.face + a.tickN, 8, '#ffe14a'); shake(.08); } }
     // blade trail during the active part of the swing
-    const act = a.spin ? a.ct > a.hitAt * .4 : a.ct > a.hitAt - .2 * a.clipDur && a.ct < a.hitAt + .35 * a.clipDur;
+    const act = a.spin ? a.ct > a.hitAt * .4 : a.ct > a.hitAt - .07 * a.clipDur && a.ct < a.hitAt + .12 * a.clipDur;
     if (act && P.wMesh && P.wMesh.visible) { const s = trailSample(P.wMesh, w), st = trailStyle(); trailFX(st.fx, s.tip, s.base); }
     // torso follow-through: turn away in the wind-up, whip through on the strike
     const amp = w.twist * (a.fin ? 1.25 : 1);
     if (pre) { const k = a.ct / a.hitAt; twistT = -amp * .55 * easeOutCubic(k); leanT = -.12 * k; }
     else { const s = clamp((a.ct - a.hitAt) / (a.clipDur - a.hitAt), 0, 1); twistT = lerp(-amp * .55, amp, easeOutCubic(Math.min(1, s * 3))) * (1 - s * s); leanT = .35 * (1 - s); }
-    if (a.ct >= a.clipDur) { if (a.rep > 1) { a.rep--; a.ct = 0; a.hit = false; a.swung = false; P.rig.play(a.clip, {loop: false, restart: true, fade: .02}); const t = nearestZombie(4); if (t) a.dir = Math.atan2(t.z - P.z, t.x - P.x); } else endAttack(); }
-    else if (P.queued && a.ct >= a.clipDur * .7 && a.rep <= 1) endAttack();
+    const endAt = a.spin ? a.clipDur : a.clipDur * .72;
+    if (a.ct >= endAt) { if (a.rep > 1) { a.rep--; a.ct = 0; a.hit = false; a.swung = false; P.rig.play(a.clip, {loop: false, restart: true, fade: .02}); const t = nearestZombie(4); if (t) a.dir = Math.atan2(t.z - P.z, t.x - P.x); } else endAttack(); }
+    else if (P.queued && a.hit && a.ct >= a.hitAt + .12 * a.clipDur && a.rep <= 1) endAttack();
   }
   updateTrail(dt, trailStyle().col);
   if (!P.air && P.spd > 1) { P.stepD += P.spd * dt; if (P.stepD > 1.9) { P.stepD = 0; AU.play('step', {vol: .35, max: 2}); } }
@@ -303,7 +293,7 @@ function updatePlayer(dt) {
   // layer the torso motion on top of the clip
   P.twist = lerp(P.twist, twistT, damp(.00001, dt)); P.lean = lerp(P.lean, leanT, damp(.0001, dt));
   const b = rig.bones;
-  if (b.Torso) b.Torso.rotateY(P.twist * .6); if (b.Hips) b.Hips.rotateY(P.twist * .4); if (b.Abdomen) b.Abdomen.rotateX(P.lean);
+  if (b.Torso) b.Torso.rotateY(P.twist * .7); if (b.Hips) b.Hips.rotateY(P.twist * .3); if (b.Abdomen) b.Abdomen.rotateX(P.lean * .5);
   syncPlayer();
 }
 function syncPlayer() {

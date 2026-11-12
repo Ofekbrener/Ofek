@@ -39,7 +39,7 @@ function updateTrail(dt, colHex) {
     const a = p ? Math.max(0, 1 - p.t / TRAIL.life) * (1 - i / n) : 0;
     const tip = p ? p.tip : TRAIL.tip, base = p ? p.base : TRAIL.base;
     pos.set([base.x, base.y, base.z, tip.x, tip.y, tip.z], i * 6);
-    col.set([TRAIL.col.r * a * .35, TRAIL.col.g * a * .35, TRAIL.col.b * a * .35, TRAIL.col.r * a, TRAIL.col.g * a, TRAIL.col.b * a], i * 6);
+    col.set([TRAIL.col.r * a * .2, TRAIL.col.g * a * .2, TRAIL.col.b * a * .2, TRAIL.col.r * a * .8, TRAIL.col.g * a * .8, TRAIL.col.b * a * .8], i * 6);
   }
   TRAIL.mesh.visible = TRAIL.pts.length > 1;
   TRAIL.mesh.geometry.attributes.position.needsUpdate = true; TRAIL.mesh.geometry.attributes.color.needsUpdate = true;
