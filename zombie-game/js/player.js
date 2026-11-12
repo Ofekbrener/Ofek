@@ -81,6 +81,7 @@ function hitArea(x, z, dir, range, arc, dmg, o) {
   for (const b of G.barrels) if (!b.dead && Math.hypot(b.x - x, b.z - z) < range + .4 && (Math.abs(angDiff(dir, Math.atan2(b.z - z, b.x - x))) < arc || o.slam)) hitBarrel(b);
   const kills = G.kills - kills0;
   if (hits) {
+    HAPTIC.fx(kills >= 2 ? 'multiKill' : kills ? 'kill' : 'hit');
     const heavy = w.cls === 'heavy' || o.finisher || o.slam;
     hitstop((kills ? .11 + Math.min(kills, 4) * .025 : .06) * (heavy ? 1.3 : 1));
     shake((kills ? .4 : .2) + (heavy ? .15 : 0));
@@ -102,7 +103,7 @@ function jump() {
 }
 function land() {
   const P = G.player; P.air = false; P.y = 0; P.vy = 0; P.landT = .25;
-  dust(P.x, P.z, 14); AU.play('land', {vol: .7}); P.rig.play('Jump_Land', {loop: false, restart: true, fade: .05});
+  dust(P.x, P.z, 14); AU.play('land', {vol: .7}); HAPTIC.fx(P.slam ? 'slam' : 'land'); P.rig.play('Jump_Land', {loop: false, restart: true, fade: .05});
   if (P.slam) { // ground slam
     P.slam = false; const R = 3.2 * UP.slam, w = weapon();
     ring(P.x, P.z, R, w.col, .4); ring(P.x, P.z, R * .55, 0xffffff, .25); shake(.5); boom(P.x, P.z, w.col, 6);
@@ -123,6 +124,7 @@ function hurtPlayer(dmg, fx, fz) {
   burst(P.x, P.z, 18, ['#c02020', '#ff3b3b'], 7, .12, .7); popText(P.x, P.z, 'OUCH!', '#ff5050', 32, 2.6);
   AU.play('hitHardest', {vol: 1, rate: .9}); AU.play('pHurt', {vol: .9, bus: 'voice', max: 1}); AU.duck(.3, .4);
   if (P.atk) { P.atk = null; P.rig.body.scale.x = 1; P.rig.body.rotation.y = 0; }
+  HAPTIC.fx(P.hp <= 0 ? 'death' : 'hurt');
   if (P.hp <= 0) { P.dead = true; P.deadT = 0; P.rig.play('Death', {loop: false, restart: true, fade: .08}); slowmo(1.2); AU.play('pDeath', {bus: 'voice'}); AU.play('lose', {vol: .8, delay: .6}); AU.musicTo('music_calm', 2); setTimeout(gameOver, 2200); }
   else P.rig.play('HitReact', {loop: false, restart: true, fade: .05});
   return true;

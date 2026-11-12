@@ -14,6 +14,7 @@ addEventListener('keydown', e => {
   if (k === 'j' || k === 'k') startAttack();
   if (k === 'shift' || k === 'l') dash();
   if (k === 'm') AU.toggleMute();
+  if (k === 'h') popText(G.player.x, G.player.z, 'VIBRATION ' + (HAPTIC.toggle() ? 'ON' : 'OFF'), '#cfd6ff', 26, 2.6);
 });
 addEventListener('keyup', e => { INPUT.keys[e.key.toLowerCase()] = 0; });
 addEventListener('blur', () => { INPUT.keys = {}; });
@@ -74,12 +75,14 @@ function menuButtons(primaryLabel) {
   return cp ? `<button id="go">Continue from wave ${cp.wave}</button><button id="fresh" class="ghost">New run from wave 1</button>`
     : `<button id="go">${primaryLabel}</button>`;
 }
+const hapLabel = () => 'Vibration: ' + (HAPTIC.on ? 'on' : 'off');
 function wireMenu() {
   const cp = loadCheckpoint(), go = document.getElementById('go'), fresh = document.getElementById('fresh');
   go.disabled = false; go.onclick = () => newRun(cp); if (fresh) fresh.onclick = () => newRun(null); go.focus();
+  if (HAPTIC.supported() && !document.getElementById('hap')) { const h = document.createElement('button'); h.id = 'hap'; h.className = 'ghost'; h.textContent = hapLabel(); h.onclick = () => { HAPTIC.toggle(); h.textContent = hapLabel(); }; (fresh || go).after(h); }
 }
 function waveCleared() {
-  slowmo(.8); G.flash = .5; shake(.5); AU.play('waveClear', {vol: .9}); AU.duck(.2, 1.2);
+  slowmo(.8); G.flash = .5; shake(.5); AU.play('waveClear', {vol: .9}); HAPTIC.fx('waveClear'); AU.duck(.2, 1.2);
   HUD.banner('WAVE ' + G.wave + ' CLEARED', '+' + (50 * G.wave) + ' bonus', '#7dff8a'); G.score += 50 * G.wave;
   for (const k of G.pickups) k.t = Math.max(k.t, 1); UP.magnetPulse = 1.5;
   setTimeout(() => { if (!G.player.dead) openDraft(); }, 1800);

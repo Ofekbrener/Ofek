@@ -89,6 +89,7 @@ function explodeAt(x, z, radius, dmgZ, dmgP, src) {
   burst(x, z, 16, ['#555', '#333'], 4, .35, 1.6, .3);
   ring(x, z, radius, 0xff9a40, .4); ring(x, z, radius * .6, 0xffffff, .25);
   boom(x, z); shake(.6); hitstop(.07); AU.duck(.3, .5);
+  if (G.player) { const pd = Math.hypot(G.player.x - x, G.player.z - z); if (pd < 16) HAPTIC.fx('explosion', clamp(1.2 - pd / 16, .3, 1)); }
   const sc = new THREE.Mesh(new THREE.CircleGeometry(radius * .45, 20), new THREE.MeshBasicMaterial({color: 0x050505, transparent: true, opacity: .7, depthWrite: false}));
   sc.rotation.x = -Math.PI / 2; sc.position.set(x, .025, z); scene.add(sc); FX.decals.push({m: sc, grow: 1, t: 1});
   for (const zb of G.zombies) if (!zb.dying) { const d = Math.hypot(zb.x - x, zb.z - z); if (d < radius) damageZombie(zb, Math.atan2(zb.z - z, zb.x - x), dmgZ, {blast: true, src}); }
@@ -145,7 +146,7 @@ function updatePickups(dt) {
 function collectPickup(k) {
   const p = G.player;
   if (k.type === 'coin') { G.coins++; G.score += 5; AU.play('coin', {vol: .5, rate: rnd(.95, 1.15), max: 4}); }
-  if (k.type === 'heart') { p.hp = Math.min(p.maxHp, p.hp + 1); AU.play('heart', {vol: .7}); popText(p.x, p.z, '+1 ♥', '#ff5a6a', 28); ring(p.x, p.z, 1.6, 0xff4060, .3); }
+  if (k.type === 'heart') { p.hp = Math.min(p.maxHp, p.hp + 1); AU.play('heart', {vol: .7}); HAPTIC.fx('heart'); popText(p.x, p.z, '+1 ♥', '#ff5a6a', 28); ring(p.x, p.z, 1.6, 0xff4060, .3); }
   if (k.type === 'rage') { p.rage = 10; AU.play('rage', {vol: .8}); popText(p.x, p.z, 'RAGE!', '#ff7a1a', 44, 2.6); ring(p.x, p.z, 3, 0xff7a1a, .4); slowmo(.3); }
 }
 function clearPickups() { for (const k of G.pickups) scene.remove(k.m); G.pickups = []; }

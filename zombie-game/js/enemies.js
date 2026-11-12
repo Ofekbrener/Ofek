@@ -38,7 +38,7 @@ function spawnZombie(type) {
     hp: Math.ceil(T.hp * hpMul), maxHp: Math.ceil(T.hp * hpMul), speed: rnd(...T.speed) * (1 + G.wave * .025),
     state: 'rise', st: 0, cd: rnd(.5, 1.2), flash: 0, stun: 0, burn: 0, bleed: 0, dying: null, wob: rnd(0, 7), groanT: rnd(2, 8)};
   rig.play(T.move, {fade: 0}); rig.cur.time = rnd(0, rig.dur(T.move));
-  if (T.boss) { WAVE.boss = zb; zb.bossCd = 2.5; zb.lastMove = ''; AU.play('bossIntro', {vol: 1}); AU.play('evilLaugh', {vol: .9, delay: .8, bus: 'voice'}); HUD.banner('THE BUTCHER', 'boss zombie', '#ff4f4f'); slowmo(.5); shake(.4); }
+  if (T.boss) { WAVE.boss = zb; zb.bossCd = 2.5; zb.lastMove = ''; AU.play('bossIntro', {vol: 1}); HAPTIC.fx('boss'); AU.play('evilLaugh', {vol: .9, delay: .8, bus: 'voice'}); HUD.banner('THE BUTCHER', 'boss zombie', '#ff4f4f'); slowmo(.5); shake(.4); }
   G.zombies.push(zb); WAVE.alive++;
 }
 function updateWaves(dt) {
@@ -139,7 +139,7 @@ function bossAI(zb, dt, d, toP) {
     const bx = zb.x, bz = zb.z; collide(zb, zb.r);
     const blocked = Math.abs(bx - zb.x) + Math.abs(bz - zb.z) > .01 || Math.abs(zb.x) > G.arena - zb.r - .1 || Math.abs(zb.z) > G.arena - zb.r - .1;
     if (zb.st > 1.15 || blocked) { // crashes into a wall: stunned and open
-      zb.state = 'stunned'; zb.st = 0; zb.vx *= -.2; zb.vz *= -.2; if (blocked) { shake(.6); AU.play('hitMetal', {vol: 1, rate: .6}); AU.play('explosion', {vol: .5, rate: 1.3}); dust(zb.x, zb.z, 20); }
+      zb.state = 'stunned'; zb.st = 0; zb.vx *= -.2; zb.vz *= -.2; if (blocked) { shake(.6); HAPTIC.fx('slam', .6); AU.play('hitMetal', {vol: 1, rate: .6}); AU.play('explosion', {vol: .5, rate: 1.3}); dust(zb.x, zb.z, 20); }
       rig.play('HitReact', {loop: false, restart: true, fade: .05, speed: .5});
     }
   } else if (zb.state === 'stunned') { zb.vx *= .9; zb.vz *= .9; if (zb.st > 1.4) { zb.state = 'chase'; zb.bossCd = rnd(1.5, 2.5); } }
@@ -150,6 +150,7 @@ function bossAI(zb, dt, d, toP) {
       scene.remove(zb.teleMesh); zb.tele = false; zb.y = 0; zb.state = 'recover'; zb.st = 0; rig.play('Punch', {loop: false, restart: true, fade: .05});
       ring(zb.slamX, zb.slamZ, 4.2, 0xff5040, .4); ring(zb.slamX, zb.slamZ, 2.4, 0xffffff, .25); shake(.8); hitstop(.08); boom(zb.slamX, zb.slamZ, 0xff5030, 8);
       burst(zb.slamX, zb.slamZ, 40, ['#6b6470', '#4a3b2c', '#3b2f24'], 10, .25, .9, .1); AU.play('explosion', {vol: 1}); AU.play('hitHardest', {vol: 1, rate: .6});
+      HAPTIC.fx('bossSlam', Math.hypot(P.x - zb.slamX, P.z - zb.slamZ) < 6 ? 1 : .5);
       if (Math.hypot(P.x - zb.slamX, P.z - zb.slamZ) < 4 && P.y < 1) hurtPlayer(2, zb.slamX, zb.slamZ);
     }
   } else if (zb.state === 'summonTele') {
@@ -171,6 +172,7 @@ function damageZombie(zb, dir, dmg, o = {}) {
     if (w.cls === 'saw') zb.bleed = 1;
     AU.play(T.boss ? 'bossHurt' : 'zHurt', {vol: .45, rate: T.voice * rnd(.9, 1.15), x: zb.x, z: zb.z, bus: 'voice', max: 2});
   }
+  if (o.crit) HAPTIC.fx('crit');
   popText(zb.x, zb.z, (o.crit ? 'CRIT ' : '') + dmg, o.crit ? '#ffef5a' : o.dot === 'burn' ? '#ff9a3a' : '#ffffff', o.crit ? 30 : 22, 2.1 * (T.scale || 1));
   const sh = SHOUTS[G.combo]; if (sh) { popText(G.player.x, G.player.z, sh, '#ff7a1a', 54, 3.4); slowmo(.4); G.flash = Math.max(G.flash, .3); AU.play('levelUp', {vol: .6}); }
   if (zb.hp <= 0) killZombie(zb, dir, o);

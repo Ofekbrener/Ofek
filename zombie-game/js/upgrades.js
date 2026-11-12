@@ -142,7 +142,7 @@ function pickCard(i) {
   G.state = 'picking';
   const btn = document.getElementById('card' + i); btn.classList.add('picked');
   DRAFT.el.querySelectorAll('.card').forEach(b => { if (b !== btn) b.classList.add('gone'); });
-  c.apply(); UP.taken.push(c.id); AU.play('cardPick', {vol: .9}); AU.play('levelUp', {vol: .5});
+  c.apply(); UP.taken.push(c.id); AU.play('cardPick', {vol: .9}); HAPTIC.fx('card'); AU.play('levelUp', {vol: .5});
   if (c.weapon) WSND_DRAW(c.weapon);
   setTimeout(() => {
     DRAFT.el.hidden = true; G.state = 'playing';
