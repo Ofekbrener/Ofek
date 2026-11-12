@@ -74,6 +74,43 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 @media (max-width:640px){.cards{gap:10px}.card{display:grid;grid-template-columns:96px 1fr;grid-template-rows:auto auto auto auto;column-gap:10px;row-gap:4px;padding:0 10px 10px 0;width:min(380px,94vw)}
   .card .art{grid-row:1/6;height:auto;min-height:120px;border-bottom:0;border-right:1px solid rgba(255,255,255,.08)}.card .art img{width:92px;height:92px}.card .art svg{width:60px;height:60px}
   .card .title{padding:30px 0 0;font-size:20px}.stats,.bars,.card .flavor{padding:0}.card .rar{margin:0}.card .tag{top:8px;right:8px}.bar{grid-template-columns:50px 1fr 52px}}
+.minor{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+.primary{font-family:inherit;font-size:20px;padding:11px 28px;border:0;border-radius:12px;background:var(--accent);color:#111;font-weight:700;letter-spacing:1px;box-shadow:0 5px 0 #9a7400;cursor:pointer}
+.primary:active{transform:translateY(3px);box-shadow:0 2px 0 #9a7400}
+#creator{position:fixed;inset:0;pointer-events:none}
+#creator .panel{pointer-events:auto;position:absolute;right:0;top:0;bottom:0;width:min(400px,100%);overflow-y:auto;box-sizing:border-box;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) 16px;
+  background:linear-gradient(90deg,rgba(10,12,18,.55),rgba(10,12,18,.94) 18%);display:flex;flex-direction:column;gap:10px}
+#creator h2{margin:0;font-family:Creepster,Oswald,cursive;font-weight:400;font-size:40px;color:#7dff6a;letter-spacing:1px}
+#creator h3{margin:6px 0 0;font-size:16px;letter-spacing:2px;color:#aab0c8}
+#creator .hint{position:absolute;left:16px;bottom:max(16px,env(safe-area-inset-bottom));margin:0;color:#8f95ad;font-size:14px}
+.chars{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.char{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:10px;border:2px solid #3a3f55;background:#1a1d28;color:#fff;cursor:pointer}
+.char b{font-size:16px}.char small{font-size:11px;color:#8f95ad;font-family:system-ui,sans-serif}
+.char.on,.wep.on{border-color:var(--accent);background:#2a2614}
+.loadmsg{margin:0;color:var(--accent)}
+.parts{display:grid;gap:6px}
+.row{display:grid;grid-template-columns:56px 1fr;align-items:center;gap:8px}
+.row span{font-size:14px;color:#cfd3e6;letter-spacing:1px}
+.sws{display:flex;gap:6px;flex-wrap:wrap}
+.sw{width:30px;height:30px;border-radius:50%;border:2px solid #3a3f55;background:var(--c);cursor:pointer;padding:0}
+.sw[data-c=""]{background:repeating-linear-gradient(45deg,#555 0 4px,#2a2d3a 4px 8px)}
+.sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}
+.weps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.wep{display:flex;flex-direction:column;align-items:center;padding:6px 4px;border-radius:10px;border:2px solid #3a3f55;background:#1a1d28;color:#fff;cursor:pointer}
+.wep img{width:64px;height:64px;object-fit:contain}.wep b{font-size:13px;letter-spacing:.5px}
+.wdesc{margin:0;font-size:14px;color:#c9cde0;font-family:system-ui,sans-serif;line-height:1.4}.wdesc b{font-family:Oswald,sans-serif;color:var(--accent)}
+.acts{display:flex;gap:10px;align-items:center;margin-top:4px}
+@media (max-width:760px){#creator .panel{top:auto;height:58%;width:100%;background:linear-gradient(180deg,rgba(10,12,18,.8),rgba(10,12,18,.97) 10%);border-radius:18px 18px 0 0}
+  #creator h2{font-size:30px}#creator .hint{bottom:auto;top:max(12px,env(safe-area-inset-top))}.weps{grid-template-columns:repeat(6,1fr)}.wep img{width:44px;height:44px}.wep b{font-size:10px}}
+#tut{position:fixed;left:50%;top:max(78px,env(safe-area-inset-top));transform:translateX(-50%);width:min(460px,calc(100% - 32px));box-sizing:border-box;padding:12px 16px;border-radius:14px;
+  background:rgba(10,12,18,.86);border:1px solid #3a3f55;box-shadow:0 10px 30px rgba(0,0,0,.5);text-align:center}
+#tut .tstep{font-size:12px;letter-spacing:3px;color:#7dff8a}
+#tut .ttitle{font-size:26px;font-weight:700;color:#fff;transition:color .2s}
+#tut .ttitle.done{color:#7dff8a}#tut .ttitle.done::after{content:" ✓"}
+#tut .ttext{font-size:15px;color:#cfd3e6;font-family:system-ui,sans-serif;line-height:1.4;margin:4px 0 8px}
+#tut .tbar{height:6px;border-radius:3px;background:#2b2f40;overflow:hidden}#tut .tbar i{display:block;height:100%;width:0;background:#7dff8a;transition:width .15s}
+#tut .tacts{display:flex;gap:10px;justify-content:center;margin-top:8px}#tut .ghost{margin:0;padding:5px 12px;font-size:13px}
 @media (prefers-reduced-motion:reduce){.card,.deal .card,.card .art img,.card .art svg,.card.epic .art::after{animation:none;transition:none}}
 </style>
 </head>
@@ -91,12 +128,13 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
     <b>Phone</b><span>left thumb moves · buttons on the right</span>
     <b>H</b><span>vibration on / off</span>
   </div>
-  <p>Hit the barrels to blow them up. Zombies near them go too.</p>
-  <div class="load"><div id="loadbar"></div></div>
+    <div class="load"><div id="loadbar"></div></div>
   <button id="go" disabled>Loading…</button>
   <p class="credits">Models: Zombie Apocalypse Kit by Quaternius (CC0) · Sound: Oculus Audio Pack by Meta (CC BY 4.0) · Music: rendered from Meta Piano (CC0) · M to mute</p>
 </div>
 <div id="draft" class="overlay" hidden></div>
+<div id="creator" hidden></div>
+<div id="tut" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
@@ -109,6 +147,9 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 <script src="js/player.js"></script>
 <script src="js/enemies.js"></script>
 <script src="js/upgrades.js"></script>
+<script src="js/look.js"></script>
+<script src="js/tutorial.js"></script>
+<script src="js/creator.js"></script>
 <script src="js/hud.js"></script>
 <script src="js/main.js"></script>
 </body>

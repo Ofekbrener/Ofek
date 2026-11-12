@@ -62,7 +62,8 @@ function saveCheckpoint() {
 }
 function loadCheckpoint() { try { const c = JSON.parse(localStorage.getItem(SAVE_KEY)); return c && c.wave > 1 ? c : null; } catch (e) { return null; } }
 function clearCheckpoint() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
-function newRun(cp = null) {
+function newRun(cp = null, opts = {}) {
+  TUT.abort(); document.getElementById('creator').hidden = true;
   AU.resume(); clearZombies(); clearPickups(); clearFX(); clearTrail(); resetUpgrades();
   if (G.player && G.player.javelin) { scene.remove(G.player.javelin.g); G.player.javelin = null; }
   for (const b of G.barrels) { scene.remove(b.m); } G.barrels = []; for (const [x, z] of [[-6, -3], [6.5, 3.5], [-3, 9.5], [3.5, -10], [-12, 4], [12, -3]]) addBarrel(x, z);
@@ -74,18 +75,24 @@ function newRun(cp = null) {
     Object.assign(G, {wave: cp.wave - 1, coins: cp.coins, score: cp.score, kills: cp.kills}); DRAFT.rerollCost = cp.reroll;
   } else clearCheckpoint();
   ui.hidden = true; document.getElementById('draft').hidden = true; G.state = 'playing';
-  AU.ambience(true); startWave();
+  AU.ambience(true);
+  if (opts.tutorial) TUT.start(); else startWave();
 }
 function menuButtons(primaryLabel) {
   const cp = loadCheckpoint();
-  return cp ? `<button id="go">Continue from wave ${cp.wave}</button><button id="fresh" class="ghost">New run from wave 1</button>`
-    : `<button id="go">${primaryLabel}</button>`;
+  return (cp ? `<button id="go">Continue from wave ${cp.wave}</button><button id="fresh" class="ghost">New run from wave 1</button>`
+    : `<button id="go">${primaryLabel}</button>`) +
+    `<div class="minor"><button id="custom" class="ghost">Customize survivor</button><button id="howto" class="ghost">How to play</button></div>`;
 }
 const hapLabel = () => 'Vibration: ' + (HAPTIC.on ? 'on' : 'off');
 function wireMenu() {
   const cp = loadCheckpoint(), go = document.getElementById('go'), fresh = document.getElementById('fresh');
-  go.disabled = false; go.onclick = () => newRun(cp); if (fresh) fresh.onclick = () => newRun(null); go.focus();
-  if (HAPTIC.supported() && !document.getElementById('hap')) { const h = document.createElement('button'); h.id = 'hap'; h.className = 'ghost'; h.textContent = hapLabel(); h.onclick = () => { HAPTIC.toggle(); h.textContent = hapLabel(); }; (fresh || go).after(h); }
+  // first launch: design the survivor, then the training run
+  const play = c => lookSaved() ? newRun(c, {tutorial: !TUT_DONE()}) : openCreator('play');
+  go.disabled = false; go.onclick = () => play(cp); if (fresh) fresh.onclick = () => play(null); go.focus();
+  document.getElementById('custom').onclick = () => openCreator('menu');
+  document.getElementById('howto').onclick = () => { if (!lookSaved()) return openCreator('play'); newRun(null, {tutorial: true}); };
+  if (HAPTIC.supported() && !document.getElementById('hap')) { const h = document.createElement('button'); h.id = 'hap'; h.className = 'ghost'; h.textContent = hapLabel(); h.onclick = () => { HAPTIC.toggle(); h.textContent = hapLabel(); }; document.querySelector('#menu .minor').append(h); }
 }
 function waveCleared() {
   slowmo(.8); G.flash = .5; shake(.5); AU.play('waveClear', {vol: .9}); HAPTIC.fx('waveClear'); AU.duck(.2, 1.2);
@@ -99,6 +106,12 @@ function gameOver() {
   ui.innerHTML = `<h1>YOU FELL</h1><p class="big">Wave ${G.wave} · ${G.score} points · ${G.kills} kills</p>
     <p>${G.score > best ? 'New best score!' : 'Best: ' + best}</p>${menuButtons('Play again')}`;
   wireMenu();
+}
+let MENU_HTML = '';
+function showMenu() {
+  G.state = 'menu'; ui.hidden = false; ui.innerHTML = MENU_HTML;
+  document.getElementById('go').outerHTML = menuButtons('Play'); wireMenu();
+  const P = G.player; if (P) { P.x = 0; P.z = 0; } G.cam.x = 0; G.cam.z = 0;
 }
 
 // ---------- loop ----------
@@ -117,10 +130,12 @@ function frame(ts) {
     G.comboT -= dt; if (G.comboT <= 0) G.combo = 0;
   } else if (G.state === 'draft' && G.player) { G.player.rig.play('Idle', {fade: .3}); G.player.rig.mixer.update(raw); for (const zb of G.zombies) zb.rig.mixer.update(raw); }
   else if (G.state === 'menu' && G.player) { G.player.rig.mixer.update(raw); G.player.face += raw * .3; syncPlayer(); }
+  else if (G.state === 'creator') updateCreator(raw);
+  if (G.state === 'playing') TUT.update(dt);
   if (UP.magnetPulse > 0) { UP.magnetPulse -= raw; for (const k of G.pickups) { const P = G.player, dx = P.x - k.x, dz = P.z - k.z, d = Math.hypot(dx, dz) || 1; k.x += dx / d * 14 * raw; k.z += dz / d * 14 * raw; } }
   updateFX(dt || raw * .02); updateRain(raw);
   G.trauma = Math.max(0, G.trauma - raw * 1.6); G.flash = Math.max(0, G.flash - raw * 2); G.hurtFlash = Math.max(0, G.hurtFlash - raw * 2);
-  if (G.player) updateCamera(raw);
+  if (G.player && G.state !== 'creator') updateCamera(raw);
   renderFX(); renderer.render(scene, camera); drawHUD(raw);
 }
 
@@ -132,6 +147,7 @@ window.simulate = function (secs, step = 1 / 60) {
     if (G.slowT > 0) { G.slowT -= step; G.timeScale = lerp(G.timeScale, .25, .2); } else G.timeScale = lerp(G.timeScale, 1, .1);
     dt *= G.timeScale;
     if ((G.state === 'playing' || G.state === 'dead') && dt > 0) { updatePlayer(dt); updateZombies(dt); updateWaves(dt); updateBarrels(dt); updatePickups(dt); }
+    if (G.state === 'playing') TUT.update(step);
     G.comboT -= dt; if (G.comboT <= 0) G.combo = 0;
     updateFX(dt || step * .02);
   }
@@ -146,7 +162,10 @@ window.simulate = function (secs, step = 1 / 60) {
   try {
     await Promise.all([loadModels(tick), AU.load(tick)]);
   } catch (e) { console.error(e); go.textContent = 'Could not load the game files'; return; }
-  buildArena(); renderWeaponArt(); makePlayer(); G.player.z = 0; G.player.face = Math.PI / 2;
-  G.state = 'menu'; go.outerHTML = menuButtons('Play'); wireMenu();
+  buildArena(); renderWeaponArt();
+  try { await ensureCharacter(LOOK.char); } catch (e) { LOOK.char = 'Matt'; }
+  makePlayer(); G.player.z = 0; G.player.face = Math.PI / 2; renderPortrait(G.player.rig);
+  document.querySelector('#menu .load').remove(); MENU_HTML = ui.innerHTML;
+  showMenu();
   requestAnimationFrame(frame);
 })();

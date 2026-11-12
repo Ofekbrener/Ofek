@@ -84,6 +84,7 @@ function inArena(e, r) { const A = G.arena - r; e.x = clamp(e.x, -A, A); e.z = c
 
 function hitBarrel(b) { if (b.dead || b.fuse >= 0) return; b.fuse = .18; for (const o of [b.m]) o.traverse(x => { if (x.isMesh) x.material.emissive.setRGB(1, .4, 0); }); }
 function explodeAt(x, z, radius, dmgZ, dmgP, src) {
+  if (src === 'barrel') TUT.event('barrel');
   AU.play('explosion', {vol: 1, x, z, max: 4}); AU.play('glass', {vol: .6, x, z}); AU.play('metalDrop', {vol: .7, x, z, delay: .1});
   burst(x, z, 40, ['#ff9a1a', '#ffcf3a', '#ff4a10', '#2a2626', '#444'], 12, .22, 1.1, .6);
   burst(x, z, 16, ['#555', '#333'], 4, .35, 1.6, .3);

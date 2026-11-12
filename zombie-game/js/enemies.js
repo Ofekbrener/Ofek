@@ -73,6 +73,7 @@ function updateZombie(zb, dt) {
     const dx = P.x - zb.x, dz = P.z - zb.z, d = Math.hypot(dx, dz), toP = Math.atan2(dz, dx);
     zb.groanT -= dt; if (zb.groanT < 0) { zb.groanT = rnd(4, 10); AU.play(T.boss ? 'bossEffort' : 'zGroan', {vol: .45, rate: T.voice * rnd(.9, 1.1), x: zb.x, z: zb.z, bus: 'voice', max: 2}); }
     if (zb.stun > 0) { /* staggered: knockback only */ }
+    else if (zb.dummy) { zb.vx *= .8; zb.vz *= .8; zb.face += angDiff(zb.face, toP) * damp(.05, dt); if (rig.curName !== 'Idle') rig.play('Idle', {fade: .2}); }
     else if (T.boss) bossAI(zb, dt, d, toP);
     else if (zb.state === 'chase') {
       zb.face += angDiff(zb.face, toP) * damp(.02, dt);
@@ -168,7 +169,7 @@ function damageZombie(zb, dir, dmg, o = {}) {
   const w = o.w || weapon(), T = zb.T;
   zb.hp -= dmg; zb.flash = .12; G.combo++; G.comboT = 2;
   if (!o.dot) {
-    const kb = (o.kb ?? w.kb + (o.finisher ? 4 : 0)) * (T.boss ? .08 : T.explode ? .4 : 1) * (zb.hp <= 0 ? 1.4 : 1);
+    const kb = (o.kb ?? w.kb + (o.finisher ? 4 : 0)) * (zb.dummy ? .05 : T.boss ? .08 : T.explode ? .4 : 1) * (zb.hp <= 0 ? 1.4 : 1);
     zb.vx += Math.cos(dir) * kb; zb.vz += Math.sin(dir) * kb;
     if (!T.boss && zb.hp > 0 && !zb.air) { zb.stun = Math.max(zb.stun, .28); if (zb.state === 'attack' || zb.state === 'windup' || zb.state === 'lunge') zb.state = 'chase'; zb.rig.play('HitReact', {loop: false, restart: true, fade: .04}); }
     sparks(zb.x, zb.z, dir, 10, o.crit ? '#ffef5a' : '#fff6c8'); burst(zb.x, zb.z, 8, ['#3f9a35', '#2a7a2a', '#7a1f1f'], 6, .12, .7, 1.1);
@@ -178,6 +179,7 @@ function damageZombie(zb, dir, dmg, o = {}) {
   if (o.crit) HAPTIC.fx('crit');
   popText(zb.x, zb.z, (o.crit ? 'CRIT ' : '') + dmg, o.crit ? '#ffef5a' : o.dot === 'burn' ? '#ff9a3a' : '#ffffff', o.crit ? 30 : 22, 2.1 * (T.scale || 1));
   const sh = SHOUTS[G.combo]; if (sh) { popText(G.player.x, G.player.z, sh, '#ff7a1a', 54, 3.4); slowmo(.4); G.flash = Math.max(G.flash, .3); AU.play('levelUp', {vol: .6}); }
+  if (zb.dummy) zb.hp = Math.max(1, zb.hp); // the training dummy never dies
   if (zb.hp <= 0) killZombie(zb, dir, o);
 }
 const SHOUTS = {10: 'NICE!', 20: 'BRUTAL!', 35: 'UNSTOPPABLE!', 50: 'LEGENDARY!!', 80: 'GODLIKE!!!'};
