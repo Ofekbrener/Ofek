@@ -4,7 +4,7 @@
 const UP = {};
 function resetUpgrades() {
   Object.assign(UP, {dmg: 0, atkSpeed: 1, range: 1, move: 1, crit: 0, slam: 1, dash: false, fire: false, chain: false,
-    explosive: false, magnet: false, thorns: false, lifesteal: false, horde: false, taken: []});
+    explosive: false, magnet: false, thorns: false, lifesteal: false, horde: false, infuse: null, taken: []});
 }
 resetUpgrades();
 
@@ -50,6 +50,7 @@ const SVG = {
   life: '<path d="M32 4C22 22 12 32 12 42a20 20 0 0 0 40 0C52 32 42 22 32 4z" fill="url(#g)"/><path d="M22 40l4 10 4-10M34 40l4 10 4-10" fill="#fff"/><path d="M20 38h24" stroke="#fff" stroke-width="3"/>',
   fire: '<path d="M32 2c4 12 18 18 18 34a18 18 0 0 1-36 0c0-10 6-14 8-22 4 6 4 10 8 12 2-8 0-16 2-24z" fill="url(#g)"/><path d="M32 30c3 7 10 9 10 18a10 10 0 0 1-20 0c0-6 4-8 6-14 2 4 2 6 4 7z" fill="#fff" opacity=".85"/>',
   chain: '<path d="M18 26a12 12 0 0 1 22-8 10 10 0 0 1 14 12H14a7 7 0 0 1 4-4z" fill="url(#g)"/><path d="M30 34l-8 14h8l-4 14 14-18h-8l6-10z" fill="#fff"/><path d="M48 38l-4 8h4l-2 6" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7"/>',
+  frost: '<path d="M32 2v60M6 17l52 30M6 47l52-30" stroke="url(#g)" stroke-width="6" stroke-linecap="round"/><path d="M24 8l8 8 8-8M24 56l8-8 8 8M8 27l11-1-4-10M56 37l-11 1 4 10M8 37l11 1-4 10M56 27l-11-1 4-10" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>',
   boom: '<circle cx="28" cy="38" r="20" fill="url(#g)"/><path d="M40 20l6-6" stroke="#fff" stroke-width="5"/><path d="M50 4l2 6 6 2-6 2-2 6-2-6-6-2 6-2z" fill="#ffe14a"/><circle cx="21" cy="31" r="5" fill="#fff" opacity=".5"/>',
 };
 const CAT_COL = {offense: ['#ffb36b', '#ff3c3c'], defense: ['#9dff9d', '#18b04a'], utility: ['#9fdcff', '#2a7cff'], epic: ['#ffd36b', '#b03cff']};
@@ -64,7 +65,7 @@ const pct = v => Math.round(v * 100) + '%';
 const SPEED_WORD = s => s >= 1.3 ? 'FAST' : s >= 1 ? 'MEDIUM' : 'SLOW';
 const CARDS = [
   ...Object.keys(WEAPONS).filter(k => k !== 'Knife').map(k => ({id: 'w_' + k, weapon: k, cat: 'offense', rarity: k === 'Axe' || k === 'Guitar' ? 'rare' : 'common',
-    title: WEAPONS[k].name, flavor: WEAPONS[k].desc, ok: () => G.player.weapon !== k, apply: () => equipWeapon(k)})),
+    title: WEAPONS[k].name, flavor: `${WEAPONS[k].desc} Finisher: ${WEAPONS[k].fin}, ${WEAPONS[k].finText}.`, ok: () => G.player.weapon !== k, apply: () => equipWeapon(k)})),
   {id: 'dmg', cat: 'offense', icon: 'dmg', rarity: 'common', title: 'HEAVY HANDS', flavor: 'Every hit lands harder.', stat: () => [['Damage', `+${UP.dmg}`, `+${UP.dmg + 1}`]], apply: () => UP.dmg++},
   {id: 'spd', cat: 'offense', icon: 'spd', rarity: 'common', title: 'QUICK HANDS', flavor: 'Swing before they swing.', stat: () => [['Attack speed', pct(UP.atkSpeed), pct(UP.atkSpeed * 1.15)]], apply: () => UP.atkSpeed *= 1.15},
   {id: 'rng', cat: 'offense', icon: 'rng', rarity: 'common', title: 'LONG REACH', flavor: 'Keep them at arm\'s length.', stat: () => [['Reach', pct(UP.range), pct(UP.range * 1.2)]], apply: () => UP.range *= 1.2},
@@ -77,8 +78,9 @@ const CARDS = [
   {id: 'magnet', cat: 'utility', icon: 'magnet', rarity: 'common', title: 'COIN MAGNET', flavor: 'Coins come to you. Spend them on rerolls.', once: true, stat: () => [['Pickup range', '2 m', '4.5 m']], apply: () => UP.magnet = true},
   {id: 'thorns', cat: 'defense', icon: 'thorns', rarity: 'rare', title: 'SPIKED ARMOR', flavor: 'Bite me. Go on.', once: true, stat: () => [['Damage back', '0', '2 per hit']], apply: () => UP.thorns = true},
   {id: 'life', cat: 'defense', icon: 'life', rarity: 'rare', title: 'BLOODLUST', flavor: 'The more you kill, the better you feel.', once: true, stat: () => [['Heal', 'none', '1 per 12 kills']], apply: () => UP.lifesteal = true},
-  {id: 'fire', cat: 'epic', icon: 'fire', rarity: 'epic', title: 'FIRE FINISHER', flavor: 'Spins and slams set the street on fire.', once: true, stat: () => [['Finisher', 'plain', 'burning']], apply: () => UP.fire = true},
-  {id: 'chain', cat: 'epic', icon: 'chain', rarity: 'epic', title: 'STORM FINISHER', flavor: 'Spins and slams arc lightning into 4 zombies.', once: true, stat: () => [['Finisher', 'plain', 'lightning x4']], apply: () => UP.chain = true},
+  {id: 'inf_fire', cat: 'epic', icon: 'fire', rarity: 'epic', title: 'FIRE INFUSION', flavor: 'Your weapon burns. Every hit sets zombies on fire.', ok: () => UP.infuse !== 'fire', stat: () => [['Weapon', UP.infuse ? INFUSE[UP.infuse].name.toLowerCase() : 'plain', 'burning']], apply: () => UP.infuse = 'fire'},
+  {id: 'inf_frost', cat: 'epic', icon: 'frost', rarity: 'epic', title: 'FROST INFUSION', flavor: 'Hits slow zombies by half. Frozen ones shatter.', ok: () => UP.infuse !== 'frost', stat: () => [['Weapon', UP.infuse ? INFUSE[UP.infuse].name.toLowerCase() : 'plain', 'freezing']], apply: () => UP.infuse = 'frost'},
+  {id: 'inf_storm', cat: 'epic', icon: 'chain', rarity: 'epic', title: 'STORM INFUSION', flavor: 'Every 3rd hit arcs lightning into 2 more zombies.', ok: () => UP.infuse !== 'storm', stat: () => [['Weapon', UP.infuse ? INFUSE[UP.infuse].name.toLowerCase() : 'plain', 'lightning']], apply: () => UP.infuse = 'storm'},
   {id: 'boom', cat: 'epic', icon: 'boom', rarity: 'epic', title: 'VOLATILE', flavor: 'Some of them just... pop.', once: true, stat: () => [['Kill explodes', '0%', '15%']], apply: () => UP.explosive = true},
 ];
 const RARITY_W = {common: 10, rare: 5, epic: 2};

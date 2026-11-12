@@ -63,8 +63,12 @@ function updateZombie(zb, dt) {
     zb.face = Math.atan2(P.z - zb.z, P.x - zb.x);
   } else {
     // damage over time
-    if (zb.burn > 0) { zb.burn -= dt; if (Math.random() < .5) addPart({x: zb.x + rnd(-.3, .3), y: rnd(.4, 1.6), z: zb.z + rnd(-.3, .3), vx: 0, vz: 0, vy: rnd(2, 4), g: -2, life: .4, max: .4, size: .12, col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10']), drag: .9, rx: 0, ry: 0}); if (zb.burn <= 0) damageZombie(zb, zb.face + Math.PI, 1, {dot: 'burn'}); }
-    if (zb.bleed > 0) { zb.bleed -= dt; if (zb.bleed <= 0) damageZombie(zb, zb.face + Math.PI, 1, {dot: 'bleed'}); }
+    // status effects: burn and bleed tick once per second, frost slows, stun shows stars
+    if (zb.burn > 0) { zb.burn -= dt; zb.burnT = (zb.burnT ?? 1) - dt; if (Math.random() < .6) addPart({x: zb.x + rnd(-.3, .3), y: rnd(.4, 1.7), z: zb.z + rnd(-.3, .3), vx: 0, vz: 0, vy: rnd(2, 4), g: -2, life: .45, max: .45, size: rnd(.1, .18), col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10']), drag: .9, rx: 0, ry: 0}); if (zb.burnT <= 0) { zb.burnT = 1; damageZombie(zb, zb.face + Math.PI, 1, {dot: 'burn'}); } }
+    if (zb.bleed > 0 && !zb.dying) { zb.bleed -= dt; zb.bleedT = (zb.bleedT ?? 1) - dt; if (Math.random() < .25 * zb.bleedN) addPart({x: zb.x + rnd(-.25, .25), y: rnd(.6, 1.4), z: zb.z + rnd(-.25, .25), vx: 0, vz: 0, vy: -1, g: 14, life: .5, max: .5, size: .07, col: '#b01818', drag: 1, rx: 0, ry: 0}); if (zb.bleedT <= 0) { zb.bleedT = 1; damageZombie(zb, zb.face + Math.PI, zb.bleedN || 1, {dot: 'bleed'}); } if (zb.bleed <= 0) zb.bleedN = 0; }
+    if (zb.slow > 0) { zb.slow -= dt; if (Math.random() < .3) addPart({x: zb.x + rnd(-.3, .3), y: rnd(.3, 1.8), z: zb.z + rnd(-.3, .3), vx: 0, vz: 0, vy: -.4, g: 0, life: .4, max: .4, size: .06, col: '#cff6ff', drag: 1, rx: 0, ry: 0}); }
+    if (zb.stun > .25 && Math.random() < .5) { const a = G.time * 8 + Math.random() * 6; addPart({x: zb.x + Math.cos(a) * .35, y: 2 * (zb.T.scale || 1), z: zb.z + Math.sin(a) * .35, vx: -Math.sin(a), vz: Math.cos(a), vy: 0, g: 0, life: .3, max: .3, size: .07, col: '#ffe14a', drag: 1, rx: 0, ry: 0}); }
+    if (zb.air) { zb.y += zb.vy * dt; zb.vy -= 22 * dt; zb.rig.body.rotation.x += 10 * dt; if (zb.y <= 0) { zb.y = 0; zb.air = false; zb.rig.body.rotation.x = 0; dust(zb.x, zb.z, 12); shake(.2); AU.play('land', {vol: .6, x: zb.x, z: zb.z}); if (zb.homerun) homerunLand(zb); } }
     if (zb.dying) return;
     const dx = P.x - zb.x, dz = P.z - zb.z, d = Math.hypot(dx, dz), toP = Math.atan2(dz, dx);
     zb.groanT -= dt; if (zb.groanT < 0) { zb.groanT = rnd(4, 10); AU.play(T.boss ? 'bossEffort' : 'zGroan', {vol: .45, rate: T.voice * rnd(.9, 1.1), x: zb.x, z: zb.z, bus: 'voice', max: 2}); }
@@ -72,7 +76,7 @@ function updateZombie(zb, dt) {
     else if (T.boss) bossAI(zb, dt, d, toP);
     else if (zb.state === 'chase') {
       zb.face += angDiff(zb.face, toP) * damp(.02, dt);
-      const sp = zb.speed * (P.dead ? .3 : 1);
+      const sp = zb.speed * (P.dead ? .3 : 1) * (zb.slow > 0 ? .5 : 1);
       zb.vx = lerp(zb.vx, Math.cos(zb.face) * sp, damp(.01, dt)); zb.vz = lerp(zb.vz, Math.sin(zb.face) * sp, damp(.01, dt));
       if (rig.curName !== T.move) rig.play(T.move, {fade: .2, speed: T.move === 'Run' ? 1.1 : zb.speed / 1.6});
       if (!P.dead && zb.cd <= 0) {
@@ -96,7 +100,7 @@ function updateZombie(zb, dt) {
   }
   // movement, separation, obstacles
   zb.x += zb.vx * dt; zb.z += zb.vz * dt;
-  zb.vx *= Math.pow(zb.stun > 0 ? .05 : .5, dt); zb.vz *= Math.pow(zb.stun > 0 ? .05 : .5, dt);
+  const fr = zb.air ? .6 : zb.stun > 0 ? .05 : .5; zb.vx *= Math.pow(fr, dt); zb.vz *= Math.pow(fr, dt);
   if (zb.state !== 'rise') {
     for (const o of G.zombies) { if (o === zb || o.dying || o.state === 'rise') continue; const ox = zb.x - o.x, oz = zb.z - o.z, od = Math.hypot(ox, oz), m = zb.r + o.r; if (od > 0 && od < m) { zb.x += ox / od * (m - od) * .5; zb.z += oz / od * (m - od) * .5; } }
     collide(zb, zb.r); inArena(zb, zb.r);
@@ -108,7 +112,7 @@ function updateZombie(zb, dt) {
 function syncZombie(zb) {
   const rig = zb.rig; rig.root.position.set(zb.x, zb.y, zb.z); rig.root.rotation.y = yawFor(zb.face);
   if (zb.dying) { if (zb.dying.type !== 'burn' && zb.dying.type !== 'swell') rig.flash(zb.flash > 0 ? .45 : 0); return; }
-  if (zb.flash > 0) rig.flash(.45, 1, .95, .85); else if (zb.burn > 0) rig.flash(.35, 1, .4, 0); else if (zb.T.boss && zb.tele) rig.flash(.3 + .3 * Math.sin(G.time * 30), 1, .1, .1); else rig.flash(0);
+  if (zb.flash > 0) rig.flash(.45, 1, .95, .85); else if (zb.burn > 0) rig.flash(.35, 1, .4, 0); else if (zb.slow > 0) rig.flash(.4, .35, .75, 1); else if (zb.T.boss && zb.tele) rig.flash(.3 + .3 * Math.sin(G.time * 30), 1, .1, .1); else rig.flash(0);
 }
 
 // ---------- boss: charge, slam, summon ----------
@@ -164,12 +168,11 @@ function damageZombie(zb, dir, dmg, o = {}) {
   const w = o.w || weapon(), T = zb.T;
   zb.hp -= dmg; zb.flash = .12; G.combo++; G.comboT = 2;
   if (!o.dot) {
-    const kb = (w.kb + (o.finisher ? 4 : 0)) * (T.boss ? .08 : T.explode ? .4 : 1) * (zb.hp <= 0 ? 1.4 : 1);
+    const kb = (o.kb ?? w.kb + (o.finisher ? 4 : 0)) * (T.boss ? .08 : T.explode ? .4 : 1) * (zb.hp <= 0 ? 1.4 : 1);
     zb.vx += Math.cos(dir) * kb; zb.vz += Math.sin(dir) * kb;
-    if (!T.boss && zb.hp > 0) { zb.stun = w.cls === 'blunt' && w.name === 'GUITAR' ? .7 : .28; if (zb.state === 'attack' || zb.state === 'windup' || zb.state === 'lunge') zb.state = 'chase'; zb.rig.play('HitReact', {loop: false, restart: true, fade: .04}); }
+    if (!T.boss && zb.hp > 0 && !zb.air) { zb.stun = Math.max(zb.stun, .28); if (zb.state === 'attack' || zb.state === 'windup' || zb.state === 'lunge') zb.state = 'chase'; zb.rig.play('HitReact', {loop: false, restart: true, fade: .04}); }
     sparks(zb.x, zb.z, dir, 10, o.crit ? '#ffef5a' : '#fff6c8'); burst(zb.x, zb.z, 8, ['#3f9a35', '#2a7a2a', '#7a1f1f'], 6, .12, .7, 1.1);
     ring(zb.x, zb.z, .9, w.col, .16, 1); flashLight(zb.x, zb.z, w.col, 4);
-    if (w.cls === 'saw') zb.bleed = 1;
     AU.play(T.boss ? 'bossHurt' : 'zHurt', {vol: .45, rate: T.voice * rnd(.9, 1.15), x: zb.x, z: zb.z, bus: 'voice', max: 2});
   }
   if (o.crit) HAPTIC.fx('crit');
@@ -182,6 +185,7 @@ function chooseDeath(zb, o) {
   const w = o.w || weapon(), r = Math.random();
   if (zb.T.boss) return 'boss';
   if (zb.T.explode) return 'swell';
+  if (zb.slow > 0) return 'shatter';
   if (o.dot === 'burn' || (zb.burn > 0 && r < .5)) return 'burn';
   if (o.blast) return r < .5 ? 'gib' : 'launch';
   if (o.finisher || o.slam) return r < .6 ? 'launch' : 'gib';
@@ -208,6 +212,7 @@ function killZombie(zb, dir, o) {
   if (d.type !== 'gib') rig.play('Death', {loop: false, restart: true, fade: .05, speed: d.type === 'launch' ? 1.3 : 1});
   if (d.type === 'launch') { zb.vy = rnd(6, 8.5); zb.spinX = rnd(-9, 9); zb.vx = Math.cos(dir) * 9; zb.vz = Math.sin(dir) * 9; }
   if (d.type === 'decap') popHead(zb, dir);
+  if (d.type === 'shatter') shatterZombie(zb, dir);
   if (d.type === 'gib') gibZombie(zb, dir);
   if (d.type === 'boss') { slowmo(1.5); shake(1); G.flash = .8; AU.play('waveClear', {vol: .9, delay: .4}); HUD.banner('BOSS DOWN!', '+500', '#ffcc33'); }
   if (WAVE.boss === zb) WAVE.boss = null;
@@ -236,13 +241,14 @@ function updateDying(zb, dt) {
   inArena(zb, zb.r); collide(zb, zb.r * .6);
   let life = 3.2;
   if (d.type === 'launch') {
-    zb.y += zb.vy * dt; zb.vy -= 22 * dt; if (zb.y < 0) { zb.y = 0; if (Math.abs(zb.vy) > 3) { dust(zb.x, zb.z, 8); AU.play('land', {vol: .4, x: zb.x, z: zb.z}); } zb.vy *= -.3; zb.spinX *= .4; }
+    if (zb.homerun && zb.y > .05) { zb.x += zb.vx * dt * .9; zb.z += zb.vz * dt * .9; } // home runs keep their speed in the air
+    zb.y += zb.vy * dt; zb.vy -= 22 * dt; if (zb.y < 0) { zb.y = 0; if (Math.abs(zb.vy) > 3) { dust(zb.x, zb.z, 8); AU.play('land', {vol: .4, x: zb.x, z: zb.z}); if (zb.homerun) { zb.homerun = false; homerunLand(zb); } } zb.vy *= -.3; zb.spinX *= .4; }
     rig.body.rotation.x += zb.spinX * dt * (zb.y > .05 ? 1 : 0);
     // flying bodies knock other zombies over
     if (zb.y < 1.2) for (const o of G.zombies) { if (o === zb || o.dying || o.state === 'rise' || o.bowled === zb) continue; if (Math.hypot(o.x - zb.x, o.z - zb.z) < zb.r + o.r + .2) { o.bowled = zb; damageZombie(o, Math.atan2(o.z - zb.z, o.x - zb.x), 1, {w: weapon(), kind: 'bowl'}); shake(.2); } }
   } else if (d.type === 'decap') {
     if (d.t < .8 && Math.random() < .9) addPart({x: zb.x, y: 1.5, z: zb.z, vx: rnd(-1, 1), vz: rnd(-1, 1), vy: rnd(4, 8), g: 20, life: .6, max: .6, size: .09, col: pick(['#3f9a35', '#2a7a2a']), drag: .95, rx: 0, ry: 0});
-  } else if (d.type === 'gib') life = .1;
+  } else if (d.type === 'gib' || d.type === 'shatter') life = .1;
   else if (d.type === 'burn') {
     const k = clamp(d.t / 1.6, 0, 1); for (const m of rig.mats) { m.color.lerp(COL('#140f0f'), dt * 2.5); m.emissive.setRGB(.9 * (1 - k) * (.6 + .4 * Math.sin(d.t * 40)), .3 * (1 - k), 0); }
     for (let i = 0; i < 3; i++) addPart({x: zb.x + rnd(-.3, .3), y: rnd(.2, 1.8), z: zb.z + rnd(-.3, .3), vx: 0, vz: 0, vy: rnd(2, 5), g: -2, life: .5, max: .5, size: rnd(.08, .18), col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10', '#3a3030']), drag: .9, rx: 0, ry: 0});
@@ -262,3 +268,17 @@ function updateZombies(dt) {
   G.zombies = G.zombies.filter(z => !z.gone);
 }
 function clearZombies() { for (const zb of G.zombies) { zb.rig.dispose(); if (zb.teleMesh) scene.remove(zb.teleMesh); } G.zombies = []; WAVE.queue = []; WAVE.active = false; WAVE.boss = null; }
+
+// home run victim crashing down flattens whoever is near
+function homerunLand(zb) {
+  ring(zb.x, zb.z, 2.4, 0xffc080, .3); dust(zb.x, zb.z, 20); shake(.4); AU.play('hitHardest', {vol: .9, rate: .8, x: zb.x, z: zb.z}); HAPTIC.fx('slam', .6);
+  for (const o of G.zombies) if (o !== zb && !o.dying && o.state !== 'rise' && Math.hypot(o.x - zb.x, o.z - zb.z) < 2.4) damageZombie(o, Math.atan2(o.z - zb.z, o.x - zb.x), 2 + UP.dmg, {w: weapon(), kind: 'homerun', kb: 9});
+}
+// frozen zombies break into ice
+function shatterZombie(zb, dir) {
+  zb.rig.root.visible = false;
+  const ice = new THREE.MeshStandardMaterial({color: 0xbff4ff, emissive: 0x2a6a8a, roughness: .1, metalness: .3, transparent: true, opacity: .85});
+  for (let i = 0; i < 9; i++) { const s = rnd(.1, .26), m = new THREE.Mesh(new THREE.OctahedronGeometry(s), ice); m.castShadow = true; const a = dir + rnd(-1.4, 1.4), sp = rnd(2, 7); gib(zb.x, zb.z, m, Math.cos(a) * sp, Math.sin(a) * sp, rnd(3, 8), rnd(1.2, 2)); }
+  burst(zb.x, zb.z, 30, ['#ffffff', '#cff6ff', '#8fe8ff'], 8, .12, .8, 1); ring(zb.x, zb.z, 2, 0x8fe8ff, .3);
+  AU.play('glass', {vol: 1, x: zb.x, z: zb.z, rate: rnd(.9, 1.2)}); hitstop(.05);
+}

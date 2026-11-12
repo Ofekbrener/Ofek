@@ -5,7 +5,7 @@ const G = {
   wave: 0, score: 0, coins: 0, kills: 0, combo: 0, comboT: 0,
   hitstop: 0, trauma: 0, timeScale: 1, slowT: 0, flash: 0, hurtFlash: 0,
   state: 'loading', // loading | menu | playing | draft | dead
-  cam: {x: 0, z: 0, kx: 0, kz: 0, zoom: 1, zk: 0},
+  cam: {x: 0, z: 0, kx: 0, kz: 0, zoom: 1, zk: 0, roll: 0},
   time: 0, arena: 19,
 };
 const rnd = (a, b) => a + Math.random() * (b - a), clamp = (v, a, b) => Math.max(a, Math.min(b, v));

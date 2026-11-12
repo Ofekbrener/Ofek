@@ -42,7 +42,8 @@ function updateCamera(dt) {
   const sh = G.trauma * G.trauma, t = G.time, z = c.zoom + c.zk;
   const ox = sh * .5 * (Math.sin(t * 93) + Math.sin(t * 41)) / 2, oy = sh * .5 * (Math.cos(t * 87) + Math.sin(t * 53)) / 2;
   const tx = c.x + c.kx, tz = c.z + c.kz;
-  camera.position.set(tx + ox, 11 / z + oy, tz + 8.6 / z); camera.lookAt(tx + ox * .4, .9, tz); camera.rotateZ(sh * .05 * Math.sin(t * 71));
+  camera.position.set(tx + ox, 11 / z + oy, tz + 8.6 / z); camera.lookAt(tx + ox * .4, .9, tz); camera.rotateZ(sh * .05 * Math.sin(t * 71) + c.roll);
+  c.roll = lerp(c.roll, 0, damp(.002, dt));
   WORLD.moon.position.set(tx + 8, 22, tz + 6); WORLD.moon.target.position.set(tx, 0, tz);
 }
 
@@ -58,7 +59,8 @@ function saveCheckpoint() {
 function loadCheckpoint() { try { const c = JSON.parse(localStorage.getItem(SAVE_KEY)); return c && c.wave > 1 ? c : null; } catch (e) { return null; } }
 function clearCheckpoint() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
 function newRun(cp = null) {
-  AU.resume(); clearZombies(); clearPickups(); clearFX(); resetUpgrades();
+  AU.resume(); clearZombies(); clearPickups(); clearFX(); clearTrail(); resetUpgrades();
+  if (G.player && G.player.javelin) { scene.remove(G.player.javelin.g); G.player.javelin = null; }
   for (const b of G.barrels) { scene.remove(b.m); } G.barrels = []; for (const [x, z] of [[-6, -3], [6.5, 3.5], [-3, 9.5], [3.5, -10], [-12, 4], [12, -3]]) addBarrel(x, z);
   Object.assign(G, {wave: 0, score: 0, coins: 0, kills: 0, combo: 0, hitstop: 0, trauma: 0, slowT: 0, timeScale: 1, flash: 0, hurtFlash: 0});
   DRAFT.rerollCost = 10;
@@ -140,7 +142,7 @@ window.simulate = function (secs, step = 1 / 60) {
   try {
     await Promise.all([loadModels(tick), AU.load(tick)]);
   } catch (e) { console.error(e); go.textContent = 'Could not load the game files'; return; }
-  buildArena(); renderWeaponArt(); makePlayer(); G.player.z = 0; G.player.face = Math.PI / 2;
+  buildArena(); measureClipHits(); renderWeaponArt(); makePlayer(); G.player.z = 0; G.player.face = Math.PI / 2;
   G.state = 'menu'; go.outerHTML = menuButtons('Play'); wireMenu();
   requestAnimationFrame(frame);
 })();

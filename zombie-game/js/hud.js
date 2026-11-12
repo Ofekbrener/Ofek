@@ -40,7 +40,7 @@ function drawHUD(dt) {
   if (G.combo > 2) { const s = 1 + Math.max(0, G.comboT - 1.7) * 3; hx.save(); hx.translate(W - 16, 104); hx.scale(s, s); stroked('x' + G.combo, 0, 0, FONT(26 + Math.min(G.combo, 30) * .7), '#ffcc33', 5, 'right'); hx.restore(); }
   // weapon + upgrade badges
   const w = weapon(), wi = WEAPON_IMG[P.weapon]; if (wi && wi.complete) hx.drawImage(wi, 6, H - 66, 56, 56);
-  stroked(w.name, 62, H - 26, FONT(20), '#' + new THREE.Color(w.col).getHexString(), 4, 'left');
+  stroked((UP.infuse ? INFUSE[UP.infuse].name + ' ' : '') + w.name, 62, H - 26, FONT(20), '#' + new THREE.Color(w.col).getHexString(), 4, 'left');
     
   // boss bar
   const B = WAVE.boss; if (B && !B.dying) {

@@ -120,3 +120,6 @@ Single-file canvas example: see `example-arena.html` next to this file for a ful
 - Sound: one recorded sample family per event, 2 to 6 variations, ±6% pitch, max 3 voices per family, a limiter on the master bus, music ducked on kills. Mixing recorded and oscillator-made effects sounds wrong; use recordings only.
 - Upgrade cards need art and numbers: render weapon meshes to images once at load, give perks drawn emblems colored by category, show the stat change (`5 → 6`) and compare weapons with bars against the current one.
 - Software-rendered test browsers run at about 5 fps. Expose a `simulate(seconds)` hook so tests advance game time without rendering.
+- A swing nobody can see is no swing. Draw a ribbon trail between the weapon's base and tip for the active frames, color it per weapon, and emit particles from the tip (embers, sparks, splinters, notes, frost).
+- Clips that only move the arm read small from a top-down camera. Layer a torso twist on top: turn away during the wind-up, whip through on the strike. Play the wind-up at 0.6x and the strike at 1.7x.
+- Each weapon needs its own verb, not only its own numbers: a status effect on hit (burn, bleed stacks, stun) and a 4th-hit finisher (flurry, thrown javelin, home run, spinning grind, fire line, cone shockwave).

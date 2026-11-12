@@ -1,7 +1,7 @@
 // Juice: hitstop, screen shake, particles, blood decals, shockwave rings, floating text, light flashes, lightning.
 // Units are meters. See .claude/skills/game-feel/SKILL.md for the numbers and why.
 'use strict';
-const FX = {parts: [], rings: [], texts: [], bolts: [], decals: [], gibs: []};
+const FX = {parts: [], rings: [], texts: [], bolts: [], decals: [], gibs: [], fires: []};
 const MAXP = 1200, dummy = new THREE.Object3D(), colCache = {};
 const COL = c => colCache[c] || (colCache[c] = new THREE.Color(c));
 const partMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({color: 0xffffff}), MAXP);
@@ -34,6 +34,13 @@ function ring(x, z, r, col, life = .3, y = .05) {
   const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending}));
   m.position.set(x, y, z); scene.add(m); FX.rings.push({m, r, life, t: 0});
 }
+// a partial ring that expands in one direction (guitar power chord)
+function arcWave(x, z, dir, r, arc, col, life = .35) {
+  const g = new THREE.RingGeometry(.82, 1, 32, 1, -(dir + arc), arc * 2); g.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({color: col, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending}));
+  m.position.set(x, .6, z); scene.add(m); FX.rings.push({m, r, life, t: 0});
+}
+function notes(x, z, n) { for (let i = 0; i < n; i++) addPart({x: x + rnd(-.4, .4), y: rnd(1.2, 2), z: z + rnd(-.4, .4), vx: rnd(-1.5, 1.5), vz: rnd(-1.5, 1.5), vy: rnd(1.5, 3.5), g: -1, life: .9, max: .9, size: rnd(.08, .14), col: pick(['#e0a0ff', '#ff7ae0', '#9a7aff', '#ffffff']), drag: .95, rx: 0, ry: 0}); }
 // Blood puddles use the kit's own decal meshes, recolored green.
 const bloodMat = new THREE.MeshStandardMaterial({color: 0x173d14, roughness: .25, metalness: .2, transparent: true, opacity: .88, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2});
 function blood(x, z, s = 1) {
@@ -82,6 +89,16 @@ function updateFX(dt) {
   }
   for (const g of FX.gibs) if (g.life <= 0) scene.remove(g.m);
   FX.gibs = FX.gibs.filter(g => g.life > 0);
+  // ground fire: flames, scorch, sets zombies standing in it on fire
+  for (const f of FX.fires) {
+    if (f.delay > 0) { f.delay -= dt; continue; }
+    if (!f.lit) { f.lit = true; const sc = new THREE.Mesh(new THREE.CircleGeometry(.45, 12), new THREE.MeshBasicMaterial({color: 0x0a0503, transparent: true, opacity: .6, depthWrite: false})); sc.rotation.x = -Math.PI / 2; sc.position.set(f.x, .03, f.z); scene.add(sc); FX.decals.push({m: sc, grow: 1, t: 1}); burst(f.x, f.z, 6, ['#ff8a1a', '#ffcf3a'], 4, .14, .5, .2); }
+    f.life -= dt;
+    for (let i = 0; i < 2; i++) addPart({x: f.x + rnd(-.35, .35), y: rnd(.05, .4), z: f.z + rnd(-.35, .35), vx: rnd(-.3, .3), vz: rnd(-.3, .3), vy: rnd(1.5, 4), g: -2, life: rnd(.3, .6), max: .6, size: rnd(.1, .22), col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10', '#ff6a1a']), drag: .9, rx: 0, ry: 0});
+    for (const zb of G.zombies) if (!zb.dying && zb.state !== 'rise' && Math.hypot(zb.x - f.x, zb.z - f.z) < .8) zb.burn = Math.max(zb.burn, 3);
+  }
+  FX.fires = FX.fires.filter(f => f.life > 0);
+  if (FX.fires.length) { const f = FX.fires[Math.floor(FX.fires.length / 2)]; if (!f.delay) { boomLight.color.setHex(0xff6a1a); boomLight.position.set(f.x, 1, f.z); boomLight.intensity = Math.max(boomLight.intensity, 3 + Math.random()); } }
   hitLight.intensity *= Math.pow(.0005, dt); boomLight.intensity *= Math.pow(.004, dt);
 }
 function renderFX() {
@@ -99,5 +116,5 @@ function renderFX() {
 function clearFX() {
   for (const r of FX.rings) scene.remove(r.m); for (const b of FX.bolts) scene.remove(b.m);
   for (const d of FX.decals) scene.remove(d.m); for (const g of FX.gibs) scene.remove(g.m);
-  FX.parts = []; FX.rings = []; FX.bolts = []; FX.decals = []; FX.gibs = []; FX.texts = [];
+  FX.parts = []; FX.rings = []; FX.bolts = []; FX.decals = []; FX.gibs = []; FX.texts = []; FX.fires = [];
 }

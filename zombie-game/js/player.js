@@ -1,33 +1,64 @@
-// Player: movement, jump/slam, dash, and a combo attack chain built from the kit's authored clips.
+// Player: movement, jump/slam, dash, and a combo chain built from the kit's authored clips.
+// Every weapon has its own combo, trail, on-hit effect and 4th-hit finisher.
 'use strict';
-// Weapons are meshes already parented to Matt's hand; we show one at a time.
-// combo steps: Slash, SlashM (mirrored slash = backhand), Stab, Punch (shove), Spin (finisher)
+// combo kinds: Slash, SlashM (mirrored slash = backhand), Stab, Punch, and one finisher per weapon
 const WEAPONS = {
-  Knife:            {name: 'KNIFE',       cls: 'blade',  dmg: 1, range: 1.9, arc: 1.15, speed: 1.35, kb: 4,  combo: ['Slash', 'Stab', 'SlashM', 'Spin'], swing: 'swingLight', hit: ['hitKnife', 'gore'], col: 0xdfe8ff, desc: 'Fast stabs and slashes'},
-  Spear:            {name: 'SPEAR',       cls: 'pierce', dmg: 2, range: 3.0, arc: .55,  speed: 1.0,  kb: 6,  combo: ['Stab', 'Stab', 'SlashM', 'Spin'], swing: 'swingBlade', hit: ['hitFlesh', 'gore'], col: 0xbfe6ff, desc: 'Long reach, hits in a line'},
-  WoodenBat_Barbed: {name: 'BARBED BAT',  cls: 'blunt',  dmg: 2, range: 2.2, arc: 1.4,  speed: 1.05, kb: 10, combo: ['Slash', 'SlashM', 'Punch', 'Spin'], swing: 'swingHeavy', hit: ['hitHeavy', 'hitWood'], col: 0xffd9a0, desc: 'Sends zombies flying'},
-  WoodenBat_Saw:    {name: 'SAW BAT',     cls: 'saw',    dmg: 2, range: 2.2, arc: 1.4,  speed: 1.0,  kb: 7,  combo: ['Slash', 'SlashM', 'Slash', 'Spin'], swing: 'swingHeavy', hit: ['hitSaw', 'gore'], col: 0xff9a9a, desc: 'Bleeds: 1 extra damage after 1 s'},
-  Axe:              {name: 'FIRE AXE',    cls: 'heavy',  dmg: 3, range: 2.2, arc: 1.2,  speed: .85,  kb: 8,  combo: ['Slash', 'SlashM', 'Stab', 'Spin'], swing: 'swingHeavy', hit: ['hitAxe', 'bone'], col: 0xffb070, desc: 'Heavy chops, cuts heads off'},
-  Guitar:           {name: 'GUITAR',      cls: 'blunt',  dmg: 2, range: 2.4, arc: 1.7,  speed: 1.0,  kb: 12, combo: ['Slash', 'SlashM', 'Punch', 'Spin'], swing: 'swingWide', hit: ['guitarHit', 'hitWood'], col: 0xd38cff, desc: 'Wide swings that stun'},
+  Knife: {name: 'KNIFE', cls: 'blade', dmg: 1, range: 1.9, arc: 1.15, speed: 1.5, kb: 4, lunge: 4, twist: .55,
+    combo: ['Stab', 'Stab', 'Slash', 'Flurry'], fin: 'FLURRY', finText: '5 rapid stabs', swing: 'swingLight', hit: ['hitKnife', 'gore'],
+    col: 0xdfe8ff, trail: {col: 0xe8f2ff, width: 1.7, base: .15, fx: 'glint'}, desc: 'Fast. Double damage chance from behind.'},
+  Spear: {name: 'SPEAR', cls: 'pierce', dmg: 2, range: 3.2, arc: .42, speed: 1.0, kb: 7, lunge: 9, twist: .3,
+    combo: ['Stab', 'Stab', 'Stab', 'Javelin'], fin: 'JAVELIN', finText: 'throw it through the horde, it comes back', swing: 'swingBlade', hit: ['hitFlesh', 'gore'],
+    col: 0x7fe0ff, trail: {col: 0x7fe0ff, width: 1.15, base: .6, fx: 'streak'}, desc: 'Long reach. Pierces every zombie in a line.'},
+  WoodenBat_Barbed: {name: 'BARBED BAT', cls: 'blunt', dmg: 2, range: 2.2, arc: 1.45, speed: .95, kb: 13, lunge: 4, twist: 1,
+    combo: ['Slash', 'SlashM', 'Slash', 'HomeRun'], fin: 'HOME RUN', finText: 'one zombie flies 15 m and flattens others', swing: 'swingHeavy', hit: ['hitHeavy', 'hitWood'],
+    col: 0xffc080, trail: {col: 0xd99a55, width: 1.35, base: .45, fx: 'splinter'}, desc: 'Huge knockback.'},
+  WoodenBat_Saw: {name: 'SAW BAT', cls: 'saw', dmg: 2, range: 2.2, arc: 1.4, speed: 1.05, kb: 6, lunge: 3, twist: .7,
+    combo: ['Slash', 'SlashM', 'Slash', 'Grinder'], fin: 'GRINDER', finText: 'a spinning 6-hit grind', swing: 'swingHeavy', hit: ['hitSaw', 'gore'],
+    col: 0xff6a6a, trail: {col: 0xff3a3a, width: 1.3, base: .45, fx: 'sparks'}, desc: 'Bleed stacks: up to 3 damage per second.'},
+  Axe: {name: 'FIRE AXE', cls: 'heavy', dmg: 3, range: 2.2, arc: 1.2, speed: .8, kb: 8, lunge: 5, twist: .9, glow: 0xff6a1a,
+    combo: ['Slash', 'SlashM', 'Slash', 'FireLine'], fin: 'FIRE LINE', finText: 'a 6 m wall of fire', swing: 'swingHeavy', hit: ['hitAxe', 'bone'],
+    col: 0xffa040, trail: {col: 0xff6a1a, width: 1.9, base: .55, fx: 'fire'}, desc: 'Sets zombies on fire. Cuts heads off.'},
+  Guitar: {name: 'GUITAR', cls: 'blunt', dmg: 2, range: 2.4, arc: 1.7, speed: 1.0, kb: 11, lunge: 3, twist: .85,
+    combo: ['Slash', 'SlashM', 'Slash', 'PowerChord'], fin: 'POWER CHORD', finText: 'a 5.5 m shockwave that knocks everyone down', swing: 'swingWide', hit: ['guitarHit', 'hitWood'],
+    col: 0xd38cff, trail: {col: 0xc070ff, width: 1.5, base: .3, fx: 'notes'}, desc: 'Every hit stuns for 1 s.'},
 };
-const CLIP_HIT = {Slash: .42, Stab: .45, Punch: .4, Run_Slash: .4, Run_Stab: .45}; // fraction of the clip where the blade connects
+const INFUSE = {fire: {col: 0xff6a1a, fx: 'fire', name: 'FIRE'}, frost: {col: 0x8fe8ff, fx: 'frost', name: 'FROST'}, storm: {col: 0xbfe0ff, fx: 'storm', name: 'STORM'}};
+// finisher -> clip, speed multiplier, repeats, spin turns
+const FIN = {Flurry: {clip: 'Stab', spd: 2.3, rep: 5}, Javelin: {clip: 'Punch', spd: 1}, HomeRun: {clip: 'Slash', spd: .75},
+  Grinder: {clip: 'Slash', spd: .55, spin: 2, ticks: 6}, FireLine: {clip: 'Slash', spd: .7}, PowerChord: {clip: 'Slash', spd: .8}};
+const CLIP_HIT = {Slash: .42, Stab: .45, Punch: .4, Run_Slash: .4, Run_Stab: .45}; // replaced at load by the measured peak
 const WEAPON_MESHES = ['Axe', 'Guitar', 'Knife', 'Pistol', 'Rifle', 'Shotgun', 'SMG', 'Spear', 'WoodenBat_Barbed', 'WoodenBat_Saw'];
+
+// Hit frame = the moment the weapon arm moves fastest in the authored clip.
+function measureClipHits() {
+  for (const clip of MODELS.Characters_Matt.animations) {
+    if (!(clip.name in CLIP_HIT)) continue;
+    const tr = clip.tracks.find(t => t.name === 'UpperArmL.quaternion'); if (!tr) continue;
+    const v = tr.values, t = tr.times, q1 = new THREE.Quaternion(), q2 = new THREE.Quaternion(); let best = 0, bt = 0;
+    for (let i = 1; i < t.length; i++) { q1.fromArray(v, (i - 1) * 4); q2.fromArray(v, i * 4); const s = q1.angleTo(q2) / Math.max(1e-3, t[i] - t[i - 1]); if (s > best) { best = s; bt = t[i]; } }
+    if (bt > 0) CLIP_HIT[clip.name] = clamp(bt / clip.duration, .2, .7);
+  }
+}
 
 function makePlayer() {
   if (G.player) G.player.rig.dispose();
   const rig = new Rig('Characters_Matt');
   const P = G.player = {x: 0, z: 2, vx: 0, vz: 0, y: 0, vy: 0, air: false, face: -Math.PI / 2, hp: 5, maxHp: 5, rig,
-    weapon: 'Knife', atk: null, queued: false, combo: 0, lastAtkEnd: -9, inv: 0, hurtT: 0, rage: 0, dashT: 0, dashCd: 0, stepD: 0,
-    dead: false, deadT: 0, slam: false, landT: 0, spd: 0, killsForHeal: 0};
+    weapon: 'Knife', wMesh: null, atk: null, queued: false, combo: 0, lastAtkEnd: -9, inv: 0, hurtT: 0, rage: 0, dashT: 0, dashCd: 0, stepD: 0,
+    dead: false, deadT: 0, slam: false, landT: 0, spd: 0, killsForHeal: 0, javelin: null, stormN: 0, twist: 0, lean: 0};
+  P.wLight = new THREE.PointLight(0xff6a1a, 0, 4, 2);
   equipWeapon('Knife'); rig.play('Idle');
   return P;
 }
 function equipWeapon(name) {
   const P = G.player; P.weapon = name;
-  P.rig.model.traverse(o => { if (WEAPON_MESHES.includes(o.name)) o.visible = o.name === name; });
+  P.rig.model.traverse(o => { if (WEAPON_MESHES.includes(o.name)) { o.visible = o.name === name; if (o.name === name) P.wMesh = o; } });
+  if (P.wMesh) { const e = weaponEnds(P.wMesh, .5); P.wMesh.add(P.wLight); P.wLight.position.copy(e.tip).lerp(e.grip, .3); }
+  clearTrail();
 }
 const weapon = () => WEAPONS[G.player.weapon];
 const atkSpeed = () => UP.atkSpeed * (G.player.rage > 0 ? 1.3 : 1);
+const trailStyle = () => { const w = weapon(), inf = UP.infuse && INFUSE[UP.infuse]; return inf ? {col: inf.col, fx: inf.fx} : w.trail; };
 
 function nearestZombie(maxD) {
   let best = null, bd = maxD; const P = G.player;
@@ -36,46 +67,55 @@ function nearestZombie(maxD) {
 }
 function startAttack() {
   const P = G.player; if (P.dead || G.state !== 'playing') return;
-  if (P.atk) { if (P.atk.t > P.atk.hitAt * .6) P.queued = true; return; }
-  if (P.hurtT > 0) return;
+  if (P.atk) { if (P.atk.ct > P.atk.hitAt * .6) P.queued = true; return; }
+  if (P.hurtT > 0 || P.javelin) return;
   if (P.air) { if (!P.slam) { P.slam = true; P.vy = -20; P.rig.play('Slash', {loop: false, restart: true, speed: 1.6, fade: .05}); AU.play('swingHeavy', {rate: .8}); } return; }
-  const w = weapon(); if (G.time - P.lastAtkEnd > .55) P.combo = 0;
+  const w = weapon(); if (G.time - P.lastAtkEnd > .6) P.combo = 0;
   const kind = w.combo[P.combo % w.combo.length]; P.combo++;
-  const t = nearestZombie(5);
+  const t = nearestZombie(5.5);
   const dir = t ? Math.atan2(t.z - P.z, t.x - P.x) : P.face;
-  let clip = kind === 'Stab' ? 'Stab' : kind === 'Punch' ? 'Punch' : 'Slash';
-  if (P.spd > 3 && (kind === 'Slash' || kind === 'Stab')) clip = 'Run_' + clip; // legs keep running while the arm swings
-  const spd = w.speed * atkSpeed() * (kind === 'Spin' ? 1.2 : 1);
-  P.rig.play(clip, {loop: false, restart: true, speed: spd, fade: .06});
-  const dur = P.rig.dur(clip) / spd;
-  P.atk = {kind, clip, t: 0, dur, hitAt: CLIP_HIT[clip] * dur, hit: false, swung: false, dir, spin: kind === 'Spin'};
+  const F = FIN[kind];
+  let clip = F ? F.clip : kind === 'Stab' ? 'Stab' : kind === 'Punch' ? 'Punch' : 'Slash';
+  if (!F && P.spd > 3 && (clip === 'Slash' || clip === 'Stab')) clip = 'Run_' + clip; // legs keep running while the arm swings
+  const base = w.speed * atkSpeed() * (F ? F.spd : 1);
+  P.rig.play(clip, {loop: false, restart: true, speed: base * .6, fade: .06});
+  const clipDur = P.rig.dur(clip);
+  P.atk = {kind, clip, ct: 0, clipDur, hitAt: CLIP_HIT[clip] * clipDur, base, hit: false, swung: false, dir, fin: F || null,
+    rep: F && F.rep ? F.rep : 1, ticks: F && F.ticks ? F.ticks : 0, tickN: 0, spin: F && F.spin ? F.spin : 0};
   P.rig.body.scale.x = kind === 'SlashM' ? -1 : 1; // mirrored slash reads as a backhand
-  P.face = dir; P.queued = false;
-  if (Math.random() < .35 || kind === 'Spin') AU.play('pEffort', {vol: .55, bus: 'voice', max: 1});
+  P.face = dir; P.queued = false; P.vx *= .4; P.vz *= .4;
+  if (F) { AU.play('pEffort', {vol: .7, bus: 'voice', max: 1}); popText(P.x, P.z, w.fin + '!', '#' + new THREE.Color(w.col).getHexString(), 34, 3.2); }
+  else if (Math.random() < .3) AU.play('pEffort', {vol: .5, bus: 'voice', max: 1});
 }
 function endAttack() {
   const P = G.player; P.atk = null; P.lastAtkEnd = G.time; P.rig.body.scale.x = 1; P.rig.body.rotation.y = 0;
   if (P.queued) { P.queued = false; startAttack(); }
 }
 function strike(a) {
-  const P = G.player, w = weapon();
-  const lunge = a.kind === 'Stab' ? 7 : a.spin ? 5 : 4; P.vx += Math.cos(a.dir) * lunge; P.vz += Math.sin(a.dir) * lunge;
-  G.cam.kx += Math.cos(a.dir) * .25; G.cam.kz += Math.sin(a.dir) * .25;
-  const range = w.range * UP.range * (a.spin ? 1.25 : a.kind === 'Stab' ? 1.15 : 1);
-  const arc = a.spin ? 9 : a.kind === 'Stab' ? .6 : w.arc;
-  const dmg = w.dmg + UP.dmg + (a.spin ? 1 : 0) + (a.kind === 'Punch' ? 0 : 0) + (P.rage > 0 ? 1 : 0);
-  hitArea(P.x, P.z, a.dir, range, arc, dmg, {kind: a.kind, finisher: a.spin, w});
+  const P = G.player, w = weapon(), F = a.kind;
+  const lunge = (a.kind === 'Stab' ? 1.3 : 1) * w.lunge; P.vx += Math.cos(a.dir) * lunge; P.vz += Math.sin(a.dir) * lunge;
+  G.cam.kx += Math.cos(a.dir) * .3; G.cam.kz += Math.sin(a.dir) * .3; G.cam.roll += (P.rig.body.scale.x < 0 ? -1 : 1) * (w.cls === 'heavy' || a.fin ? .05 : .02);
+  const dmg = w.dmg + UP.dmg + (P.rage > 0 ? 1 : 0);
+  if (F === 'Javelin') return throwJavelin(a.dir);
+  if (F === 'HomeRun') return homeRun(a.dir, dmg);
+  if (F === 'PowerChord') return powerChord(a.dir, dmg);
+  const range = w.range * UP.range * (a.kind === 'Stab' ? 1.15 : 1) * (F === 'Flurry' ? 1.1 : 1);
+  const arc = a.kind === 'Stab' || F === 'Flurry' ? Math.min(.6, w.arc) : w.arc;
+  hitArea(P.x, P.z, a.dir, range, arc, dmg + (F ? 1 : 0), {kind: a.kind, finisher: !!a.fin, w});
+  if (F === 'FireLine') fireLine(P.x, P.z, a.dir);
 }
-// shared by swings and slams
+// shared by swings, slams and finishers
 function hitArea(x, z, dir, range, arc, dmg, o) {
   const w = o.w || weapon(); let hits = 0, kills0 = G.kills;
   for (const zb of G.zombies) {
     if (zb.dying || zb.state === 'rise') continue;
-    const dx = zb.x - x, dz = zb.z - z, d = Math.hypot(dx, dz);
+    const dx = zb.x - x, dz = zb.z - z, d = Math.hypot(dx, dz), toZ = Math.atan2(dz, dx);
     if (d > range + zb.r) continue;
-    if (Math.abs(angDiff(dir, Math.atan2(dz, dx))) > arc && d > zb.r + .3) continue;
-    let dd = dmg; const crit = Math.random() < UP.crit; if (crit) dd *= 2;
-    damageZombie(zb, Math.atan2(dz, dx), dd, {w, kind: o.kind, finisher: o.finisher, crit, slam: o.slam});
+    if (Math.abs(angDiff(dir, toZ)) > arc && d > zb.r + .3) continue;
+    const behind = w.cls === 'blade' && Math.abs(angDiff(zb.face, toZ)) < 1.2; // zombie faces away from you
+    let dd = dmg; const crit = Math.random() < UP.crit + (behind ? .5 : 0); if (crit) dd *= 2;
+    damageZombie(zb, toZ, dd, {w, kind: o.kind, finisher: o.finisher, crit, slam: o.slam, kb: o.kb});
+    if (!zb.dying) onWeaponHit(zb, w, toZ);
     hits++;
   }
   for (const b of G.barrels) if (!b.dead && Math.hypot(b.x - x, b.z - z) < range + .4 && (Math.abs(angDiff(dir, Math.atan2(b.z - z, b.x - x))) < arc || o.slam)) hitBarrel(b);
@@ -83,20 +123,87 @@ function hitArea(x, z, dir, range, arc, dmg, o) {
   if (hits) {
     HAPTIC.fx(kills >= 2 ? 'multiKill' : kills ? 'kill' : 'hit');
     const heavy = w.cls === 'heavy' || o.finisher || o.slam;
-    hitstop((kills ? .11 + Math.min(kills, 4) * .025 : .06) * (heavy ? 1.3 : 1));
-    shake((kills ? .4 : .2) + (heavy ? .15 : 0));
-    AU.play(w.hit[0], {vol: 1, rate: heavy ? .85 : 1, dur: .6, max: 4});
-    AU.play(w.hit[1], {vol: .7, dur: .6, delay: .02});
+    if (!o.light) { hitstop((kills ? .11 + Math.min(kills, 4) * .025 : .06) * (heavy ? 1.3 : 1)); shake((kills ? .4 : .2) + (heavy ? .15 : 0)); }
+    AU.play(w.hit[0], {vol: o.light ? .6 : 1, rate: heavy ? .85 : 1, dur: .6, max: 4});
+    if (!o.light) AU.play(w.hit[1], {vol: .7, dur: .6, delay: .02});
     AU.duck(kills ? .45 : .7, .2);
     if (kills >= 2) { slowmo(.3 + .1 * kills); popText(x, z, kills + 'x KILL!', '#ff4fd8', 38 + kills * 6, 3); AU.play('levelUp', {vol: .5}); }
-    if (o.finisher) finisherFX(x, z, dir);
   }
   return hits;
 }
-function finisherFX(x, z) {
-  if (UP.fire) { ring(x, z, 3, 0xff6a1a, .35); for (const zb of G.zombies) if (!zb.dying && Math.hypot(zb.x - x, zb.z - z) < 3.2) zb.burn = 2.2; AU.play('rage', {vol: .5}); }
-  if (UP.chain) { let n = 0; for (const zb of G.zombies) { if (zb.dying || n >= 4) continue; if (Math.hypot(zb.x - x, zb.z - z) < 7) { bolt(x, z, zb.x, zb.z); damageZombie(zb, Math.atan2(zb.z - z, zb.x - x), 1 + UP.dmg, {w: weapon(), kind: 'chain'}); n++; } } if (n) AU.play('hitMetal', {vol: .6, rate: 1.5}); }
+// per-weapon and per-infusion effects on every connected hit
+function onWeaponHit(zb, w, dir) {
+  if (w.cls === 'saw') { zb.bleedN = Math.min(3, (zb.bleedN || 0) + 1); zb.bleed = 3; }
+  if (w.name === 'FIRE AXE') { zb.burn = 3; }
+  if (w.name === 'GUITAR') { zb.stun = Math.max(zb.stun, 1); notes(zb.x, zb.z, 6); }
+  if (w.name === 'BARBED BAT') burst(zb.x, zb.z, 8, ['#8a5a2a', '#c08850', '#5a3818'], 7, .1, .6, 1.1);
+  if (w.cls === 'blade') sparks(zb.x, zb.z, dir, 6, '#ffffff');
+  const inf = UP.infuse;
+  if (inf === 'fire') zb.burn = 3;
+  if (inf === 'frost') { zb.slow = 2.2; burst(zb.x, zb.z, 8, ['#cff6ff', '#8fe8ff', '#ffffff'], 4, .1, .6, 1.2); }
+  if (inf === 'storm') {
+    const P = G.player; P.stormN++;
+    if (P.stormN % 3 === 0) {
+      let n = 0; for (const o of G.zombies) { if (o === zb || o.dying || o.state === 'rise' || n >= 2) continue; if (Math.hypot(o.x - zb.x, o.z - zb.z) < 6) { bolt(zb.x, zb.z, o.x, o.z); damageZombie(o, Math.atan2(o.z - zb.z, o.x - zb.x), 1 + UP.dmg, {w, kind: 'storm'}); n++; } }
+      if (n) { AU.play('hitMetal', {vol: .5, rate: 1.6, dur: .3}); flashLight(zb.x, zb.z, 0xbfe0ff, 5); }
+    }
+  }
 }
+
+// ---------- finishers ----------
+function throwJavelin(dir) {
+  const P = G.player, src = P.wMesh; if (!src) return;
+  const e = weaponEnds(src, .5), ax = e.tip.clone().sub(e.grip).normalize();
+  const m = new THREE.Mesh(src.geometry, src.material); m.castShadow = true;
+  m.quaternion.setFromUnitVectors(ax, new THREE.Vector3(1, 0, 0)); m.scale.setScalar(src.getWorldScale(new THREE.Vector3()).x * 1.3);
+  const roll = new THREE.Group(), g = new THREE.Group(); roll.add(m); g.add(roll); g.position.set(P.x, 1.3, P.z); g.rotation.y = -dir; scene.add(g);
+  P.javelin = {g, roll, x: P.x, z: P.z, dir, t: 0, back: false, hit: new Set()}; src.visible = false;
+  AU.play('swingHeavy', {vol: 1, rate: .6}); AU.play('swingBlade', {vol: .7, rate: 1.2, delay: .05});
+}
+function updateJavelin(dt) {
+  const P = G.player, J = P.javelin; if (!J) return;
+  J.t += dt; const w = weapon();
+  if (!J.back) { J.x += Math.cos(J.dir) * 22 * dt; J.z += Math.sin(J.dir) * 22 * dt; if (J.t > .55 || Math.abs(J.x) > G.arena || Math.abs(J.z) > G.arena) { J.back = true; J.hit.clear(); AU.play('swingLight', {vol: .7, rate: .7}); } }
+  else { const a = Math.atan2(P.z - J.z, P.x - J.x); J.dir = a; J.x += Math.cos(a) * 26 * dt; J.z += Math.sin(a) * 26 * dt; J.g.rotation.y = -a + Math.PI; if (Math.hypot(P.x - J.x, P.z - J.z) < .9) { scene.remove(J.g); P.javelin = null; if (P.wMesh && P.weapon === 'Spear') P.wMesh.visible = true; AU.play('hitMetal', {vol: .5, rate: 1.3, dur: .3}); ring(P.x, P.z, 1.2, w.col, .2); return; } }
+  J.g.position.set(J.x, 1.3, J.z); J.roll.rotation.x += dt * 25;
+  addPart({x: J.x, y: 1.3, z: J.z, vx: 0, vz: 0, vy: 0, g: 0, life: .2, max: .2, size: .08, col: '#7fe0ff', drag: 1, rx: 0, ry: 0});
+  for (const zb of G.zombies) {
+    if (zb.dying || zb.state === 'rise' || J.hit.has(zb)) continue;
+    if (Math.hypot(zb.x - J.x, zb.z - J.z) < zb.r + .5) {
+      J.hit.add(zb); damageZombie(zb, J.dir, w.dmg + UP.dmg + 1, {w, kind: 'Javelin', finisher: true});
+      if (!zb.dying) onWeaponHit(zb, w, J.dir);
+      hitstop(.04); shake(.15); AU.play('hitFlesh', {vol: .9, max: 4}); sparks(zb.x, zb.z, J.dir, 8, '#bff0ff'); HAPTIC.fx('hit');
+    }
+  }
+}
+function homeRun(dir, dmg) {
+  const P = G.player, w = weapon(), range = w.range * UP.range;
+  let best = null, bd = 1e9;
+  for (const zb of G.zombies) { if (zb.dying || zb.state === 'rise' || zb.T.boss) continue; const d = Math.hypot(zb.x - P.x, zb.z - P.z); if (d < range + zb.r && Math.abs(angDiff(dir, Math.atan2(zb.z - P.z, zb.x - P.x))) < w.arc && d < bd) { bd = d; best = zb; } }
+  hitArea(P.x, P.z, dir, range, w.arc, dmg, {kind: 'Slash', w});
+  if (best && !best.homerunDone) {
+    best.homerun = true; best.homerunDone = true;
+    if (!best.dying) damageZombie(best, dir, dmg * 2 + 2, {w, kind: 'HomeRun', finisher: true});
+    // fly whether dead or not: dying bodies use the launch death, survivors become airborne
+    best.vx = Math.cos(dir) * 19; best.vz = Math.sin(dir) * 19; best.vy = 9;
+    if (best.dying) { best.dying.type = 'launch'; best.spinX = 14; } else { best.air = true; best.stun = 2; }
+    popText(best.x, best.z, 'HOME RUN!', '#ffcc33', 50, 3.2); slowmo(.45); shake(.6); hitstop(.14); AU.play('hitHardest', {vol: 1}); AU.play('levelUp', {vol: .6, delay: .2});
+    ring(best.x, best.z, 2, 0xffffff, .25); HAPTIC.fx('slam');
+  }
+}
+function powerChord(dir, dmg) {
+  const P = G.player, w = weapon(), R = 5.5 * UP.range, arc = .8;
+  for (let i = 0; i < 3; i++) setTimeout(() => arcWave(P.x, P.z, dir, R * (.55 + i * .25), arc, 0xc070ff, .35), i * 70);
+  AU.play('guitarHit', {vol: 1, rate: .8, dur: 1.4}); AU.play('explosion', {vol: .4, rate: 1.5}); notes(P.x, P.z, 18);
+  hitArea(P.x, P.z, dir, R, arc, dmg + 1, {kind: 'PowerChord', finisher: true, w, kb: 12});
+  for (const zb of G.zombies) if (!zb.dying && Math.hypot(zb.x - P.x, zb.z - P.z) < R && Math.abs(angDiff(dir, Math.atan2(zb.z - P.z, zb.x - P.x))) < arc) zb.stun = 2;
+  shake(.5); boom(P.x + Math.cos(dir) * 2, P.z + Math.sin(dir) * 2, 0xc070ff, 7); HAPTIC.fx('slam');
+}
+function fireLine(x, z, dir) {
+  for (let i = 1; i <= 9; i++) { const d = i * .7; FX.fires.push({x: x + Math.cos(dir) * d, z: z + Math.sin(dir) * d, life: 3 + i * .04, delay: i * .035}); }
+  AU.play('rage', {vol: .9, rate: .6}); AU.play('explosion', {vol: .5, rate: 1.2}); boom(x + Math.cos(dir) * 3, z + Math.sin(dir) * 3, 0xff6a1a, 8); shake(.4);
+}
+
 function jump() {
   const P = G.player; if (P.air || P.dead || P.atk || G.state !== 'playing') return;
   P.air = true; P.vy = 7.8; P.slam = false; P.rig.play('Jump', {loop: false, restart: true, fade: .05}); AU.play('jump', {vol: .5}); dust(P.x, P.z, 8);
@@ -105,10 +212,11 @@ function land() {
   const P = G.player; P.air = false; P.y = 0; P.vy = 0; P.landT = .25;
   dust(P.x, P.z, 14); AU.play('land', {vol: .7}); HAPTIC.fx(P.slam ? 'slam' : 'land'); P.rig.play('Jump_Land', {loop: false, restart: true, fade: .05});
   if (P.slam) { // ground slam
-    P.slam = false; const R = 3.2 * UP.slam, w = weapon();
-    ring(P.x, P.z, R, w.col, .4); ring(P.x, P.z, R * .55, 0xffffff, .25); shake(.5); boom(P.x, P.z, w.col, 6);
+    P.slam = false; const R = 3.2 * UP.slam, w = weapon(), st = trailStyle();
+    ring(P.x, P.z, R, st.col, .4); ring(P.x, P.z, R * .55, 0xffffff, .25); shake(.5); boom(P.x, P.z, st.col, 6);
     burst(P.x, P.z, 30, ['#6b6470', '#4a3b2c', '#ffffff'], 9, .2, .7, .1); AU.play('hitHardest', {vol: 1, rate: .7}); AU.play('explosion', {vol: .5, rate: 1.4});
     hitArea(P.x, P.z, 0, R, 9, w.dmg + UP.dmg + 1, {kind: 'Slam', slam: true, finisher: true, w}); hitstop(.09);
+    if (w.name === 'FIRE AXE' || UP.infuse === 'fire') for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; FX.fires.push({x: P.x + Math.cos(a) * R * .6, z: P.z + Math.sin(a) * R * .6, life: 2.5, delay: 0}); }
   }
 }
 function dash() {
@@ -130,12 +238,25 @@ function hurtPlayer(dmg, fx, fz) {
   return true;
 }
 
+// particles that follow the weapon tip, by trail style
+function trailFX(fx, tip, base) {
+  const r = Math.random;
+  if (fx === 'fire') for (let i = 0; i < 3; i++) { const p = r() < .6 ? tip : base; addPart({x: p.x + rnd(-.1, .1), y: p.y, z: p.z + rnd(-.1, .1), vx: rnd(-.5, .5), vz: rnd(-.5, .5), vy: rnd(1, 3), g: -3, life: .45, max: .45, size: rnd(.08, .16), col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10']), drag: .9, rx: 0, ry: 0}); }
+  if (fx === 'sparks' && r() < .8) addPart({x: tip.x, y: tip.y, z: tip.z, vx: rnd(-6, 6), vz: rnd(-6, 6), vy: rnd(1, 5), g: 14, life: .25, max: .25, size: .04, col: pick(['#ffe14a', '#ffffff', '#ff9a3a']), drag: .9, streak: 1});
+  if (fx === 'splinter' && r() < .35) addPart({x: tip.x, y: tip.y, z: tip.z, vx: rnd(-2, 2), vz: rnd(-2, 2), vy: rnd(0, 2), g: 16, life: .5, max: .5, size: .06, col: pick(['#8a5a2a', '#c08850']), drag: .95, rx: 0, ry: 0});
+  if (fx === 'notes' && r() < .5) addPart({x: tip.x, y: tip.y, z: tip.z, vx: rnd(-.6, .6), vz: rnd(-.6, .6), vy: rnd(1.5, 3), g: -1, life: .7, max: .7, size: .1, col: pick(['#e0a0ff', '#ff7ae0', '#9a7aff']), drag: .95, rx: 0, ry: 0});
+  if (fx === 'frost' && r() < .8) addPart({x: tip.x, y: tip.y, z: tip.z, vx: rnd(-.8, .8), vz: rnd(-.8, .8), vy: rnd(-1, .5), g: 2, life: .5, max: .5, size: rnd(.04, .09), col: pick(['#ffffff', '#cff6ff', '#8fe8ff']), drag: .9, rx: 0, ry: 0});
+  if (fx === 'storm' && r() < .6) addPart({x: tip.x, y: tip.y, z: tip.z, vx: rnd(-9, 9), vz: rnd(-9, 9), vy: rnd(-3, 3), g: 0, life: .1, max: .1, size: .03, col: '#e8f6ff', drag: .8, streak: 1});
+  if (fx === 'streak' && r() < .5) addPart({x: tip.x, y: tip.y, z: tip.z, vx: 0, vz: 0, vy: 0, g: 0, life: .15, max: .15, size: .05, col: '#bff0ff', drag: 1, rx: 0, ry: 0});
+}
+
 function updatePlayer(dt) {
   const P = G.player, rig = P.rig;
   P.inv -= dt; P.hurtT -= dt; P.dashT -= dt; P.dashCd -= dt; P.landT -= dt; if (P.rage > 0) P.rage -= dt;
+  updateJavelin(dt);
   if (P.dead) { P.deadT += dt; rig.mixer.update(dt); syncPlayer(); return; }
   const mv = INPUT.move(), ml = Math.min(1, Math.hypot(mv.x, mv.z));
-  const top = 6.4 * UP.move * (P.rage > 0 ? 1.2 : 1) * (P.atk ? .35 : 1) * (P.hurtT > 0 ? .2 : 1);
+  const top = 6.4 * UP.move * (P.rage > 0 ? 1.2 : 1) * (P.atk ? .3 : 1) * (P.hurtT > 0 ? .2 : 1);
   if (P.dashT <= 0) {
     const tx = mv.x * top, tz = mv.z * top, k = damp(P.air ? .05 : .0005, dt);
     P.vx = lerp(P.vx, tx, k); P.vz = lerp(P.vz, tz, k);
@@ -145,20 +266,33 @@ function updatePlayer(dt) {
   P.spd = Math.hypot(P.vx, P.vz);
   if (ml > .2 && !P.atk) P.face = Math.atan2(mv.z, mv.x);
   if (P.dashT > 0 && Math.random() < .8) addPart({x: P.x, y: .9, z: P.z, vx: 0, vz: 0, vy: 0, g: 0, life: .25, max: .25, size: .35, col: '#7f8fb8', drag: 1, rx: 0, ry: 0});
-  // jump arc
   if (P.air) { P.y += P.vy * dt; P.vy -= 24 * dt; if (P.y <= 0) land(); else if (rig.curName === 'Jump' && rig.cur.time >= rig.dur('Jump') * .95 && !P.slam) rig.play('Jump_Idle', {fade: .08}); }
-  // attack timeline: wind-up -> swing sound -> strike -> recovery -> chain
+  // attack timeline in clip time: slow wind-up (0.6x) -> snap through the strike (1.7x) -> recovery -> chain
+  let twistT = 0, leanT = 0;
   if (P.atk) {
-    const a = P.atk; a.t += dt;
-    const turn = angDiff(P.face, a.dir); P.face += turn * damp(.0001, dt);
-    if (!a.swung && a.t >= a.hitAt - .07) { a.swung = true; AU.play(a.spin ? 'swingWide' : weapon().swing, {vol: .9, rate: weapon().cls === 'heavy' ? .85 : 1, max: 4}); }
-    if (!a.hit && a.t >= a.hitAt) { a.hit = true; strike(a); }
-    if (a.spin) rig.body.rotation.y = easeOutCubic(clamp(a.t / a.dur, 0, 1)) * Math.PI * 2;
-    if (P.queued && a.t >= a.dur * .72) endAttack(); else if (a.t >= a.dur) endAttack();
+    const a = P.atk, w = weapon();
+    const pre = a.ct < a.hitAt, ts = a.base * (pre ? .6 : 1.7);
+    if (rig.cur) rig.cur.timeScale = ts;
+    a.ct += dt * ts;
+    P.face += angDiff(P.face, a.dir) * damp(.0001, dt);
+    if (!a.swung && a.ct >= a.hitAt - .12 * a.clipDur) { a.swung = true; AU.play(a.fin && a.spin ? 'swingWide' : w.swing, {vol: .9, rate: w.cls === 'heavy' ? .85 : 1, max: 4}); }
+    if (!a.hit && a.ct >= a.hitAt) { a.hit = true; strike(a); }
+    // spinning finishers hit on a timer while the body turns
+    if (a.spin) { const k = clamp(a.ct / a.clipDur, 0, 1); rig.body.rotation.y = easeOutCubic(k) * Math.PI * 2 * a.spin;
+      if (a.ticks && a.ct >= a.hitAt * .5 && a.tickN < a.ticks && a.ct >= a.hitAt * .5 + a.tickN * (a.clipDur - a.hitAt * .5) / a.ticks) {
+        a.tickN++; hitArea(P.x, P.z, 0, w.range * UP.range, 9, 1 + UP.dmg, {kind: 'Grinder', w, light: true}); AU.play('hitMetal', {vol: .5, rate: 1.4 + a.tickN * .05, dur: .2, max: 4}); sparks(P.x, P.z, P.face + a.tickN, 8, '#ffe14a'); shake(.08); } }
+    // blade trail during the active part of the swing
+    const act = a.spin ? a.ct > a.hitAt * .4 : a.ct > a.hitAt - .2 * a.clipDur && a.ct < a.hitAt + .35 * a.clipDur;
+    if (act && P.wMesh && P.wMesh.visible) { const s = trailSample(P.wMesh, w), st = trailStyle(); trailFX(st.fx, s.tip, s.base); }
+    // torso follow-through: turn away in the wind-up, whip through on the strike
+    const amp = w.twist * (a.fin ? 1.25 : 1);
+    if (pre) { const k = a.ct / a.hitAt; twistT = -amp * .55 * easeOutCubic(k); leanT = -.12 * k; }
+    else { const s = clamp((a.ct - a.hitAt) / (a.clipDur - a.hitAt), 0, 1); twistT = lerp(-amp * .55, amp, easeOutCubic(Math.min(1, s * 3))) * (1 - s * s); leanT = .35 * (1 - s); }
+    if (a.ct >= a.clipDur) { if (a.rep > 1) { a.rep--; a.ct = 0; a.hit = false; a.swung = false; P.rig.play(a.clip, {loop: false, restart: true, fade: .02}); const t = nearestZombie(4); if (t) a.dir = Math.atan2(t.z - P.z, t.x - P.x); } else endAttack(); }
+    else if (P.queued && a.ct >= a.clipDur * .7 && a.rep <= 1) endAttack();
   }
-  // footsteps
+  updateTrail(dt, trailStyle().col);
   if (!P.air && P.spd > 1) { P.stepD += P.spd * dt; if (P.stepD > 1.9) { P.stepD = 0; AU.play('step', {vol: .35, max: 2}); } }
-  // locomotion clips when nothing else owns the body
   const busy = P.atk || (P.hurtT > 0) || P.air || (P.landT > 0 && rig.curName === 'Jump_Land');
   if (!busy) {
     if (P.spd > 3.2) rig.play('Run', {speed: clamp(P.spd / 6, .8, 1.4), fade: .15});
@@ -166,6 +300,10 @@ function updatePlayer(dt) {
     else rig.play('Idle', {fade: .2});
   }
   rig.mixer.update(dt);
+  // layer the torso motion on top of the clip
+  P.twist = lerp(P.twist, twistT, damp(.00001, dt)); P.lean = lerp(P.lean, leanT, damp(.0001, dt));
+  const b = rig.bones;
+  if (b.Torso) b.Torso.rotateY(P.twist * .6); if (b.Hips) b.Hips.rotateY(P.twist * .4); if (b.Abdomen) b.Abdomen.rotateX(P.lean);
   syncPlayer();
 }
 function syncPlayer() {
@@ -173,4 +311,8 @@ function syncPlayer() {
   rig.root.position.set(P.x, P.y, P.z); rig.root.rotation.y = yawFor(P.face);
   rig.root.visible = !(P.inv > 0 && !P.dead && P.hurtT <= 0 && Math.floor(P.inv * 18) % 2);
   if (P.hurtT > 0) rig.flash(.6, 1, .1, .1); else if (P.rage > 0) rig.flash(.25 + .15 * Math.sin(G.time * 12), 1, .4, 0); else rig.flash(0);
+  // weapon glow: the fire axe always burns; an infusion tints any weapon
+  const w = weapon(), inf = UP.infuse && INFUSE[UP.infuse], gc = inf ? inf.col : w.glow;
+  if (P.wMesh && gc) { const c = COL('#' + new THREE.Color(gc).getHexString()), f = .7 + .3 * Math.sin(G.time * 23) * Math.sin(G.time * 7); P.wMesh.material.emissive.copy(c).multiplyScalar(.55 * f); P.wLight.color.copy(c); P.wLight.intensity = 1.6 * f; }
+  else P.wLight.intensity = 0;
 }
