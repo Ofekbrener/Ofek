@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ofek vs the Zombies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&family=Oswald:wght@500;700&display=swap">
+<style>
+:root{--bg:#0d1018;--fg:#f2ede4;--accent:#ffcc33;--muted:#aab0c8;--common:#8fa0b8;--rare:#4fa3ff;--epic:#c15cff;color-scheme:dark}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:Oswald,Impact,system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+#c3,#hud{position:fixed;inset:0;width:100%;height:100%;display:block}
+#hud{pointer-events:none}
+[hidden]{display:none!important}
+.overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  background:radial-gradient(circle at 50% 45%,rgba(13,16,24,.25),rgba(13,16,24,.9))}
+#menu h1{font-family:Creepster,Oswald,cursive;font-weight:400;font-size:clamp(44px,10vw,96px);margin:0;color:#7dff6a;text-shadow:0 0 18px rgba(80,255,80,.35),0 5px 0 #000;letter-spacing:2px;line-height:1}
+#menu .tag{color:var(--muted);margin:0 0 10px;font-size:clamp(14px,3.6vw,18px)}
+#menu p{margin:2px 0;font-size:clamp(14px,3.4vw,17px)}
+#menu .big{font-size:clamp(18px,4.4vw,24px)}
+.keys{display:grid;grid-template-columns:auto auto;gap:4px 14px;text-align:left;margin:10px 0 4px;font-size:clamp(13px,3.3vw,16px);color:#d9dcef}
+.keys b{color:var(--accent);font-weight:700}
+button{font-family:inherit}
+#go{margin-top:14px;font-size:24px;padding:12px 40px;border:0;border-radius:12px;background:var(--accent);color:#111;font-weight:700;letter-spacing:1px;box-shadow:0 6px 0 #9a7400;cursor:pointer}
+#go:disabled{opacity:.6;cursor:wait}
+#go:active{transform:translateY(4px);box-shadow:0 2px 0 #9a7400}
+button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.load{width:min(320px,80vw);height:6px;background:#2a2d3a;border-radius:3px;overflow:hidden;margin-top:12px}
+#loadbar{height:100%;width:0;background:var(--accent);transition:width .15s}
+.credits{font-size:12px;color:#7d8296;margin-top:14px;max-width:560px}
+#draft{background:radial-gradient(ellipse at 50% 40%,rgba(30,12,12,.78),rgba(4,5,9,.94));backdrop-filter:blur(4px);overflow-y:auto;justify-content:flex-start;padding-top:max(5vh,env(safe-area-inset-top))}
+#draft h2{margin:0;font-family:Creepster,Oswald,cursive;font-weight:400;font-size:clamp(34px,7vw,64px);color:#ff4a3a;letter-spacing:2px;text-shadow:0 0 22px rgba(255,40,40,.45),0 4px 0 #000}
+#draft .sub{margin:0 0 18px;color:var(--muted);letter-spacing:1px}
+.cards{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:860px;perspective:1100px}
+.card{--c1:#ffb36b;--c2:#ff3c3c;--rx:0deg;--ry:0deg;position:relative;width:min(240px,86vw);display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:0 0 12px;border-radius:16px;overflow:hidden;
+  background:linear-gradient(180deg,#232634 0%,#14161f 60%);border:2px solid #5b6178;color:var(--fg);cursor:pointer;text-align:left;
+  transform:rotateX(var(--rx)) rotateY(var(--ry));transition:transform .15s,box-shadow .15s,border-color .15s;box-shadow:0 14px 34px rgba(0,0,0,.55)}
+.cat-defense{--c1:#9dff9d;--c2:#18b04a}.cat-utility{--c1:#9fdcff;--c2:#2a7cff}.cat-epic{--c1:#ffd36b;--c2:#b03cff}
+.card.rare{border-color:#4fa3ff}.card.epic{border-color:#c15cff;box-shadow:0 0 28px rgba(193,92,255,.45),0 14px 34px rgba(0,0,0,.55)}
+.card:hover,.card:focus-visible{transform:translateY(-8px) scale(1.04) rotateX(var(--rx)) rotateY(var(--ry));border-color:var(--c1);box-shadow:0 0 30px color-mix(in srgb,var(--c2) 55%,transparent),0 18px 40px rgba(0,0,0,.6)}
+.deal .card{animation:deal .55s cubic-bezier(.2,1.3,.4,1) both;animation-delay:var(--d)}
+@keyframes deal{from{opacity:0;transform:translateY(80px) rotateY(100deg) scale(.7)}to{opacity:1;transform:none}}
+.card .art{position:relative;height:150px;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 55%,color-mix(in srgb,var(--c2) 55%,transparent) 0,transparent 62%),repeating-linear-gradient(135deg,rgba(255,255,255,.03) 0 6px,transparent 6px 12px),#0c0e15;border-bottom:1px solid rgba(255,255,255,.08)}
+.card .art img{width:150px;height:150px;object-fit:contain;filter:drop-shadow(0 8px 10px rgba(0,0,0,.6));animation:float 3s ease-in-out infinite}
+.card .art svg{width:92px;height:92px;filter:drop-shadow(0 0 14px var(--c2)) drop-shadow(0 6px 6px rgba(0,0,0,.6));animation:float 3s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-6px) rotate(-2deg)}}
+.card.epic .art::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.28) 48%,transparent 62%);background-size:250% 100%;animation:shine 2.4s linear infinite}
+@keyframes shine{from{background-position:150% 0}to{background-position:-100% 0}}
+.card .tag{position:absolute;top:10px;right:10px;z-index:2;font-size:11px;letter-spacing:2px;padding:3px 8px;border-radius:20px;background:rgba(0,0,0,.55);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 50%,transparent)}
+.card .key{position:absolute;top:8px;left:10px;z-index:2;width:22px;height:22px;display:grid;place-items:center;border-radius:6px;background:rgba(0,0,0,.6);font-size:13px;color:#fff}
+.card .title{padding:0 14px;font-size:24px;font-weight:700;letter-spacing:.5px;line-height:1.05;color:#fff}
+.stats,.bars{padding:0 14px;display:grid;gap:5px}
+.st{display:flex;justify-content:space-between;gap:8px;font-size:15px;color:#c9cde0}
+.st b{color:#7dff8a;font-weight:700;white-space:nowrap}.st s{color:#8a8fa6;text-decoration:none;font-weight:500}
+.bar{display:grid;grid-template-columns:58px 1fr 58px;align-items:center;gap:6px;font-size:11px;letter-spacing:1px;color:#aab0c8}
+.bar i{position:relative;height:7px;border-radius:4px;background:#2b2f40;overflow:visible}
+.bar i b{position:absolute;inset:0 auto 0 0;border-radius:4px;background:#d9dcef}
+.bar i em{position:absolute;top:-3px;width:2px;height:13px;background:#fff;opacity:.55}
+.bar.up i b{background:#5fe36e}.bar.down i b{background:#ff5a5a}
+.bar small{text-align:right;color:#fff;font-size:11px}
+.card .flavor{padding:0 14px;font-size:13px;color:#8f95ad;font-style:italic;font-family:system-ui,sans-serif;line-height:1.35}
+.card .rar{margin:auto 14px 0;display:flex;align-items:center;gap:6px;font-size:11px;text-transform:uppercase;letter-spacing:3px;color:#8fa0b8}
+.card .rar i{width:9px;height:9px;transform:rotate(45deg);background:#8fa0b8}
+.card.rare .rar{color:#4fa3ff}.card.rare .rar i{background:#4fa3ff}.card.epic .rar{color:#d48bff}.card.epic .rar i{background:linear-gradient(#ffd36b,#c15cff)}
+.card.picked{animation:picked .6s ease-out forwards}.card.gone{animation:gone .4s ease-in forwards}
+@keyframes picked{40%{transform:scale(1.12);box-shadow:0 0 60px var(--c1)}to{transform:scale(1.3) translateY(-40px);opacity:0}}
+@keyframes gone{to{transform:translateY(60px) scale(.85);opacity:0}}
+.reroll{margin:18px 0 10px;padding:9px 20px;border-radius:12px;border:1px solid #6b5a22;background:#1d1a10;color:#ffc83a;font-size:17px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.reroll small{color:#a99a6a}.reroll .coin{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3b0,#ffc83a 45%,#b98a10)}
+.reroll:disabled{opacity:.45;cursor:not-allowed}
+@media (max-width:640px){.cards{gap:10px}.card{display:grid;grid-template-columns:96px 1fr;grid-template-rows:auto auto auto auto;column-gap:10px;row-gap:4px;padding:0 10px 10px 0;width:min(380px,94vw)}
+  .card .art{grid-row:1/6;height:auto;min-height:120px;border-bottom:0;border-right:1px solid rgba(255,255,255,.08)}.card .art img{width:92px;height:92px}.card .art svg{width:60px;height:60px}
+  .card .title{padding:30px 0 0;font-size:20px}.stats,.bars,.card .flavor{padding:0}.card .rar{margin:0}.card .tag{top:8px;right:8px}.bar{grid-template-columns:50px 1fr 52px}}
+@media (prefers-reduced-motion:reduce){.card,.deal .card,.card .art img,.card .art svg,.card.epic .art::after{animation:none;transition:none}}
+</style>
+</head>
+<body>
+<canvas id="c3"></canvas>
+<canvas id="hud"></canvas>
+<div id="menu" class="overlay">
+  <h1>Ofek vs the Zombies</h1>
+  <p class="tag">Survive the night. Pick an upgrade after every wave. A boss every 5 waves.</p>
+  <div class="keys">
+    <b>WASD / arrows</b><span>move</span>
+    <b>Click / J</b><span>attack (chain 4 hits for a spin)</span>
+    <b>Space</b><span>jump · attack in the air to slam</span>
+    <b>Shift / right-click</b><span>dash (after you unlock it)</span>
+    <b>Phone</b><span>left thumb moves · buttons on the right</span>
+  </div>
+  <p>Hit the barrels to blow them up. Zombies near them go too.</p>
+  <div class="load"><div id="loadbar"></div></div>
+  <button id="go" disabled>Loading…</button>
+  <p class="credits">Models: Zombie Apocalypse Kit by Quaternius (CC0) · Sound: Oculus Audio Pack by Meta (CC BY 4.0) · Music: rendered from Meta Piano (CC0) · M to mute</p>
+</div>
+<div id="draft" class="overlay" hidden></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/core.js"></script>
+<script src="js/juice.js"></script>
+<script src="js/world.js"></script>
+<script src="js/player.js"></script>
+<script src="js/enemies.js"></script>
+<script src="js/upgrades.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -110,3 +110,13 @@ The player getting hurt gets the strongest shake and a red flash so it never fee
 ## Reference implementation
 
 Single-file canvas example: see `example-arena.html` next to this file for a full canvas game that uses every effect in the table.
+
+## Lessons from the 3D rebuild (zombie-game/)
+
+- Use authored animation clips for attacks. Procedural arm posing on a rig without attack clips reads as the same move every time. Pick a kit that ships Slash, Stab, Punch, HitReact and Death clips.
+- Vary a combo with what you have: different clips per step, a mirrored body (`scale.x = -1`) for a backhand, a full-body spin for the finisher, and running variants (Run_Slash) when the player moves.
+- Land damage at a per-clip hit time (Slash 0.42, Stab 0.45 of the clip). Play the swing sound about 70 ms before it. The wind-up is the anticipation.
+- Enemies get telegraphed attacks too: authored Punch clip, damage at 45% of it, only if the player is still in reach and in front. Bosses telegraph with ground decals (a charge lane, a slam circle) for about 1 s.
+- Sound: one recorded sample family per event, 2 to 6 variations, ±6% pitch, max 3 voices per family, a limiter on the master bus, music ducked on kills. Mixing recorded and oscillator-made effects sounds wrong; use recordings only.
+- Upgrade cards need art and numbers: render weapon meshes to images once at load, give perks drawn emblems colored by category, show the stat change (`5 → 6`) and compare weapons with bars against the current one.
+- Software-rendered test browsers run at about 5 fps. Expose a `simulate(seconds)` hook so tests advance game time without rendering.
