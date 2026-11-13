@@ -3,22 +3,38 @@
 const TUT_DONE = () => { try { return localStorage.getItem('ozFtue') === 'done'; } catch (e) { return false; } };
 const TUT = {active: false, i: 0, d: {}, dummy: null, marker: null, arrow: null, el: null, doneT: 0};
 const touchUI = () => HUD.touch;
+// icons for the training card (24x24 line art)
+const TUT_ICON = {
+  move: '<path d="M12 2l3 3h-2v4h-2V5H9zM12 22l-3-3h2v-4h2v4h2zM2 12l3-3v2h4v2H5v2zM22 12l-3 3v-2h-4v-2h4V9z"/>',
+  attack: '<path d="M19 2l3 3-11 11-2-1-1-2zM6 14l4 4-2 2-1-1-2 2-2-2 2-2-1-1z"/>',
+  finisher: '<path d="M12 1l2.6 7.2L22 9l-5.8 4.6L18 21l-6-4.2L6 21l1.8-7.4L2 9l7.4-.8z"/>',
+  slam: '<path d="M12 2v10l3-3 1.4 1.4L12 15l-4.4-4.6L9 9l3 3"/><path d="M3 19h18v2H3zM5 16l2 2M19 16l-2 2"/>',
+  barrel: '<path d="M7 3h10l1 3v12l-1 3H7l-1-3V6zM6 8h12M6 16h12"/>',
+  waves: '<path d="M12 2a8 8 0 0 0-8 8c0 3 1.6 4.6 3 5.6V19h10v-3.4c1.4-1 3-2.6 3-5.6a8 8 0 0 0-8-8zM9 11a1.5 1.5 0 1 1 0 .1M15 11a1.5 1.5 0 1 1 0 .1M9 21h6"/>',
+};
+// keys: shown as keycaps on desktop. touch: which control the pulsing finger points at on phones.
 const TUT_STEPS = [
-  {title: 'Move', text: () => touchUI() ? 'Put your thumb anywhere on the screen and drag to walk.' : 'Walk with WASD or the arrow keys.',
+  {title: 'Move', icon: 'move', keys: ['W', 'A', 'S', 'D'], touch: 'drag',
+    text: () => touchUI() ? 'Drag your thumb anywhere on the screen to walk.' : 'Walk around with WASD or the arrow keys.',
     start() { TUT.d.dist = 0; TUT.d.px = G.player.x; TUT.d.pz = G.player.z; },
     update() { const P = G.player; TUT.d.dist += Math.hypot(P.x - TUT.d.px, P.z - TUT.d.pz); TUT.d.px = P.x; TUT.d.pz = P.z; return TUT.d.dist > 5; },
     progress: () => Math.min(1, TUT.d.dist / 5)},
-  {title: 'Attack', text: () => (touchUI() ? 'Tap ATTACK' : 'Click or press J') + ' to hit the training zombie. Your swing aims itself.',
+  {title: 'Attack', icon: 'attack', keys: ['J', 'Click'], touch: 'atk',
+    text: () => (touchUI() ? 'Tap ATTACK' : 'Press J or click') + ' to hit the training zombie 3 times. Hits aim themselves.',
     start() { spawnDummy(); TUT.d.hits = 0; }, target: () => TUT.dummy, on: {hit: () => ++TUT.d.hits >= 3}, progress: () => TUT.d.hits / 3},
-  {title: 'Finisher', text: () => `Hit 4 times in a row without stopping. The 4th hit is your ${weapon().fin}: ${weapon().finText}.`,
+  {title: 'Finisher', icon: 'finisher', keys: ['J', 'J', 'J', 'J'], touch: 'atk',
+    text: () => `Attack 4 times without stopping. Hit 4 is your ${weapon().fin}: ${weapon().finText}.`,
     start() {}, target: () => TUT.dummy, on: {finisher: () => true}},
-  {title: 'Ground slam', text: () => `${touchUI() ? 'Tap JUMP' : 'Press Space'} to jump, then attack in the air to slam down on everything around you.`,
+  {title: 'Ground slam', icon: 'slam', keys: ['Space', 'then J'], touch: 'slam',
+    text: () => `${touchUI() ? 'Tap JUMP' : 'Press Space'}, then attack in the air to slam everything around you.`,
     start() {}, target: () => TUT.dummy, on: {slam: () => true}},
-  {title: 'Explosive barrels', text: () => 'Hit the marked barrel. It blows up and takes nearby zombies with it, so step back after.',
+  {title: 'Explosive barrel', icon: 'barrel', keys: ['J'], touch: 'atk',
+    text: () => 'Hit the marked barrel, then step back. The blast kills zombies near it.',
     start() { if (TUT.dummy && !TUT.dummy.gone) { TUT.dummy.dummy = false; gibZombie(TUT.dummy, 0); TUT.dummy.gone = true; TUT.dummy = null; } const P = G.player; let b = null, bd = 1e9; for (const x of G.barrels) { if (x.dead) continue; const d = Math.hypot(x.x - P.x, x.z - P.z); if (d < bd) { bd = d; b = x; } } TUT.d.barrel = b; if (!b) TUT.next(); },
     target: () => TUT.d.barrel && !TUT.d.barrel.dead ? TUT.d.barrel : null, on: {barrel: () => true}},
-  {title: 'Survive the night', text: () => 'Zombies come in waves. Pick 1 of 3 upgrades after each wave, and coins pay for rerolls. Every 5th wave brings a boss: watch the red marks on the ground and get out of them.',
-    start() { TUT.d.t = 0; }, update(dt) { TUT.d.t += dt; return TUT.d.t > 7; }, button: 'Start wave 1'},
+  {title: 'Survive', icon: 'waves', keys: [],
+    text: () => 'Zombies come in waves. After each wave, pick 1 of 3 upgrades. Every 5th wave brings a boss: step out of the red marks.',
+    start() { TUT.d.t = 0; }, update(dt) { TUT.d.t += dt; return TUT.d.t > 9; }, progress: () => TUT.d.t / 9, button: 'Start wave 1'},
 ];
 function spawnDummy() {
   if (TUT.dummy && !TUT.dummy.gone) return;
@@ -39,16 +55,20 @@ TUT.next = function () {
   const s = TUT_STEPS[TUT.i]; s.start(); TUT.render();
 };
 TUT.render = function () {
-  const s = TUT_STEPS[TUT.i], el = TUT.el = document.getElementById('tut'); el.hidden = false;
-  el.innerHTML = `<div class="tstep">TRAINING ${TUT.i + 1} / ${TUT_STEPS.length}</div><div class="ttitle">${s.title}</div><div class="ttext">${s.text()}</div>
-    <div class="tbar"><i id="tbar"></i></div><div class="tacts">${s.button ? `<button id="tgo" class="primary">${s.button}</button>` : ''}<button id="tskip" class="ghost">Skip training</button></div>`;
+  const s = TUT_STEPS[TUT.i], el = TUT.el = document.getElementById('tut'); el.hidden = false; el.classList.remove('done');
+  const dots = TUT_STEPS.map((_, i) => `<i class="${i < TUT.i ? 'past' : i === TUT.i ? 'now' : ''}"></i>`).join('');
+  const keys = !touchUI() && s.keys.length ? `<div class="tkeys">${s.keys.map(k => `<kbd>${k}</kbd>`).join('')}</div>` : '';
+  el.innerHTML = `<div class="thead"><div class="ticon"><svg viewBox="0 0 24 24">${TUT_ICON[s.icon]}</svg></div>
+    <div class="tmain"><div class="tdots">${dots}</div><div class="ttitle">${s.title}</div></div><button id="tskip" class="tskip">Skip</button></div>
+    <div class="ttext">${s.text()}</div>${keys}<div class="tbar"><i id="tbar"></i></div>${s.button ? `<button id="tgo" class="primary">${s.button}</button>` : ''}`;
+  el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
   document.getElementById('tskip').onclick = () => TUT.finish(true);
   const go = document.getElementById('tgo'); if (go) go.onclick = () => TUT.complete();
 };
 TUT.complete = function () {
   if (TUT.doneT) return; TUT.doneT = .8; const P = G.player;
   AU.play('cardPick', {vol: .8}); AU.play('heart', {vol: .4}); ring(P.x, P.z, 2.2, 0x7dff8a, .4); HAPTIC.fx('card');
-  const t = document.querySelector('#tut .ttitle'); if (t) t.classList.add('done');
+  if (TUT.el) TUT.el.classList.add('done');
   const bar = document.getElementById('tbar'); if (bar) bar.style.width = '100%';
 };
 TUT.event = function (name) {

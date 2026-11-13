@@ -107,14 +107,25 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .acts{display:flex;gap:10px;align-items:center;margin-top:4px}
 @media (max-width:760px){#creator .panel{top:auto;height:58%;width:100%;background:linear-gradient(180deg,rgba(10,12,18,.8),rgba(10,12,18,.97) 10%);border-radius:18px 18px 0 0}
   #creator h2{font-size:30px}#creator .hint{bottom:auto;top:max(12px,env(safe-area-inset-top))}.weps{grid-template-columns:repeat(6,1fr)}.wep img{width:44px;height:44px}.wep b{font-size:10px}}
-#tut{position:fixed;left:50%;top:max(78px,env(safe-area-inset-top));transform:translateX(-50%);width:min(460px,calc(100% - 32px));box-sizing:border-box;padding:12px 16px;border-radius:14px;
-  background:rgba(10,12,18,.86);border:1px solid #3a3f55;box-shadow:0 10px 30px rgba(0,0,0,.5);text-align:center}
-#tut .tstep{font-size:12px;letter-spacing:3px;color:#7dff8a}
-#tut .ttitle{font-size:26px;font-weight:700;color:#fff;transition:color .2s}
-#tut .ttitle.done{color:#7dff8a}#tut .ttitle.done::after{content:" ✓"}
-#tut .ttext{font-size:15px;color:#cfd3e6;font-family:system-ui,sans-serif;line-height:1.4;margin:4px 0 8px}
-#tut .tbar{height:6px;border-radius:3px;background:#2b2f40;overflow:hidden}#tut .tbar i{display:block;height:100%;width:0;background:#7dff8a;transition:width .15s}
-#tut .tacts{display:flex;gap:10px;justify-content:center;margin-top:8px}#tut .ghost{margin:0;padding:5px 12px;font-size:13px}
+#tut{position:fixed;left:50%;top:max(104px,env(safe-area-inset-top));transform:translateX(-50%);width:min(440px,calc(100% - 24px));box-sizing:border-box;padding:12px 14px 14px;border-radius:16px;
+  background:linear-gradient(180deg,rgba(22,26,38,.94),rgba(10,12,18,.94));border:2px solid #3a3f55;box-shadow:0 12px 30px rgba(0,0,0,.55);transition:border-color .2s,box-shadow .2s}
+#tut.pop{animation:tutpop .35s cubic-bezier(.2,1.6,.4,1)}@keyframes tutpop{from{scale:.85;opacity:0}}
+@media (min-width:760px){#tut{left:16px;transform:none;width:400px}}
+#tut.done{border-color:#7dff8a;box-shadow:0 0 0 4px rgba(125,255,138,.25),0 12px 30px rgba(0,0,0,.55)}
+#tut .thead{display:flex;align-items:center;gap:12px}
+#tut .ticon{flex:none;width:52px;height:52px;border-radius:14px;background:#ffcc33;display:grid;place-items:center;box-shadow:0 4px 0 #9a7400}
+#tut .ticon svg{width:32px;height:32px;fill:#1a1408;stroke:#1a1408;stroke-width:.6;stroke-linejoin:round}
+#tut.done .ticon{background:#7dff8a;box-shadow:0 4px 0 #2f8a3a}
+#tut .tmain{flex:1;min-width:0}
+#tut .tdots{display:flex;gap:5px;margin-bottom:3px}#tut .tdots i{width:18px;height:5px;border-radius:3px;background:#2e3346}#tut .tdots i.past{background:#7dff8a}#tut .tdots i.now{background:#ffcc33}
+#tut .ttitle{font-size:26px;font-weight:700;color:#fff;line-height:1.05}
+#tut.done .ttitle{color:#7dff8a}#tut.done .ttitle::after{content:" \2713"}
+#tut .tskip{flex:none;align-self:flex-start;font-family:inherit;font-size:13px;color:#aab0c8;background:none;border:1px solid #3a3f55;border-radius:8px;padding:4px 10px;cursor:pointer}
+#tut .ttext{font-size:16px;color:#e4e7f2;font-family:system-ui,sans-serif;line-height:1.4;margin:10px 0 8px}
+#tut .tkeys{display:flex;gap:6px;margin:0 0 10px}
+#tut kbd{font-family:Oswald,system-ui,sans-serif;font-size:14px;min-width:26px;text-align:center;padding:3px 8px;border-radius:6px;background:#e9ecf5;color:#111;box-shadow:0 3px 0 #8b90a6}
+#tut .tbar{height:8px;border-radius:4px;background:#2b2f40;overflow:hidden}#tut .tbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4fdc62,#a8ff9a);transition:width .15s}
+#tut .primary{display:block;margin:12px auto 0}
 @media (prefers-reduced-motion:reduce){.card,.deal .card,.card .art img,.card .art svg,.card.epic .art::after{animation:none;transition:none}}
 </style>
 </head>

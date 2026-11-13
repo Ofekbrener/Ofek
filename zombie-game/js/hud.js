@@ -51,7 +51,9 @@ function drawHUD(dt) {
   stroked(String(G.score), W - 16, 38, FONT(30), '#ffffff', 5, 'right');
   const left = WAVE.total - WAVE.killed;
   stroked(TUT.active ? 'TRAINING' : `WAVE ${G.wave}` + (G.state === 'playing' && WAVE.active ? `  ·  ${Math.max(0, left)} left` : ''), W - 16, 64, FONT(17), '#cfd6ff', 4, 'right');
-  if (G.combo > 2) { const s = 1 + Math.max(0, G.comboT - 1.7) * 3; hx.save(); hx.translate(W - 16, 104); hx.scale(s, s); stroked('x' + G.combo, 0, 0, FONT(26 + Math.min(G.combo, 30) * .7), '#ffcc33', 5, 'right'); hx.restore(); }
+  // combo: anchored at its top-right corner under the wave label (and under the boss bar on phones), pops on each hit
+  const narrow = W < 640, comboY = narrow ? 130 : 80;
+  if (G.combo > 2) { const s = 1 + Math.min(.4, Math.max(0, G.comboT - 1.7) * 3), fs = 26 + Math.min(G.combo, 30) * .7; hx.save(); hx.translate(W - 16, comboY); hx.scale(s, s); stroked('x' + G.combo, 0, fs * .82, FONT(fs), '#ffcc33', 5, 'right'); stroked('COMBO', 0, fs * .82 + 15, FONT(12), '#ffe9a8', 3, 'right'); hx.restore(); }
   // weapon + upgrade badges
   const w = weapon(), wi = WEAPON_IMG[P.weapon]; if (wi && wi.complete) hx.drawImage(wi, 6, H - 66, 56, 56);
   // element dots and gear icons with cooldown rings above the weapon name
@@ -65,14 +67,17 @@ function drawHUD(dt) {
     
   // boss bar
   const B = WAVE.boss; if (B && !B.dying) {
-    const bw = Math.min(520, W - 40), bx = (W - bw) / 2, by = W < 640 ? 84 : 18; hx.fillStyle = 'rgba(0,0,0,.6)'; hx.fillRect(bx - 3, by - 3, bw + 6, 20);
-    hx.fillStyle = '#7a1010'; hx.fillRect(bx, by, bw, 14); hx.fillStyle = '#ff3b3b'; hx.fillRect(bx, by, bw * Math.max(0, B.hp / B.maxHp), 14);
-    stroked('THE BUTCHER', W / 2, by + 36, FONT(16), '#ffdddd', 4);
+    // phones: a full-width strip under the FURY meter; wide screens: centered between the two top corners
+    const bw = narrow ? W - 32 : Math.min(520, W - 560), bx = (W - bw) / 2, by = narrow ? 100 : 18, bh = 20;
+    hx.fillStyle = 'rgba(0,0,0,.65)'; hx.fillRect(bx - 3, by - 3, bw + 6, bh + 6);
+    hx.fillStyle = '#5a0c0c'; hx.fillRect(bx, by, bw, bh); hx.fillStyle = '#ff3b3b'; hx.fillRect(bx, by, bw * Math.max(0, B.hp / B.maxHp), bh);
+    hx.fillStyle = 'rgba(255,255,255,.18)'; hx.fillRect(bx, by, bw * Math.max(0, B.hp / B.maxHp), bh / 3);
+    stroked(B.bossName || 'THE BUTCHER', W / 2, by + 15, FONT(14), '#fff0f0', 3);
   }
   // banner
   if (HUD.bannerT > 0) {
     HUD.bannerT -= dt; const k = 1 - HUD.bannerT / 2.2, a = k < .1 ? k / .1 : k > .8 ? (1 - k) / .2 : 1, s = k < .1 ? easeOutBack(k / .1) : 1;
-    hx.save(); hx.translate(W / 2, H * .27); hx.scale(s, s); hx.globalAlpha = a; stroked(HUD.bannerTxt, 0, 0, FONT(54), HUD.bannerCol, 9);
+    hx.save(); hx.translate(W / 2, H * (W < 640 ? .4 : .27)); hx.scale(s, s); hx.globalAlpha = a; stroked(HUD.bannerTxt, 0, 0, FONT(Math.min(54, (W - 24) * 1.15 / Math.max(1, HUD.bannerTxt.length))), HUD.bannerCol, 9);
     if (HUD.bannerSub) stroked(HUD.bannerSub, 0, 36, FONT(22), '#ffffff', 5); hx.restore();
   }
   // touch controls
@@ -81,5 +86,19 @@ function drawHUD(dt) {
     for (const [k, b] of Object.entries(HUD.btn)) { if (k === 'dash' && !UP.dash) continue; hx.globalAlpha = .3; hx.fillStyle = b.col; hx.beginPath(); hx.arc(b.x, b.y, b.r, 0, 7); hx.fill(); hx.globalAlpha = .9; stroked(b.lab, b.x, b.y + 5, FONT(14), '#fff', 3); }
     const j = INPUT.joy; if (j) { hx.globalAlpha = .35; hx.strokeStyle = '#fff'; hx.lineWidth = 3; hx.beginPath(); hx.arc(j.ox, j.oy, 55, 0, 7); hx.stroke(); const dx = j.x - j.ox, dy = j.y - j.oy, l = Math.min(55, Math.hypot(dx, dy)), a = Math.atan2(dy, dx); hx.fillStyle = '#fff'; hx.beginPath(); hx.arc(j.ox + Math.cos(a) * l, j.oy + Math.sin(a) * l, 24, 0, 7); hx.fill(); }
     hx.globalAlpha = 1;
+    // training: a pulsing ring and a bouncing finger on the control the current step needs
+    const st = TUT.active && !TUT.doneT ? TUT_STEPS[TUT.i] : null;
+    if (st && st.touch) {
+      const which = st.touch === 'slam' ? (Math.floor(t / 1.1) % 2 ? 'atk' : 'jmp') : st.touch, k = (t * 1.6) % 1;
+      if (which === 'drag') {
+        const x0 = W * .25, y0 = H * .62, x = x0 + Math.sin(t * 2.2) * 60;
+        hx.globalAlpha = .5; hx.strokeStyle = '#fff'; hx.lineWidth = 3; hx.beginPath(); hx.arc(x0, y0, 55, 0, 7); hx.stroke();
+        hx.globalAlpha = .9; hx.fillStyle = '#ffcc33'; hx.beginPath(); hx.arc(x, y0, 18, 0, 7); hx.fill();
+        hx.globalAlpha = 1; stroked('👆', x + 6, y0 + 40, FONT(34), '#fff', 0); stroked('DRAG', x0, y0 - 68, FONT(16), '#ffcc33', 4);
+      } else { const b = HUD.btn[which];
+        hx.strokeStyle = '#ffcc33'; hx.lineWidth = 4; hx.globalAlpha = 1 - k; hx.beginPath(); hx.arc(b.x, b.y, b.r + 6 + k * 26, 0, 7); hx.stroke();
+        hx.globalAlpha = 1; stroked('👇', b.x, b.y - b.r - 10 + Math.sin(t * 8) * 6, FONT(36), '#fff', 0); stroked('TAP', b.x, b.y - b.r - 52, FONT(16), '#ffcc33', 4); }
+      hx.globalAlpha = 1;
+    }
   }
 }
