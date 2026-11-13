@@ -26,7 +26,7 @@ RADIO.clear = function () { RADIO.q = []; RADIO.cur = null; if (RADIO.el) RADIO.
 RADIO.update = function () {
   const now = performance.now() / 1000, raw = Math.min(.1, now - (RADIO.last || now)); RADIO.last = now;
   const c = RADIO.cur; if (!c) return; RADIO.t += raw;
-  RADIO.el.style.visibility = G.state === 'draft' || G.state === 'picking' || G.state === 'dead' ? 'hidden' : 'visible';
+  RADIO.el.style.visibility = G.state === 'draft' || G.state === 'picking' || G.state === 'dead' || G.state === 'travel' ? 'hidden' : 'visible';
   const n = Math.min(c.text.length, Math.floor(RADIO.t * 42));
   if (n !== RADIO.chars) { RADIO.chars = n; const t = RADIO.el.querySelector('.rtext'); if (t) t.textContent = c.text.slice(0, n); }
   if (RADIO.t > c.text.length / 42 + 1.6 + c.text.length * .035) RADIO.next();
@@ -51,7 +51,7 @@ function enterArea(i, then) {
 // after each draft: next wave, or the next district after a boss
 function nextWave() {
   const ni = areaIndex(G.wave + 1);
-  if (ni !== G.area) enterArea(ni, () => setTimeout(startWave, 3000)); else startWave();
+  if (ni !== G.area) showCityMap(ni, () => enterArea(ni, () => setTimeout(startWave, 3000))); else startWave();
 }
 function storyWaveStart() {
   const li = (G.wave - 1) % 5, A = curArea();
@@ -59,6 +59,23 @@ function storyWaveStart() {
   if (lines) setTimeout(() => RADIO.say(lines), li === 0 ? 2200 : 900);
 }
 function storyBossDown() { const A = curArea(); setTimeout(() => RADIO.say(A.radio.after), 1500); }
+
+// ---------- city map between districts ----------
+const MAP_PTS = [[60, 250], [130, 170], [230, 205], [300, 120], [345, 62]];
+function showCityMap(next, go) {
+  const el = document.getElementById('citymap'); G.state = 'travel'; el.hidden = false; AU.musicTo('music_calm'); AU.play('cardOpen', {vol: .7});
+  const path = 'M' + MAP_PTS.map(p => p.join(' ')).join(' L');
+  const done = MAP_PTS.slice(0, next + 1).map(p => p.join(' ')).join(' L');
+  const nodes = AREAS.map((A, i) => { const [x, y] = MAP_PTS[i], st = i < next ? 'done' : i === next ? 'next' : 'lock';
+    return `<g class="mn ${st}" transform="translate(${x} ${y})"><circle r="${i === next ? 15 : 11}"/>${st === 'done' ? '<path d="M-5 0l3.5 4L6-5" class="chk"/>' : `<text y="5">${i + 1}</text>`}
+      <text class="ml" y="${y > 150 ? 32 : -22}">${A.short.toUpperCase()}</text></g>`; }).join('');
+  el.innerHTML = `<div class="mapbox"><div class="mtitle">THE ROUTE TO THE WALL</div>
+    <svg viewBox="0 0 420 290" class="mapsvg"><path d="${path}" class="mroute"/><path d="M${done}" class="mdone"/>${nodes}
+    <g transform="translate(395 22)" class="mwall"><rect x="-14" y="-12" width="28" height="24" rx="3"/><text y="5">⚑</text></g></svg>
+    <div class="mnext">Next: <b>${AREAS[next].name}</b></div><div class="mgoal">${AREAS[next].goal}</div>
+    <button id="mapGo" class="primary">Go</button></div>`;
+  document.getElementById('mapGo').onclick = () => { el.hidden = true; AU.play('cardPick', {vol: .7}); go(); };
+}
 
 // ---------- opening ----------
 const INTRO_SHOTS = [

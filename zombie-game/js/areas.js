@@ -92,10 +92,11 @@ const AREAS = [
 // one boss per area; moves: charge, slam, summon (more to come per area)
 const BOSSES = {
   orderly: {name: 'THE ORDERLY', sub: 'he charges in straight lines', tint: 0xcfeee8, scale: 2.0, hp: 30, moves: ['charge', 'charge', 'slam']},
-  conductor: {name: 'THE CONDUCTOR', sub: 'his whistle calls runners', tint: 0x9fd0a8, scale: 2.0, hp: 40, moves: ['summon', 'charge', 'summon', 'slam']},
-  harbor: {name: 'THE HARBOR MASTER', sub: 'watch for shadows', tint: 0xffb080, scale: 2.3, hp: 52, moves: ['slam', 'charge', 'slam', 'summon']},
-  convoy: {name: 'THE CONVOY', sub: 'Doc\'s truck crew', tint: 0xff9a8a, scale: 2.2, hp: 64, moves: ['charge', 'slam', 'charge', 'summon']},
-  zero: {name: 'PATIENT ZERO', sub: 'Dr. Adler', tint: 0xd0a0ff, scale: 2.4, hp: 80, moves: ['charge', 'slam', 'summon']},
+  conductor: {name: 'THE CONDUCTOR', sub: 'his whistle calls runners', tint: 0x9fd0a8, scale: 2.0, hp: 40, moves: ['summon', 'charge', 'summon', 'slam'], summon: 'runner'},
+  harbor: {name: 'THE HARBOR MASTER', sub: 'watch for shadows', tint: 0xffb080, scale: 2.3, hp: 52, moves: ['throw', 'slam', 'throw', 'charge'], drops: 3},
+  convoy: {name: 'THE CONVOY BOSS', sub: 'stay out of the red lanes', tint: 0xff9a8a, scale: 2.2, hp: 64, moves: ['lanes', 'charge', 'lanes', 'slam']},
+  zero: {name: 'PATIENT ZERO', sub: 'Dr. Adler', tint: 0xd0a0ff, scale: 2.4, hp: 90, moves: ['charge', 'slam'], summon: 'mix', drops: 4,
+    phases: [['charge', 'slam', 'throw'], ['summon', 'charge', 'lanes', 'slam'], ['charge', 'throw', 'lanes', 'slam', 'summon']]},
 };
 const areaIndex = wave => clamp(Math.floor((Math.max(1, wave) - 1) / 5), 0, AREAS.length - 1);
 const curArea = () => AREAS[G.area || 0];

@@ -138,6 +138,17 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 #areacard.on{animation:acard 3.6s ease forwards}@keyframes acard{0%{opacity:0;letter-spacing:12px}12%{opacity:1;letter-spacing:2px}85%{opacity:1}100%{opacity:0}}
 #areacard .anum{font-size:14px;letter-spacing:6px;color:#ffcc33}#areacard .aname{font-family:Creepster,Oswald,sans-serif;font-size:clamp(34px,9vw,64px);color:#e8ffd0;text-shadow:0 4px 0 #000,0 0 24px rgba(0,0,0,.8)}
 #areacard .agoal{font-size:17px;color:#fff;text-shadow:0 2px 4px #000}
+#citymap{background:radial-gradient(ellipse at center,rgba(20,24,36,.92),rgba(5,6,10,.97))}
+#citymap .mapbox{width:min(560px,calc(100% - 24px));text-align:center}
+#citymap .mtitle{font-size:14px;letter-spacing:5px;color:#ffcc33;margin-bottom:6px}
+#citymap .mapsvg{width:100%;height:auto;background:#d9cfb4;border-radius:14px;box-shadow:0 0 0 6px #3a2f1e,0 18px 40px rgba(0,0,0,.6)}
+#citymap .mroute{fill:none;stroke:#8a7a5a;stroke-width:4;stroke-dasharray:2 10;stroke-linecap:round}
+#citymap .mdone{fill:none;stroke:#b01818;stroke-width:5;stroke-linecap:round;stroke-dasharray:600;animation:mdraw 1.4s ease forwards}@keyframes mdraw{from{stroke-dashoffset:600}to{stroke-dashoffset:0}}
+#citymap .mn circle{fill:#4a4030;stroke:#2a2418;stroke-width:3}#citymap .mn text{font-family:Oswald,sans-serif;font-size:14px;fill:#e8dfc6;text-anchor:middle;font-weight:700}
+#citymap .mn .ml{font-size:12px;fill:#3a2f1e;letter-spacing:1px}#citymap .mn.done circle{fill:#2f7a3a}#citymap .chk{fill:none;stroke:#fff;stroke-width:3}
+#citymap .mn.next circle{fill:#b01818;animation:mpulse 1s infinite}@keyframes mpulse{50%{stroke:#ffcc33;stroke-width:6}}#citymap .mn.lock{opacity:.55}
+#citymap .mwall rect{fill:#2a2418}#citymap .mwall text{font-size:14px;fill:#ffcc33;text-anchor:middle}
+#citymap .mnext{margin-top:14px;font-size:20px;color:#fff}#citymap .mnext b{color:#ffcc33}#citymap .mgoal{font-family:system-ui,sans-serif;color:#c9cde0;margin:4px 0 12px}
 #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .6s;z-index:20}#fade.on{opacity:1}
 #intro{position:fixed;inset:0;z-index:15;cursor:pointer;user-select:none}
 #intro .ibar{position:absolute;left:0;right:0;background:#000;display:block}#intro .itop{top:0;height:12vh}#intro .ibot{bottom:0;min-height:22vh;padding:18px 20px calc(14px + env(safe-area-inset-bottom));box-sizing:border-box;text-align:center}
@@ -172,6 +183,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 <div id="radio"></div>
 <div id="areacard"></div>
 <div id="fade"></div>
+<div id="citymap" class="overlay" hidden></div>
 <div id="intro" hidden><div class="ibar itop"></div><div class="ibar ibot"><div id="introText"></div><div id="introDots"></div><div id="introTap">tap to continue</div></div><button id="introSkip">Skip</button></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -186,6 +198,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 <script src="js/moves.js"></script>
 <script src="js/player.js"></script>
 <script src="js/enemies.js"></script>
+<script src="js/hazards.js"></script>
 <script src="js/gear.js"></script>
 <script src="js/powers.js"></script>
 <script src="js/upgrades.js"></script>
