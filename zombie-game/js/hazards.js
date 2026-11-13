@@ -28,7 +28,7 @@ function updateHazards(dt) {
     a.life -= dt; a.tick -= dt; a.m.material.opacity = .45 * Math.min(1, a.life / 1.2);
     if (Math.random() < .5) { const an = rnd(0, 7), r = rnd(0, a.r); addPart({x: a.x + Math.cos(an) * r, y: .05, z: a.z + Math.sin(an) * r, vx: 0, vz: 0, vy: rnd(.4, 1.2), g: 0, life: .6, max: .6, size: rnd(.06, .14), col: pick(['#9dff4a', '#d8ff9a']), drag: 1, rx: 0, ry: 0}); }
     if (a.tick <= 0 && Math.hypot(P.x - a.x, P.z - a.z) < a.r && P.y < .5) { a.tick = 1; if (hurtPlayer(1, a.x, a.z)) popText(P.x, P.z, 'ACID', '#9dff4a', 26, 2.6); }
-    if (a.life <= 0) scene.remove(a.m);
+    if (a.life <= 0) disposeTree(a.m);
   }
   HZ.acid = HZ.acid.filter(a => a.life > 0);
   for (const d of HZ.drops) {
@@ -69,7 +69,7 @@ function updateHazards(dt) {
   HZ.lanes = HZ.lanes.filter(l => !l.done);
 }
 function clearHazards() {
-  for (const a of HZ.acid) scene.remove(a.m);
+  for (const a of HZ.acid) disposeTree(a.m);
   for (const d of HZ.drops) { scene.remove(d.sh); if (d.box) scene.remove(d.box); }
   for (const l of HZ.lanes) { scene.remove(l.m); if (l.truck) scene.remove(l.truck); if (l.pack) for (const r of l.pack) r.mixer.stopAllAction(); }
   HZ.acid = []; HZ.drops = []; HZ.lanes = [];

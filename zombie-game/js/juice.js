@@ -4,13 +4,18 @@
 const FX = {parts: [], rings: [], texts: [], bolts: [], decals: [], gibs: [], fires: [], clouds: []};
 const MAXP = 1200, dummy = new THREE.Object3D(), colCache = {};
 const COL = c => colCache[c] || (colCache[c] = new THREE.Color(c));
-const partMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({color: 0xffffff}), MAXP);
+const cssCache = {}, CSS = c => cssCache[c] || (cssCache[c] = '#' + COL(c).getHexString()); // '#rrggbb' for a hex number, cached
+const partMesh = new THREE.InstancedMesh(new THREE.TetrahedronGeometry(.7, 0), new THREE.MeshBasicMaterial({color: 0xffffff}), MAXP);
 for (let i = 0; i < MAXP; i++) partMesh.setColorAt(i, COL('#ffffff'));
 partMesh.frustumCulled = false; scene.add(partMesh);
 const ringGeo = new THREE.RingGeometry(.88, 1, 48); ringGeo.rotateX(-Math.PI / 2);
 const hitLight = new THREE.PointLight(0xffd890, 0, 7, 2); scene.add(hitLight);
 const boomLight = new THREE.PointLight(0xff9a40, 0, 12, 2); scene.add(boomLight);
 
+// free the GPU buffers of a one-off object (gibs, acid pools) when it leaves the scene; shared geometry is flagged keep
+function disposeTree(o) { scene.remove(o); o.traverse(m => { if (m.isMesh) { if (!m.geometry.userData.keep) m.geometry.dispose(); if (!m.material.userData.keep) m.material.dispose(); } }); }
+const SCORCH_GEO = new THREE.CircleGeometry(.45, 12), SCORCH_MAT = new THREE.MeshBasicMaterial({color: 0x0a0503, transparent: true, opacity: .6, depthWrite: false});
+SCORCH_GEO.userData.keep = SCORCH_MAT.userData.keep = true;
 function shake(a) { G.trauma = Math.min(1, G.trauma + a); }
 function hitstop(t) { G.hitstop = Math.max(G.hitstop, t); }
 function slowmo(t) { G.slowT = Math.max(G.slowT, t); }
@@ -30,15 +35,22 @@ function sparks(x, z, dir, n, col = '#fff6c8') {
   }
 }
 function dust(x, z, n = 10, col = '#6b6470') { burst(x, z, n, col, 3, .16, .5, .1); }
-function ring(x, z, r, col, life = .3, y = .05) {
-  const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending}));
-  m.position.set(x, y, z); scene.add(m); FX.rings.push({m, r, life, t: 0});
+// shockwave rings come from a fixed pool of 16 meshes (each with its own material); the oldest is reused when all are busy
+const RING_POOL = [], ARC_GEO = {};
+for (let i = 0; i < 16; i++) { const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending})); m.visible = false; scene.add(m); RING_POOL.push(m); }
+function ringMesh(geo) {
+  let m = RING_POOL.find(o => !o.visible);
+  if (!m) { const r = FX.rings.shift(); m = r.m; }
+  m.geometry = geo; m.rotation.set(0, 0, 0); m.visible = true; return m;
 }
-// a partial ring that expands in one direction (guitar power chord)
+function ring(x, z, r, col, life = .3, y = .05) {
+  const m = ringMesh(ringGeo); m.material.color.set(col); m.position.set(x, y, z); FX.rings.push({m, r, life, t: 0});
+}
+// a partial ring that expands in one direction (guitar power chord); geometry cached per arc width (0.1 rad steps)
 function arcWave(x, z, dir, r, arc, col, life = .35) {
-  const g = new THREE.RingGeometry(.82, 1, 32, 1, -(dir + arc), arc * 2); g.rotateX(-Math.PI / 2);
-  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({color: col, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending}));
-  m.position.set(x, .6, z); scene.add(m); FX.rings.push({m, r, life, t: 0});
+  const key = Math.round(arc * 10); let g = ARC_GEO[key];
+  if (!g) { const a = key / 10; g = ARC_GEO[key] = new THREE.RingGeometry(.82, 1, 32, 1, -a, a * 2); g.rotateX(-Math.PI / 2); }
+  const m = ringMesh(g); m.material.color.set(col); m.position.set(x, .6, z); m.rotation.y = -dir; FX.rings.push({m, r, life, t: 0});
 }
 function notes(x, z, n) { for (let i = 0; i < n; i++) addPart({x: x + rnd(-.4, .4), y: rnd(1.2, 2), z: z + rnd(-.4, .4), vx: rnd(-1.5, 1.5), vz: rnd(-1.5, 1.5), vy: rnd(1.5, 3.5), g: -1, life: .9, max: .9, size: rnd(.08, .14), col: pick(['#e0a0ff', '#ff7ae0', '#9a7aff', '#ffffff']), drag: .95, rx: 0, ry: 0}); }
 // Blood puddles use the kit's own decal meshes, recolored green.
@@ -50,14 +62,19 @@ function blood(x, z, s = 1) {
   m.scale.setScalar(s * rnd(.7, 1.2) * .01); scene.add(m); FX.decals.push({m, grow: s * rnd(.7, 1.2) * .32, t: 0});
   if (FX.decals.length > 70) scene.remove(FX.decals.shift().m);
 }
-function popText(x, z, txt, col, size = 26, y = 2.3) { FX.texts.push({x, y, z, txt, col, size, t: 0, off: 0, vy: -90}); }
+// floating text starts 0.6 m above its nominal height so it clears the head of whoever it belongs to
+function popText(x, z, txt, col, size = 26, y = 2.3) { const o = {x, y: y + .6, z, txt, col, size, t: 0, off: 0, vy: -90, dmg: false}; FX.texts.push(o); return o; }
 function flashLight(x, z, col, i = 4) { hitLight.color.setHex(col); hitLight.position.set(x, 1.3, z); hitLight.intensity = Math.max(hitLight.intensity, i); }
 function boom(x, z, col = 0xff9a40, i = 9) { boomLight.color.setHex(col); boomLight.position.set(x, 1.5, z); boomLight.intensity = i; }
+// lightning: 8 pooled lines with 10 points each, rewritten in place
+const BOLT_POOL = [];
+for (let i = 0; i < 8; i++) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(30), 3));
+  const m = new THREE.Line(g, new THREE.LineBasicMaterial({color: 0xcff0ff, transparent: true, blending: THREE.AdditiveBlending})); m.frustumCulled = false; m.visible = false; scene.add(m); BOLT_POOL.push(m); }
 function bolt(x1, z1, x2, z2) {
-  const pts = [], n = 9;
-  for (let i = 0; i <= n; i++) { const k = i / n, j = i && i < n ? 1 : 0; pts.push(new THREE.Vector3(lerp(x1, x2, k) + rnd(-.3, .3) * j, 1.2 + rnd(-.3, .3) * j, lerp(z1, z2, k) + rnd(-.3, .3) * j)); }
-  const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color: 0xcff0ff, transparent: true, blending: THREE.AdditiveBlending}));
-  scene.add(m); FX.bolts.push({m, t: 0, life: .18});
+  let m = BOLT_POOL.find(o => !o.visible); if (!m) { m = FX.bolts.shift().m; }
+  const a = m.geometry.attributes.position, n = 9;
+  for (let i = 0; i <= n; i++) { const k = i / n, j = i && i < n ? 1 : 0; a.setXYZ(i, lerp(x1, x2, k) + rnd(-.3, .3) * j, 1.2 + rnd(-.3, .3) * j, lerp(z1, z2, k) + rnd(-.3, .3) * j); }
+  a.needsUpdate = true; m.visible = true; FX.bolts.push({m, t: 0, life: .18});
 }
 // A body part that flies, spins and bounces (heads, chunks of a gibbed zombie).
 function gib(x, z, mesh, vx, vz, vy, life = 2.2) {
@@ -73,10 +90,10 @@ function updateFX(dt) {
   }
   FX.parts = FX.parts.filter(p => p.life > 0);
   for (const r of FX.rings) r.t += dt;
-  for (const r of FX.rings) if (r.t >= r.life) scene.remove(r.m);
+  for (const r of FX.rings) if (r.t >= r.life) r.m.visible = false;
   FX.rings = FX.rings.filter(r => r.t < r.life);
   for (const b of FX.bolts) { b.t += dt; b.m.material.opacity = 1 - b.t / b.life; }
-  for (const b of FX.bolts) if (b.t >= b.life) scene.remove(b.m);
+  for (const b of FX.bolts) if (b.t >= b.life) b.m.visible = false;
   FX.bolts = FX.bolts.filter(b => b.t < b.life);
   for (const t of FX.texts) { t.t += dt; t.off += t.vy * dt; t.vy *= .92; }
   FX.texts = FX.texts.filter(t => t.t < (t.size > 50 ? 1.3 : .9));
@@ -87,12 +104,12 @@ function updateFX(dt) {
     g.m.rotation.x += g.rx * dt; g.m.rotation.z += g.rz * dt; g.life -= dt;
     if (g.m.position.y > .3 && Math.random() < .4) addPart({x: g.m.position.x, y: g.m.position.y, z: g.m.position.z, vx: 0, vz: 0, vy: 0, g: 18, life: .4, max: .4, size: .07, col: '#3f9a35', drag: .9, rx: 0, ry: 0});
   }
-  for (const g of FX.gibs) if (g.life <= 0) scene.remove(g.m);
+  for (const g of FX.gibs) if (g.life <= 0) disposeTree(g.m);
   FX.gibs = FX.gibs.filter(g => g.life > 0);
   // ground fire: flames, scorch, sets zombies standing in it on fire
   for (const f of FX.fires) {
     if (f.delay > 0) { f.delay -= dt; continue; }
-    if (!f.lit) { f.lit = true; const sc = new THREE.Mesh(new THREE.CircleGeometry(.45, 12), new THREE.MeshBasicMaterial({color: 0x0a0503, transparent: true, opacity: .6, depthWrite: false})); sc.rotation.x = -Math.PI / 2; sc.position.set(f.x, .03, f.z); scene.add(sc); FX.decals.push({m: sc, grow: 1, t: 1}); burst(f.x, f.z, 6, ['#ff8a1a', '#ffcf3a'], 4, .14, .5, .2); }
+    if (!f.lit) { f.lit = true; const sc = new THREE.Mesh(SCORCH_GEO, SCORCH_MAT); sc.rotation.x = -Math.PI / 2; sc.position.set(f.x, .03, f.z); scene.add(sc); FX.decals.push({m: sc, grow: 1, t: 1}); burst(f.x, f.z, 6, ['#ff8a1a', '#ffcf3a'], 4, .14, .5, .2); }
     f.life -= dt;
     for (let i = 0; i < 2; i++) addPart({x: f.x + rnd(-.35, .35), y: rnd(.05, .4), z: f.z + rnd(-.35, .35), vx: rnd(-.3, .3), vz: rnd(-.3, .3), vy: rnd(1.5, 4), g: -2, life: rnd(.3, .6), max: .6, size: rnd(.1, .22), col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10', '#ff6a1a']), drag: .9, rx: 0, ry: 0});
     for (const zb of G.zombies) if (!zb.dying && zb.state !== 'rise' && Math.hypot(zb.x - f.x, zb.z - f.z) < .8) zb.burn = Math.max(zb.burn, 3);
@@ -115,14 +132,14 @@ function renderFX() {
     const a = clamp(p.life / p.max, 0, 1);
     dummy.position.set(p.x, p.y, p.z);
     if (p.streak) { const len = Math.hypot(p.vx, p.vz) * .035; dummy.rotation.set(0, -Math.atan2(p.vz, p.vx), 0); dummy.scale.set(Math.max(.06, len), .03, .03); }
-    else { dummy.rotation.set(p.rx, p.ry, 0); const s = p.size * (.4 + .6 * a); dummy.scale.set(s, s, s); }
+    else { dummy.rotation.set(p.rx, p.ry, 0); const s = p.size * (p.fade ? a : .4 + .6 * a); dummy.scale.set(s, s, s); }
     dummy.updateMatrix(); partMesh.setMatrixAt(n, dummy.matrix); partMesh.setColorAt(n, COL(p.col)); n++;
   }
   partMesh.count = n; partMesh.instanceMatrix.needsUpdate = true; if (partMesh.instanceColor) partMesh.instanceColor.needsUpdate = true;
   for (const r of FX.rings) { const k = r.t / r.life, e = easeOutCubic(k); r.m.scale.setScalar(.1 + (r.r - .1) * e); r.m.material.opacity = (1 - k) * .7; }
 }
 function clearFX() {
-  for (const r of FX.rings) scene.remove(r.m); for (const b of FX.bolts) scene.remove(b.m);
-  for (const d of FX.decals) scene.remove(d.m); for (const g of FX.gibs) scene.remove(g.m);
+  for (const r of FX.rings) r.m.visible = false; for (const b of FX.bolts) b.m.visible = false;
+  for (const d of FX.decals) scene.remove(d.m); for (const g of FX.gibs) disposeTree(g.m);
   FX.parts = []; FX.rings = []; FX.bolts = []; FX.decals = []; FX.gibs = []; FX.texts = []; FX.fires = []; FX.clouds = [];
 }

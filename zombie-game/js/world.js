@@ -5,7 +5,7 @@ const WORLD = {lamps: [], rain: null, spawnPoints: [[0, -23], [0, 23], [-23, 0],
 function buildLights() {
   WORLD.hemi = new THREE.HemisphereLight(0x5a6aa0, 0x120e0a, .32); scene.add(WORLD.hemi);
   const moon = new THREE.DirectionalLight(0x8fa6ff, .75);
-  moon.castShadow = true; moon.shadow.mapSize.set(2048, 2048);
+  const sm = LOW_GPU || HUD.touch || DPR > 1.5 ? 1024 : 2048; moon.castShadow = true; moon.shadow.mapSize.set(sm, sm);
   Object.assign(moon.shadow.camera, {left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 60});
   moon.shadow.bias = -.0005; moon.shadow.normalBias = .03; scene.add(moon, moon.target); WORLD.moon = moon;
 }

@@ -48,6 +48,9 @@ function startWave() {
   if (!TUT.active) storyWaveStart();
   setTimeout(() => AU.play('zGroan', {vol: .7, rate: .9}), 600);
 }
+// riot shields share one geometry and material pair
+const SHIELD = {geo: new THREE.BoxGeometry(.85, 1.25, .07), mat: new THREE.MeshStandardMaterial({color: 0x2c3a58, roughness: .4, metalness: .6, transparent: true, opacity: .92}),
+  vGeo: new THREE.PlaneGeometry(.6, .22), vMat: new THREE.MeshBasicMaterial({color: 0xdfe6ff})};
 function spawnZombie(type) {
   const T = ZTYPES[type], sp = pick(WORLD.spawnPoints);
   let x = sp[0] + rnd(-3, 3), z = sp[1] + rnd(-3, 3);
@@ -61,8 +64,8 @@ function spawnZombie(type) {
     hp: Math.ceil(T.hp * hpMul), maxHp: Math.ceil(T.hp * hpMul), speed: rnd(...T.speed) * (1 + G.wave * .025),
     state: 'rise', st: 0, cd: rnd(.5, 1.2), flash: 0, stun: 0, burn: 0, bleed: 0, dying: null, wob: rnd(0, 7), groanT: rnd(2, 8)};
   rig.play(T.move, {fade: 0}); rig.cur.time = rnd(0, rig.dur(T.move));
-  if (T.shield) { zb.shieldHp = 6; const s = new THREE.Mesh(new THREE.BoxGeometry(.85, 1.25, .07), new THREE.MeshStandardMaterial({color: 0x2c3a58, roughness: .4, metalness: .6, transparent: true, opacity: .92}));
-    const v = new THREE.Mesh(new THREE.PlaneGeometry(.6, .22), new THREE.MeshBasicMaterial({color: 0xdfe6ff})); v.position.set(0, .3, .04); s.add(v); s.position.set(0, 1.05, .55); rig.root.add(s); zb.shieldMesh = s; }
+  if (T.shield) { zb.shieldHp = 6; const s = new THREE.Mesh(SHIELD.geo, SHIELD.mat);
+    const v = new THREE.Mesh(SHIELD.vGeo, SHIELD.vMat); v.position.set(0, .3, .04); s.add(v); s.position.set(0, 1.05, .55); rig.root.add(s); zb.shieldMesh = s; }
   if (T.scream) zb.screamT = rnd(2.5, 4);
   if (T.boss) { WAVE.boss = zb; zb.bossCd = 2.5; zb.lastMove = ''; zb.prof = BP; zb.bossName = BP.name; zb.r = T.r * BP.scale / T.scale; zb.speed *= BP.speedMul || 1; dressBoss(zb); AU.play('bossIntro', {vol: 1}); HAPTIC.fx('boss'); AU.play('evilLaugh', {vol: .9, delay: .8, bus: 'voice'}); HUD.banner(BP.name, BP.sub, '#ff4f4f'); slowmo(.5); shake(.4); }
   G.zombies.push(zb); WAVE.alive++;
@@ -148,17 +151,24 @@ function updateZombie(zb, dt) {
     collide(zb, zb.r); inArena(zb, zb.r);
     if (!P.dead && !zb.T.boss) { const pd = Math.hypot(P.x - zb.x, P.z - zb.z), m = zb.r + .45; if (pd < m && pd > 0) { zb.x -= (P.x - zb.x) / pd * (m - pd); zb.z -= (P.z - zb.z) / pd * (m - pd); } }
   }
+  if (zb.sq > 0 || zb.leanT > 0) { // contact squash (100 ms) and lean back (300 ms)
+    zb.sq = Math.max(0, (zb.sq || 0) - dt / .1); const q = .15 * zb.sq; rig.body.scale.set(1 + q, 1 - q, 1 + q);
+    zb.leanT = Math.max(0, (zb.leanT || 0) - dt); if (!zb.air) rig.body.rotation.x = -.4 * zb.leanT / .3; }
   rig.mixer.update(dt);
   syncZombie(zb);
 }
+const FLASH_COL = [[1, 1, 1], [1, .8, .2], [.6, .7, .9]]; // normal, crit or finisher, shield block
+// shown at once, so the flash is on screen during the hitstop freeze, then held for n frames of game time
+function hitFlash(zb, col, n) { zb.flash = n / 60; zb.flashCol = col; const c = FLASH_COL[col]; zb.rig.flash(.55, c[0], c[1], c[2]); }
 function syncZombie(zb) {
   const rig = zb.rig; rig.root.position.set(zb.x, zb.y, zb.z); rig.root.rotation.y = yawFor(zb.face);
   if (zb.dying) { if (zb.dying.type !== 'burn' && zb.dying.type !== 'swell') rig.flash(zb.flash > 0 ? .45 : 0); return; }
-  if (zb.flash > 0) rig.flash(.45, 1, .95, .85); else if (zb.rage > 0) rig.flash(.25 + .1 * Math.sin(G.time * 14), .8, .3, 1); else if (zb.burn > 0) rig.flash(.35, 1, .4, 0); else if (zb.slow > 0) rig.flash(.4, .35, .75, 1); else if (zb.T.boss && zb.tele) rig.flash(.3 + .3 * Math.sin(G.time * 30), 1, .1, .1); else if (rig.zero) rig.flash(.22 + .1 * Math.sin(G.time * 5), .55, .2, 1); else rig.flash(0);
+  if (zb.flash > 0) { const c = FLASH_COL[zb.flashCol || 0]; rig.flash(.55, c[0], c[1], c[2]); } else if (zb.rage > 0) rig.flash(.25 + .1 * Math.sin(G.time * 14), .8, .3, 1); else if (zb.burn > 0) rig.flash(.35, 1, .4, 0); else if (zb.slow > 0) rig.flash(.4, .35, .75, 1); else if (zb.T.boss && zb.tele) rig.flash(.3 + .3 * Math.sin(G.time * 30), 1, .1, .1); else if (rig.zero) rig.flash(.22 + .1 * Math.sin(G.time * 5), .55, .2, 1); else rig.flash(0);
 }
 
 // ---------- boss: charge, slam, summon ----------
 const teleMat = new THREE.MeshBasicMaterial({color: 0xff2020, transparent: true, opacity: .35, depthWrite: false});
+const TELE_LANE = new THREE.PlaneGeometry(14, 2.6), TELE_CIRCLE = new THREE.CircleGeometry(4, 40); // shared by every boss telegraph
 function bossAI(zb, dt, d, toP) {
   const rig = zb.rig, P = G.player;
   if (zb.prof && zb.prof.gear === 'zero' && Math.random() < .6) addPart({x: zb.x + rnd(-.8, .8), y: rnd(.5, 3.5), z: zb.z + rnd(-.8, .8), vx: 0, vz: 0, vy: rnd(.5, 1.5), g: -1, life: .7, max: .7, size: rnd(.08, .16), col: pick(['#b070ff', '#6a3aa0', '#e0c0ff']), drag: .95, rx: 0, ry: 0});
@@ -185,8 +195,8 @@ function bossAI(zb, dt, d, toP) {
         truckLane(ax, clamp(p0, -lim, lim), 0, Math.random() < .5 ? 1 : -1); truckLane(ax, clamp(p0 + (p0 > 0 ? -4.5 : 4.5), -lim, lim), .9, Math.random() < .5 ? 1 : -1);
         if (zb.hp < zb.maxHp * .5) truckLane(ax, clamp(-p0, -lim, lim), 1.8, 1);
         zb.state = 'recover'; zb.st = -1.6; zb.tele = false; }
-      if (m === 'charge') { zb.chargeDir = toP; zb.teleMesh = new THREE.Mesh(new THREE.PlaneGeometry(14, 2.6), teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; scene.add(zb.teleMesh); rig.play('Idle_Attack', {fade: .1}); AU.play('bossEffort', {vol: 1, bus: 'voice'}); }
-      if (m === 'slam') { zb.slamX = P.x; zb.slamZ = P.z; zb.teleMesh = new THREE.Mesh(new THREE.CircleGeometry(4, 40), teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; zb.teleMesh.position.set(P.x, .04, P.z); scene.add(zb.teleMesh); rig.play('Jump', {loop: false, restart: true, fade: .1, speed: .5}); AU.play('bossEffort', {vol: 1, bus: 'voice', rate: .9}); }
+      if (m === 'charge') { zb.chargeDir = toP; zb.teleMesh = new THREE.Mesh(TELE_LANE, teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; scene.add(zb.teleMesh); rig.play('Idle_Attack', {fade: .1}); AU.play('bossEffort', {vol: 1, bus: 'voice'}); }
+      if (m === 'slam') { zb.slamX = P.x; zb.slamZ = P.z; zb.teleMesh = new THREE.Mesh(TELE_CIRCLE, teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; zb.teleMesh.position.set(P.x, .04, P.z); scene.add(zb.teleMesh); rig.play('Jump', {loop: false, restart: true, fade: .1, speed: .5}); AU.play('bossEffort', {vol: 1, bus: 'voice', rate: .9}); }
       if (m === 'summon') { rig.play('Wave', {loop: false, restart: true, fade: .1}); AU.play('bossLaugh', {vol: 1, bus: 'voice'}); }
     }
   } else if (zb.state === 'hookTele') { hookUpdate(zb, dt, toP);
@@ -204,7 +214,7 @@ function bossAI(zb, dt, d, toP) {
     if (zb.prof && zb.prof.gear === 'zero' && G.time - (zb.trailT || 0) > .25) { zb.trailT = G.time; acidPool(zb.x, zb.z, 1.1, 3); } // Patient Zero leaves acid
     if ((zb.st > 1.15 || blocked) && zb.prof && zb.prof.chain && zb.hp < zb.maxHp * .5 && (zb.chainN || 0) < zb.prof.chain) { // the orderly turns and charges again
       zb.chainN = (zb.chainN || 0) + 1; zb.vx *= -.2; zb.vz *= -.2; if (blocked) { shake(.4); AU.play('hitMetal', {vol: .8, rate: .7}); dust(zb.x, zb.z, 12); }
-      zb.chargeDir = toP; zb.teleMesh = new THREE.Mesh(new THREE.PlaneGeometry(14, 2.6), teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; scene.add(zb.teleMesh); zb.tele = true;
+      zb.chargeDir = toP; zb.teleMesh = new THREE.Mesh(TELE_LANE, teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; scene.add(zb.teleMesh); zb.tele = true;
       zb.state = 'chargeTele'; zb.st = Math.max(0, bossTele() - .6); rig.play('Idle_Attack', {fade: .08}); AU.play('bossEffort', {vol: .9, bus: 'voice'}); popText(zb.x, zb.z, 'AGAIN!', '#ff4f4f', 30, 4.5);
     } else if (zb.st > 1.15 || blocked) { // crashes into a wall: stunned and open
       zb.chainN = 0; zb.state = 'stunned'; zb.st = 0; zb.vx *= -.2; zb.vz *= -.2; if (blocked) { shake(.6); HAPTIC.fx('slam', .6); AU.play('hitMetal', {vol: 1, rate: .6}); AU.play('explosion', {vol: .5, rate: 1.3}); dust(zb.x, zb.z, 20); }
@@ -239,23 +249,26 @@ function damageZombie(zb, dir, dmg, o = {}) {
   }
   // riot shield: blocks hits from the front until it breaks; finishers, slams and damage over time get through
   if (zb.shieldHp > 0 && !o.dot && !o.finisher && !o.slam && !['truck', 'crush', 'storm', 'stormbody', 'pulse'].includes(o.kind) && Math.abs(angDiff(zb.face, dir + Math.PI)) < 1.05) {
-    zb.shieldHp -= dmg; zb.vx += Math.cos(dir) * 2; zb.vz += Math.sin(dir) * 2; sparks(zb.x, zb.z, dir + Math.PI, 12, '#cfe0ff');
+    zb.shieldHp -= dmg; zb.vx += Math.cos(dir) * 2; zb.vz += Math.sin(dir) * 2; sparks(zb.x, zb.z, dir + Math.PI, 12, '#cfe0ff'); hitFlash(zb, 2, 2);
     AU.play('hitMetal', {vol: .7, rate: 1.2, max: 3}); G.combo++; G.comboT = 2;
     if (zb.shieldHp <= 0) { const s = zb.shieldMesh; if (s) { zb.rig.root.remove(s); } zb.shieldMesh = null; popText(zb.x, zb.z, 'SHIELD BROKEN', '#cfe0ff', 26, 2.4); burst(zb.x, zb.z, 18, ['#2c3a58', '#dfe6ff'], 7, .15, .8, 1.1); AU.play('glass', {vol: .8}); zb.stun = 1; }
     else popText(zb.x, zb.z, 'BLOCKED', '#9fb4ff', 20, 2.2);
     return;
   }
-  zb.hp -= dmg; zb.flash = .12; G.combo++; G.comboT = 2; if (G.combo > (G.waveBest || 0)) G.waveBest = G.combo;
+  // hit flash: white 2 frames, gold 3 frames for crits and finishers
+  const gold = o.crit || o.finisher; zb.hp -= dmg; hitFlash(zb, gold ? 1 : 0, gold ? 3 : 2); G.combo++; G.comboT = 2; if (G.combo > (G.waveBest || 0)) G.waveBest = G.combo;
   if (!o.dot) {
     const kb = (o.kb ?? w.kb + (o.finisher ? 4 : 0)) * (zb.dummy ? .05 : T.boss ? .08 : T.explode ? .4 : 1) * (zb.hp <= 0 ? 1.4 : 1);
     zb.vx += Math.cos(dir) * kb; zb.vz += Math.sin(dir) * kb;
+    if (!T.boss && !zb.air) { zb.sq = 1; zb.leanT = .3; } // squash on contact, lean back away from the hit
     if (!T.boss && zb.hp > 0 && !zb.air) { zb.stun = Math.max(zb.stun, .28); if (zb.state === 'attack' || zb.state === 'windup' || zb.state === 'lunge') zb.state = 'chase'; zb.rig.play('HitReact', {loop: false, restart: true, fade: .04}); }
     sparks(zb.x, zb.z, dir, 10, o.crit ? '#ffef5a' : '#fff6c8'); burst(zb.x, zb.z, 8, ['#3f9a35', '#2a7a2a', '#7a1f1f'], 6, .12, .7, 1.1);
     ring(zb.x, zb.z, .9, w.col, .16, 1); flashLight(zb.x, zb.z, w.col, 4);
     AU.play(T.boss ? 'bossHurt' : 'zHurt', {vol: .45, rate: T.voice * rnd(.9, 1.15), x: zb.x, z: zb.z, bus: 'voice', max: 2});
   }
   if (o.crit) HAPTIC.fx('crit');
-  popText(zb.x, zb.z, (o.crit ? 'CRIT ' : '') + dmg, o.crit ? '#ffef5a' : o.dot === 'burn' ? '#ff9a3a' : '#ffffff', o.crit ? 30 : 22, 2.1 * (T.scale || 1));
+  // damage numbers grow with the hit: 1 dmg = 25 px, 6+ dmg = 40 px; crits and finishers in gold
+  popText(zb.x, zb.z, (o.crit ? 'CRIT ' : '') + dmg, o.crit || o.finisher ? '#ffcc33' : o.dot === 'burn' ? '#ff9a3a' : '#ffffff', 22 + Math.min(18, dmg * 3), 2.1 * (T.scale || 1)).dmg = true;
   const sh = SHOUTS[G.combo]; if (sh) { popText(G.player.x, G.player.z, sh, '#ff7a1a', 54, 3.4); slowmo(.4); G.flash = Math.max(G.flash, .3); AU.play('levelUp', {vol: .6}); }
   if (zb.dummy) zb.hp = Math.max(1, zb.hp); // the training dummy never dies
   if (zb.hp <= 0) killZombie(zb, dir, o);
@@ -278,7 +291,7 @@ function chooseDeath(zb, o) {
 function killZombie(zb, dir, o) {
   const T = zb.T, P = G.player;
   G.kills++; WAVE.killed++; G.score += T.score * (1 + Math.floor(G.combo / 10));
-  zb.dying = {type: chooseDeath(zb, o), t: 0}; zb.state = 'dead'; zb.stun = 0;
+  zb.dying = {type: chooseDeath(zb, o), t: 0}; zb.state = 'dead'; zb.stun = 0; zb.sq = zb.leanT = 0; zb.rig.body.scale.set(1, 1, 1); zb.rig.body.rotation.x = 0;
   if (T.boss && !TUT.active) storyBossDown();
   popText(zb.x, zb.z, '+' + T.score, '#ffcc33', 26 + Math.min(G.combo, 20), 2.6 * (T.scale || 1));
   AU.play(T.boss ? 'bossDeath' : 'zDeath', {vol: .7, rate: T.voice * rnd(.9, 1.1), x: zb.x, z: zb.z, bus: 'voice', max: 2});
@@ -348,6 +361,9 @@ function updateDying(zb, dt) {
     if (d.t > .6 && !d.boomed) { d.boomed = true; rig.root.visible = false; acidPool(zb.x, zb.z, 2, 5); gibZombie(zb, rnd(0, 7)); const P = G.player; if (Math.hypot(P.x - zb.x, P.z - zb.z) < 1.5) hurtPlayer(1, zb.x, zb.z); }
     life = .7;
   } else if (d.type === 'boss') { if (d.t < 1.5 && Math.random() < .5) burst(zb.x, zb.z, 6, ['#3f9a35', '#7a1f1f'], 6, .2, .8, 2); life = 4; }
+  // bodies that fell whole stay as corpses (see CORPSES); the rest sink into the street
+  const keep = d.type === 'fall' || d.type === 'launch' || d.type === 'decap' || d.type === 'burn';
+  if (keep && d.t >= life - 1 && zb.y <= .05) { zb.gone = true; zb.corpse = true; return; }
   if (d.t > life - 1 && d.type !== 'gib' && d.type !== 'swell' && d.type !== 'acid') zb.y -= dt * 1.2; // sink into the street
   rig.mixer.update(dt); syncZombie(zb);
   if (d.t >= life) zb.gone = true;
@@ -356,10 +372,25 @@ function updateZombies(dt) {
   const zt = dt * POW.zombieTime(); // TIME WARP slows the horde
   for (const zb of G.zombies) updateZombie(zb, zt);
   updateHazards(zt);
-  for (const zb of G.zombies) if (zb.gone) { zb.rig.dispose(); if (zb.teleMesh) scene.remove(zb.teleMesh); }
+  for (const zb of G.zombies) if (zb.gone) { if (zb.teleMesh) scene.remove(zb.teleMesh); if (zb.corpse) addCorpse(zb.rig); else zb.rig.dispose(); }
   G.zombies = G.zombies.filter(z => !z.gone);
+  updateCorpses(dt);
 }
-function clearZombies() { clearHazards(); for (const zb of G.zombies) { zb.rig.dispose(); if (zb.teleMesh) scene.remove(zb.teleMesh); } G.zombies = []; WAVE.queue = []; WAVE.active = false; WAVE.boss = null; }
+// Corpses: the last 8 whole bodies stay on the street, frozen in their last pose (the mixer is no longer updated),
+// darkened 40% toward #1a1a1a, sinking 0.3 m over 4 s, then 1 s more under the street and gone.
+// They are not in G.zombies, so they never count as alive, block movement or take hits.
+const CORPSES = [];
+function addCorpse(rig) {
+  for (const m of rig.mats) { m.color.lerp(COL('#1a1a1a'), .4); m.emissive.setRGB(0, 0, 0); }
+  rig.model.traverse(o => { if (o.isMesh) o.castShadow = false; });
+  CORPSES.push({rig, t: 0, y0: rig.root.position.y});
+  if (CORPSES.length > 8) CORPSES.shift().rig.dispose();
+}
+function updateCorpses(dt) {
+  for (const c of CORPSES) { c.t += dt; c.rig.root.position.y = c.y0 - .3 * Math.min(1, c.t / 4) - 1.5 * Math.max(0, c.t - 4); }
+  while (CORPSES.length && CORPSES[0].t >= 5) CORPSES.shift().rig.dispose();
+}
+function clearZombies() { clearHazards(); for (const c of CORPSES) c.rig.dispose(); CORPSES.length = 0; for (const zb of G.zombies) { zb.rig.dispose(); if (zb.teleMesh) scene.remove(zb.teleMesh); } G.zombies = []; WAVE.queue = []; WAVE.active = false; WAVE.boss = null; }
 
 // home run victim crashing down flattens whoever is near
 function homerunLand(zb) {

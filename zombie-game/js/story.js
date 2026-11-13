@@ -18,7 +18,7 @@ RADIO.next = function () {
   RADIO.cur = RADIO.q.shift() || null; RADIO.chars = 0; RADIO.t = 0;
   if (!RADIO.cur) { el.classList.remove('on'); radioStatic(.12, false); return; }
   const w = WHO[RADIO.cur.who] || WHO.DOC;
-  el.innerHTML = `<div class="rhead"><i class="rled" style="background:${w.col}"></i><b style="color:${w.col}">${w.name}</b><span class="rwave"><i></i><i></i><i></i><i></i><i></i></span></div><div class="rtext"></div>`;
+  el.innerHTML = `<div class="rhead"><i class="rled" style="background:${w.col}"></i><b style="color:${w.col}">${w.name}</b><span class="rwave"><i></i><i></i><i></i><i></i><i></i></span></div><div class="rtext"><span></span><span class="rrest"></span></div>`;
   el.className = 'on' + (RADIO.cur.who === 'NOTE' ? ' note' : ''); radioStatic();
   const c = RADIO.cur, spoken = VOICE.speak(c.who, c.text); RADIO.hold = Math.max(c.text.length / 42 + 1.6 + c.text.length * .035, spoken + .9);
 };
@@ -30,7 +30,8 @@ RADIO.update = function () {
   RADIO.el.classList.toggle('low', G.state === 'ending');
   RADIO.el.style.visibility = G.state === 'draft' || G.state === 'picking' || G.state === 'dead' || G.state === 'travel' || SHOW.active ? 'hidden' : 'visible';
   const n = Math.min(c.text.length, Math.floor(RADIO.t * 42));
-  if (n !== RADIO.chars) { RADIO.chars = n; const t = RADIO.el.querySelector('.rtext'); if (t) t.textContent = c.text.slice(0, n); }
+  // the whole line is laid out from the start, the untyped rest is transparent, so the box never reflows or cuts a word
+  if (n !== RADIO.chars) { RADIO.chars = n; const t = RADIO.el.querySelector('.rtext'); if (t) { t.firstChild.textContent = c.text.slice(0, n); t.lastChild.textContent = c.text.slice(n); } }
   if (RADIO.t > RADIO.hold) RADIO.next();
 };
 

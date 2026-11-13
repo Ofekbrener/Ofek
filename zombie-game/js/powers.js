@@ -26,7 +26,7 @@ POW.onHurt = () => {
 POW.start = function (id) {
   if (POW.active) POW.end(true);
   const p = POWERS[id], P = G.player; POW.active = id; POW.t = p.dur; POW.last = id; POW.fury = 0; POW.tick = 0; POW.hits = 0;
-  slowmo(.3); G.flash = Math.max(G.flash, .35); shake(.4); HUD.banner(p.name, p.desc, '#' + new THREE.Color(p.col).getHexString());
+  slowmo(.3); G.flash = Math.max(G.flash, .35); shake(.4); HUD.banner(p.name, p.desc, CSS(p.col));
   ring(P.x, P.z, 4, p.col, .5); ring(P.x, P.z, 2.4, 0xffffff, .3); boom(P.x, P.z, p.col, 7); HAPTIC.fx('boss');
   AU.duck(.25, .8); AU.play('levelUp', {vol: .7});
   if (id === 'frenzy') AU.play('rage', {vol: 1, rate: 1.2});
@@ -35,7 +35,7 @@ POW.start = function (id) {
   if (id === 'vampire') AU.play('evilLaugh', {vol: .9, bus: 'voice'});
   if (id === 'warp') { AU.play('bossIntro', {vol: .9, dur: 2.5}); if (AU.musicSrc) AU.musicSrc.playbackRate.value = .7; }
   if (id === 'laststand') { slowmo(.6); AU.play('waveStart', {vol: .8}); }
-  if (!POW.ring) { POW.ring = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: .8, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending})); POW.ring.rotation.x = -Math.PI / 2; scene.add(POW.ring); }
+  if (!POW.ring) { POW.ring = new THREE.Mesh(new THREE.RingGeometry(1.05, 1.25, 40, 1, Math.PI / 2, Math.PI * 2), new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: .8, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending})); POW.ring.rotation.x = -Math.PI / 2; scene.add(POW.ring); }
   POW.ring.material.color.setHex(p.col); POW.ring.visible = true;
 };
 POW.end = function (silent) {
@@ -57,12 +57,12 @@ POW.update = function (dt) {
   const P = G.player; if (!P) return;
   const target = POW.is('giant') ? 1.4 : 1; POW.scale = lerp(POW.scale, target, damp(.001, dt)); P.rig.root.scale.setScalar(POW.scale);
   if (!POW.active) return;
-  const p = POWERS[POW.active], c = '#' + new THREE.Color(p.col).getHexString();
+  const p = POWERS[POW.active], c = CSS(p.col);
   POW.t -= dt; POW.tick -= dt;
   // aura around the survivor
   for (let i = 0; i < 2; i++) { const a = rnd(0, 7), r = rnd(.4, .8) * POW.scale; addPart({x: P.x + Math.cos(a) * r, y: rnd(.1, 1.8) * POW.scale, z: P.z + Math.sin(a) * r, vx: 0, vz: 0, vy: rnd(.8, 2.2), g: -1, life: .5, max: .5, size: rnd(.06, .12), col: c, drag: .95, rx: 0, ry: 0}); }
   // shrinking ring under the feet shows time left
-  const k = clamp(POW.t / p.dur, 0, 1); POW.ring.geometry.dispose(); POW.ring.geometry = new THREE.RingGeometry(1.05, 1.25, 40, 1, Math.PI / 2, Math.PI * 2 * k);
+  const k = clamp(POW.t / p.dur, 0, 1); POW.ring.geometry.setDrawRange(0, 6 * Math.ceil(40 * k)); // one full ring, drawn partly
   POW.ring.position.set(P.x, .05, P.z); POW.ring.scale.setScalar(POW.scale);
   if (POW.is('storm') && POW.tick <= 0) {
     POW.tick = .5; let n = 0;

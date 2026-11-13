@@ -4,6 +4,7 @@
 - Sound effects: Oculus Audio Pack 1 by Meta, from `facebookincubator/Meta-open-sound` (CC BY 4.0). Trimmed and converted to mono 64 kbps MP3.
 - Music: rendered offline from Meta Piano samples (CC0) plus Oculus Audio Pack textures, by `tools/render_music.py` in the session scratchpad (combat, boss and calm loops).
 - The HUD portrait is rendered from the chosen survivor at runtime.
+- Fonts: Black Ops One (Copyright 2022 The Black-Ops Project Authors) and Oswald (Copyright 2016 The Oswald Project Authors), both under the SIL Open Font License 1.1. Latin subsets from Google Fonts, bundled in `assets/fonts/`; license text in `assets/fonts/OFL.txt`.
 
 ## Voices
 - Radio and narrator lines recorded with [Piper](https://github.com/rhasspy/piper) (open source text to speech)

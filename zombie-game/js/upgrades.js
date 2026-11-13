@@ -167,7 +167,7 @@ function renderDraft(deal) {
   const next = newArea ? `Next: travel to <b>${nA.name}</b>` : boss ? `Next: <b class="bossn">BOSS · ${BOSSES[nA.boss].name}</b>` : `Next: <b>wave ${nx}</b>`;
   el.innerHTML = `<div class="drays"></div>
     <div class="dhead"><div class="dwave">WAVE ${G.wave}</div><h2>CLEARED</h2>
-      <div class="dchips"><span><i>☠</i>${G.kills - (G.waveKills0 || 0)} kills</span><span><i>✦</i>best combo x${G.waveBest || 0}</span><span><i class="ccoin"></i>${G.coins}</span><span><i class="cheart">♥</i>${G.player.hp}/${G.player.maxHp}</span></div>
+      <div class="dchips"><span><i>☠</i><b data-n="${G.kills - (G.waveKills0 || 0)}">${G.kills - (G.waveKills0 || 0)}</b> kills</span><span><i>✦</i>best combo x<b data-n="${G.waveBest || 0}">${G.waveBest || 0}</b></span><span><i class="ccoin"></i><b data-n="${G.coins}">${G.coins}</b></span><span><i class="cheart">♥</i>${G.player.hp}/${G.player.maxHp}</span></div>
       <div class="dnext">${next}</div></div>
     <p class="sub">Choose 1 upgrade</p>
     <div class="cards ${deal ? 'deal' : ''}">${DRAFT.cards.map(cardHTML).join('')}</div>
@@ -181,6 +181,7 @@ function renderDraft(deal) {
     setTimeout(() => AU.play(DRAFT.cards[i].rarity === 'epic' ? 'levelUp' : 'cardHover', {vol: DRAFT.cards[i].rarity === 'epic' ? .5 : .3, rate: 1 + i * .12, max: 3}), 140 * i + 120);
   });
   document.getElementById('reroll').onclick = reroll;
+  if (deal) countUp(el.querySelector('.dchips'));
   setTimeout(() => { const f = document.getElementById('card0'); f && f.focus({preventScroll: true}); }, 500);
 }
 function reroll() {

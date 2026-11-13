@@ -93,7 +93,7 @@ function updateGear(dt) {
     b.t += dt / .6; const k = Math.min(1, b.t); b.m.position.set(lerp(b.x0, b.x1, k), 1.2 + Math.sin(k * Math.PI) * 2.5, lerp(b.z0, b.z1, k)); b.m.rotation.z += dt * 14;
     addPart({x: b.m.position.x, y: b.m.position.y + .15, z: b.m.position.z, vx: 0, vz: 0, vy: 1, g: -1, life: .3, max: .3, size: .1, col: pick(['#ff8a1a', '#ffcf3a']), drag: .9, rx: 0, ry: 0});
     if (b.t >= 1) {
-      scene.remove(b.m); const R = .8 + .25 * b.lvl, n = 5 + b.lvl;
+      disposeTree(b.m); const R = .8 + .25 * b.lvl, n = 5 + b.lvl;
       for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; FX.fires.push({x: b.x1 + Math.cos(a) * R * rnd(.3, 1), z: b.z1 + Math.sin(a) * R * rnd(.3, 1), life: 3, delay: 0}); }
       FX.fires.push({x: b.x1, z: b.z1, life: 3, delay: 0});
       AU.play('glass', {vol: .8, x: b.x1, z: b.z1}); AU.play('rage', {vol: .5, rate: .7, x: b.x1, z: b.z1}); boom(b.x1, b.z1, 0xff6a1a, 6); shake(.15);

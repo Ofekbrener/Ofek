@@ -18,7 +18,9 @@ const yawFor = a => Math.PI / 2 - a; // Quaternius models face +Z; sim angle a i
 // ---------- renderer ----------
 const cv3 = document.getElementById('c3');
 const renderer = new THREE.WebGLRenderer({canvas: cv3, antialias: true, powerPreference: 'high-performance'});
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// phones and high-DPI screens: plain PCF and a 1024 shadow map (world.js), soft 2048 shadows elsewhere
+let LOW_GPU = (devicePixelRatio || 1) > 1.5; try { LOW_GPU = LOW_GPU || matchMedia('(pointer: coarse)').matches; } catch (e) {}
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = LOW_GPU ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .9;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x070a12); scene.fog = new THREE.Fog(0x070a12, 18, 40);
@@ -27,7 +29,7 @@ let W = 1, H = 1, DPR = 1;
 function resize() {
   DPR = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight;
   renderer.setPixelRatio(DPR); renderer.setSize(W, H, false);
-  camera.aspect = W / H; camera.fov = W < H ? 62 : 45; camera.updateProjectionMatrix();
+  camera.aspect = W / H; camera.fov = W < H ? 70 : 45; camera.updateProjectionMatrix();
   if (typeof HUD !== 'undefined') HUD.resize();
 }
 addEventListener('resize', resize);

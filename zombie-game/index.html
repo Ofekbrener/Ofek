@@ -4,9 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Zombie Raid</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Creepster&family=Oswald:wght@500;700&display=swap">
+<link rel="preload" href="assets/fonts/Oswald-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+/* fonts ship with the game (SIL OFL 1.1, see assets/fonts/OFL.txt), so the APK and offline play use them too */
+@font-face{font-family:'Black Ops One';font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/BlackOpsOne-Regular.woff2) format('woff2')}
+@font-face{font-family:'Oswald';font-style:normal;font-weight:200 700;font-display:swap;src:url(assets/fonts/Oswald-latin.woff2) format('woff2')}
 :root{--bg:#0d1018;--fg:#f2ede4;--accent:#ffcc33;--muted:#aab0c8;--common:#8fa0b8;--rare:#4fa3ff;--epic:#c15cff;color-scheme:dark}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:Oswald,Impact,system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 #c3,#hud{position:fixed;inset:0;width:100%;height:100%;display:block}
@@ -15,7 +17,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
 .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;
   padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
   background:radial-gradient(circle at 50% 45%,rgba(13,16,24,.25),rgba(13,16,24,.9))}
-#menu h1{font-family:Creepster,Oswald,cursive;font-weight:400;font-size:clamp(44px,10vw,96px);margin:0;color:#7dff6a;text-shadow:0 0 18px rgba(80,255,80,.35),0 5px 0 #000;letter-spacing:2px;line-height:1}
+#menu h1{font-family:'Black Ops One',Oswald,Impact,sans-serif;font-weight:400;font-size:clamp(44px,10vw,96px);margin:0;color:#7dff6a;text-shadow:0 0 18px rgba(80,255,80,.35),0 5px 0 #000;letter-spacing:2px;line-height:1}
 #menu .tag{color:var(--muted);margin:0 0 10px;font-size:clamp(14px,3.6vw,18px)}
 #menu p{margin:2px 0;font-size:clamp(14px,3.4vw,17px)}
 #menu .big{font-size:clamp(18px,4.4vw,24px)}
@@ -53,7 +55,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .bchip{display:grid;grid-template-columns:34px auto;grid-template-rows:auto auto;column-gap:8px;align-items:center;padding:5px 10px 5px 5px;border-radius:10px;background:#151824;border:1px solid color-mix(in srgb,var(--bc) 45%,#2e3346)}
 .bchip .bart{grid-row:1/3;width:34px;height:34px;display:grid;place-items:center}.bchip .bart svg,.bchip .bart img{width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 0 4px var(--bc))}
 .bchip .blab{font-size:12px;letter-spacing:1px;color:#fff}.bchip .bpips{display:flex;gap:3px}.bchip .bpips i{width:10px;height:4px;border-radius:2px;background:#2b2f40}.bchip .bpips i.on{background:var(--bc)}
-#draft h2{margin:0;font-family:Creepster,Oswald,cursive;font-weight:400;font-size:clamp(40px,9vw,76px);line-height:1;color:#ff4a3a;letter-spacing:2px;text-shadow:0 0 22px rgba(255,40,40,.45),0 4px 0 #000}
+#draft h2{margin:0;font-family:'Black Ops One',Oswald,Impact,sans-serif;font-weight:400;font-size:clamp(40px,9vw,76px);line-height:1;color:#ff4a3a;letter-spacing:2px;text-shadow:0 0 22px rgba(255,40,40,.45),0 4px 0 #000}
 #draft .sub{margin:10px 0 12px;letter-spacing:4px;text-transform:uppercase;font-size:13px;color:var(--muted);letter-spacing:1px}
 .cards{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:860px;perspective:1100px}
 .card{--c1:#ffb36b;--c2:#ff3c3c;--rx:0deg;--ry:0deg;position:relative;width:min(240px,86vw);display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:0 0 12px;border-radius:16px;overflow:hidden;
@@ -116,7 +118,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 #creator .panel{pointer-events:auto;position:absolute;right:0;top:0;bottom:0;width:min(400px,100%);overflow-y:auto;box-sizing:border-box;
   padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) 16px;
   background:linear-gradient(90deg,rgba(10,12,18,.55),rgba(10,12,18,.94) 18%);display:flex;flex-direction:column;gap:10px}
-#creator h2{margin:0;font-family:Creepster,Oswald,cursive;font-weight:400;font-size:40px;color:#7dff6a;letter-spacing:1px}
+#creator h2{margin:0;font-family:'Black Ops One',Oswald,Impact,sans-serif;font-weight:400;font-size:40px;color:#7dff6a;letter-spacing:1px}
 #creator h3{margin:6px 0 0;font-size:16px;letter-spacing:2px;color:#aab0c8}
 #creator .hint{position:absolute;left:16px;bottom:max(16px,env(safe-area-inset-bottom));margin:0;color:#8f95ad;font-size:14px}
 .chars{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
@@ -166,10 +168,11 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 @keyframes rblink{50%{opacity:.3}}#radio .rwave{display:flex;gap:2px;align-items:center;margin-left:auto;height:12px}#radio .rwave i{width:3px;background:#7dff8a;border-radius:2px;animation:rwave .5s infinite alternate}
 #radio .rwave i:nth-child(2){animation-delay:.1s}#radio .rwave i:nth-child(3){animation-delay:.2s}#radio .rwave i:nth-child(4){animation-delay:.05s}#radio .rwave i:nth-child(5){animation-delay:.15s}
 @keyframes rwave{from{height:3px}to{height:12px}}#radio.note .rwave{display:none}
-#radio .rtext{margin-top:5px;font-family:system-ui,sans-serif;font-size:15px;line-height:1.35;color:#e8f5ea;min-height:20px}
+#radio .rtext{margin-top:5px;font-family:system-ui,sans-serif;font-size:15px;line-height:1.35;color:#e8f5ea;min-height:20px;overflow-wrap:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}#radio .rrest{opacity:0}
+@media (max-width:640px){#radio:not(.low){top:auto;bottom:calc(env(safe-area-inset-bottom) + 184px);left:12px;width:calc(100% - 24px)}}
 #areacard{position:fixed;left:50%;top:24%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;opacity:0;z-index:5;width:calc(100% - 24px)}
 #areacard.on{animation:acard 3.6s ease forwards}@keyframes acard{0%{opacity:0;letter-spacing:12px}12%{opacity:1;letter-spacing:2px}85%{opacity:1}100%{opacity:0}}
-#areacard .anum{font-size:14px;letter-spacing:6px;color:#ffcc33}#areacard .aname{font-family:Creepster,Oswald,sans-serif;font-size:clamp(34px,9vw,64px);color:#e8ffd0;text-shadow:0 4px 0 #000,0 0 24px rgba(0,0,0,.8)}
+#areacard .anum{font-size:14px;letter-spacing:6px;color:#ffcc33}#areacard .aname{font-family:'Black Ops One',Oswald,Impact,sans-serif;font-size:clamp(34px,9vw,64px);color:#e8ffd0;text-shadow:0 4px 0 #000,0 0 24px rgba(0,0,0,.8)}
 #areacard .agoal{font-size:17px;color:#fff;text-shadow:0 2px 4px #000}
 #citymap{background:radial-gradient(ellipse at center,rgba(20,24,36,.94),rgba(5,6,10,.98));padding:12px;box-sizing:border-box}
 #citymap .mapwrap{width:min(980px,100%);display:grid;grid-template-columns:1fr 280px;gap:14px;align-items:center}
@@ -184,7 +187,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 #citymap .mfog{fill:rgba(30,26,20,.55)}#citymap .mriver{font-family:Oswald,sans-serif;font-size:13px;fill:#2a4a5a;letter-spacing:6px}
 #citymap .mwallT{font-family:Oswald,sans-serif;font-size:13px;fill:#2a2418;text-anchor:middle;font-weight:700}
 #citymap .mcard{background:linear-gradient(180deg,#1c1f2c,#11131b);border:1px solid #3a3f55;border-radius:14px;padding:16px;text-align:left}
-#citymap .mnum{font-size:12px;letter-spacing:4px;color:#ffcc33}#citymap .mnext{font-family:Creepster,Oswald,sans-serif;font-size:32px;color:#e8ffd0;line-height:1.05;margin:4px 0}
+#citymap .mnum{font-size:12px;letter-spacing:4px;color:#ffcc33}#citymap .mnext{font-family:'Black Ops One',Oswald,Impact,sans-serif;font-size:32px;color:#e8ffd0;line-height:1.05;margin:4px 0}
 #citymap .mgoal{font-family:system-ui,sans-serif;color:#c9cde0;font-size:14px;margin-bottom:10px}
 #citymap .mthreat{font-family:system-ui,sans-serif;font-size:14px;color:#fff;margin:6px 0}#citymap .mthreat span{display:inline-block;font-family:Oswald,sans-serif;font-size:11px;letter-spacing:2px;background:#7dff8a;color:#111;border-radius:6px;padding:2px 6px;margin-right:6px}
 #citymap .mthreat.boss span{background:#ff4f4f;color:#fff}#citymap .primary{width:100%;margin-top:12px}
@@ -219,7 +222,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 #menu.homeui{background:linear-gradient(180deg,rgba(5,6,10,.75) 0,transparent 22%,transparent 62%,rgba(5,6,10,.85) 100%);justify-content:flex-start;padding:0}
 #home{position:absolute;inset:0;pointer-events:none}#home button{pointer-events:auto}
 #home .htop{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;padding:max(14px,env(safe-area-inset-top)) 16px 0}
-#home .hlogo{font-family:Creepster,Oswald,cursive;font-size:clamp(28px,6vw,46px);color:#7dff6a;text-shadow:0 0 14px rgba(80,255,80,.35),0 3px 0 #000}
+#home .hlogo{font-family:'Black Ops One',Oswald,Impact,sans-serif;font-size:clamp(28px,6vw,46px);color:#7dff6a;text-shadow:0 0 14px rgba(80,255,80,.35),0 3px 0 #000}
 .hwallet{display:flex;gap:8px}.hwallet span{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:rgba(0,0,0,.6);border:1px solid #3a3f55;font-size:17px;font-weight:700;color:#fff}
 .ccoin{display:inline-block;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3b0,#ffc83a 45%,#b98a10);font-style:normal}
 .cgem{display:inline-block;width:12px;height:16px;background:linear-gradient(135deg,#b8ffd0,#30e070 50%,#0a8a3a);clip-path:polygon(50% 0,100% 40%,50% 100%,0 40%);font-style:normal}
@@ -296,6 +299,8 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 @media (max-width:760px){#shop .spanel{top:auto;height:62%;width:100%;border-right:0;border-top:3px solid #0a0b0e;border-radius:18px 18px 0 0;overflow:hidden;animation-name:shopup}@keyframes shopup{from{transform:translateY(100%)}}
   #shop h2{font-size:26px}#shop .stabs button{font-size:14px;padding:8px}#shop .bpgrid{gap:8px}#shop .bpname{font-size:15px}#shop .bpdesc{font-size:11px}
   #home .hname{bottom:calc(140px + env(safe-area-inset-bottom))}.hbig{height:100px}}
+#menu.gameover{background:rgba(8,10,14,.92)}#menu.gameover b{font-weight:700}
+.npop{display:inline-block;animation:npop .2s ease-out}@keyframes npop{from{transform:scale(1.2)}}
 #menu .earn{display:flex;gap:12px;justify-content:center}#menu .earn span{display:inline-flex;align-items:center;gap:6px;color:#ffc83a}
 #draft .reroll .free{color:#7dff8a}
 #cutscene{position:fixed;inset:0;z-index:15;pointer-events:none}#cutscene .cbar{position:absolute;left:0;right:0;background:#000}#cutscene .ctop{top:0;height:11vh}
@@ -305,7 +310,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 #cutSkip{pointer-events:auto;position:absolute;right:14px;top:calc(11vh + 12px);font-family:Oswald,sans-serif;font-size:15px;color:#fff;background:rgba(0,0,0,.55);border:1px solid #555;border-radius:10px;padding:6px 16px;cursor:pointer}
 #ending{background:radial-gradient(ellipse at center,rgba(16,14,24,.9),rgba(3,3,6,.98));cursor:default}
 #ending .ebox{width:min(620px,calc(100% - 28px));text-align:center}
-#ending .etitle{font-family:Creepster,Oswald,sans-serif;font-size:clamp(32px,8vw,56px);color:#e8ffd0;text-shadow:0 4px 0 #000}
+#ending .etitle{font-family:'Black Ops One',Oswald,Impact,sans-serif;font-size:clamp(32px,8vw,56px);color:#e8ffd0;text-shadow:0 4px 0 #000}
 #ending .eline{font-family:system-ui,sans-serif;font-size:17px;color:#d9dcef;line-height:1.5}#ending .eline.big{font-family:Oswald,sans-serif;font-size:clamp(20px,4.6vw,28px);color:#fff;min-height:3em}
 #ending .eline.small{font-size:14px;color:#aab0c8}#ending .etap{font-size:12px;letter-spacing:3px;color:#7a8098}
 #ending .echoice{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;justify-content:center}
