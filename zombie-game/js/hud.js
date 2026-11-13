@@ -5,7 +5,8 @@ const HUD = {bannerT: 0, bannerTxt: '', bannerSub: '', bannerCol: '#ffcc33', tou
   btn: {atk: {r: 50, lab: 'ATTACK', col: '#ffcc33', down: null}, jmp: {r: 34, lab: 'JUMP', col: '#8fd0ff', down: null}, dash: {r: 32, lab: 'DASH', col: '#b9a3ff', down: null}}};
 try { HUD.touch = matchMedia('(pointer: coarse)').matches; } catch (e) {} // phones show the buttons from the first frame
 HUD.resize = () => { hudCv.width = W * DPR; hudCv.height = H * DPR; };
-HUD.banner = (t, s, c) => { HUD.bannerT = 2.2; HUD.bannerTxt = t; HUD.bannerSub = s; HUD.bannerCol = c; };
+// a banner replaces the area title card if it is still up (both sit near the top on phones)
+HUD.banner = (t, s, c) => { HUD.bannerT = 2.2; HUD.bannerTxt = t; HUD.bannerSub = s; HUD.bannerCol = c; const ac = document.getElementById('areacard'); if (ac) ac.classList.remove('on'); };
 HUD.layout = () => { const b = HUD.btn, R = W - 24, B = H - 24; b.atk.x = R - 44; b.atk.y = B - 56; b.jmp.x = R - 128; b.jmp.y = B - 26; b.dash.x = R - 112; b.dash.y = B - 118; };
 const _pv = new THREE.Vector3();
 function toScreen(x, y, z) { _pv.set(x, y, z).project(camera); return [(_pv.x + 1) / 2 * W, (1 - _pv.y) / 2 * H, _pv.z < 1]; }

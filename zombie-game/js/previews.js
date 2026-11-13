@@ -21,8 +21,9 @@ function pvHero(col = '#ffcc33') {
       <line x1="4" y1="4" x2="30" y2="-4" stroke="#d8dde8" stroke-width="4" stroke-linecap="round"/><line x1="26" y1="-3" x2="32" y2="-5" stroke="${col}" stroke-width="5" stroke-linecap="round"/></g></g>`;
 }
 const pvGround = `<rect x="0" y="118" width="220" height="22" fill="#141820"/><line x1="0" y1="118" x2="220" y2="118" stroke="#2a3040" stroke-width="2"/>`;
-const pvTick = (x, y, col, t0, txt = '1') => `<text x="${x}" y="${y}" font-family="Oswald,sans-serif" font-size="13" font-weight="700" fill="${col}" text-anchor="middle" opacity="0">${txt}
-  ${anim('opacity', '0;0;1;0;0', `0;${t0};${t0 + .02};${t0 + .2};1`)}<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 -16;0 -16" keyTimes="0;${t0};${t0 + .2};1" dur="${PV_DUR}" repeatCount="indefinite"/></text>`;
+// t0 is capped so the rise (t0 + .2) stays inside the loop; keyTimes past 1 are invalid SVG
+const pvTick = (x, y, col, t0, txt = '1') => (t0 = Math.min(t0, .78), `<text x="${x}" y="${y}" font-family="Oswald,sans-serif" font-size="13" font-weight="700" fill="${col}" text-anchor="middle" opacity="0">${txt}
+  ${anim('opacity', '0;0;1;0;0', `0;${t0};${t0 + .02};${t0 + .2};1`)}<animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 -16;0 -16" keyTimes="0;${t0};${t0 + .2};1" dur="${PV_DUR}" repeatCount="indefinite"/></text>`);
 const wrap = (inner, bg) => `<svg viewBox="0 0 220 140" class="pv" xmlns="http://www.w3.org/2000/svg"><rect width="220" height="140" fill="${bg}"/>${pvGround}${inner}</svg>`;
 
 const PREVIEW = {

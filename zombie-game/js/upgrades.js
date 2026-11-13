@@ -167,7 +167,7 @@ function renderDraft(deal) {
   const next = newArea ? `Next: travel to <b>${nA.name}</b>` : boss ? `Next: <b class="bossn">BOSS · ${BOSSES[nA.boss].name}</b>` : `Next: <b>wave ${nx}</b>`;
   el.innerHTML = `<div class="drays"></div>
     <div class="dhead"><div class="dwave">WAVE ${G.wave}</div><h2>CLEARED</h2>
-      <div class="dchips"><span><i>☠</i><b data-n="${G.kills - (G.waveKills0 || 0)}">${G.kills - (G.waveKills0 || 0)}</b> kills</span><span><i>✦</i>best combo x<b data-n="${G.waveBest || 0}">${G.waveBest || 0}</b></span><span><i class="ccoin"></i><b data-n="${G.coins}">${G.coins}</b></span><span><i class="cheart">♥</i>${G.player.hp}/${G.player.maxHp}</span></div>
+      <div class="dchips"><span><i>☠</i><b data-n="${G.kills - (G.waveKills0 || 0)}">${G.kills - (G.waveKills0 || 0)}</b> kills</span><span><i>✦</i>best combo <b data-n="${G.waveBest || 0}" data-pre="x">x${G.waveBest || 0}</b></span><span><i class="ccoin"></i><b data-n="${G.coins}">${G.coins}</b></span><span><i class="cheart">♥</i>${G.player.hp}/${G.player.maxHp}</span></div>
       <div class="dnext">${next}</div></div>
     <p class="sub">Choose 1 upgrade</p>
     <div class="cards ${deal ? 'deal' : ''}">${DRAFT.cards.map(cardHTML).join('')}</div>

@@ -46,6 +46,6 @@ function updateCreator(dt) {
   // frame the survivor beside the panel (desktop) or above it (phone)
   const wide = W > 760;
   if (wide) { camera.position.set(1.25, 1.55, 4.3); camera.lookAt(1.25, 1.0, 0); }
-  else { camera.position.set(0, 1.9, 4.6); camera.lookAt(0, .05, 0); }
+  else { camera.position.set(0, 1.5, 3.7); camera.lookAt(0, -.3, 0); } // phone: the survivor fills the space above the 45% panel
   WORLD.moon.position.set(8, 22, 6); WORLD.moon.target.position.set(0, 0, 0);
 }

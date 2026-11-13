@@ -86,7 +86,7 @@ function cosArt(kind, c) {
 }
 function openShop(tab) {
   if (tab) HOME.tab = tab; HOME.shop = true; HOME.sel = null; HOME.try = null;
-  const el = document.getElementById('shop'); el.hidden = false; renderThumbs(); renderShop(); AU.play('cardOpen', {vol: .6});
+  const el = document.getElementById('shop'); el.hidden = false; ui.classList.add('shopping'); renderThumbs(); renderShop(); AU.play('cardOpen', {vol: .6});
 }
 const PERK_TAG = {jacket: 'ARMOR', sharpen: 'WEAPON', locker: 'GEAR', charm: 'LUCK', wind: 'SURVIVAL', scav: 'LOOT', dice: 'LOOT'};
 function renderShop() {
@@ -122,7 +122,7 @@ function renderShop() {
   const te = document.getElementById('tEquip'); if (te) te.onclick = () => { HOME.try = null; equipCos(kind, HOME.sel); AU.play('cardPick', {vol: .6}); renderShop(); };
 }
 function shopBurst(el, col) { const r = el.getBoundingClientRect(); for (let i = 0; i < 14; i++) { const sp = document.createElement('i'); sp.className = 'flyspark'; sp.style.left = r.left + r.width / 2 + 'px'; sp.style.top = r.top + r.height / 2 + 'px'; sp.style.background = col; sp.style.setProperty('--sx', (Math.random() - .5) * 140 + 'px'); sp.style.setProperty('--sy', (Math.random() - .5) * 100 + 'px'); document.body.appendChild(sp); setTimeout(() => sp.remove(), 520); } }
-function closeShop() { HOME.shop = false; HOME.try = null; HOME.sel = null; applyCosmetics(); document.getElementById('shop').hidden = true; if (HOME.on) showHome(); }
+function closeShop() { HOME.shop = false; HOME.try = null; HOME.sel = null; applyCosmetics(); document.getElementById('shop').hidden = true; ui.classList.remove('shopping'); if (HOME.on) showHome(); }
 // the camera frames the survivor on the home screen
 function homeCamera(raw) {
   const P = G.player; HOME.spin += raw * .35; P.face = Math.PI / 2 + Math.sin(HOME.spin) * .6;

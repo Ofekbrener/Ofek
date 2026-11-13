@@ -37,6 +37,10 @@ cv3.addEventListener('touchmove', e => { for (const t of e.changedTouches) if (I
 const endTouch = e => { for (const t of e.changedTouches) { if (INPUT.joy && t.identifier === INPUT.joy.id) INPUT.joy = null; for (const k in HUD.btn) if (HUD.btn[k].down === t.identifier) HUD.btn[k].down = null; } };
 cv3.addEventListener('touchend', endTouch); cv3.addEventListener('touchcancel', endTouch);
 
+// menu buttons: the click sound and a light tap on press, a springy release (see button.rel in index.html)
+addEventListener('pointerdown', e => { const b = e.target.closest && e.target.closest('button'); if (!b || b.disabled || b.classList.contains('card')) return; AU.play('cardPick', {vol: .3, rate: 1.3, max: 2}); HAPTIC.fx('card'); });
+addEventListener('pointerup', e => { const b = e.target.closest && e.target.closest('button'); if (!b || b.classList.contains('card')) return; b.classList.remove('rel'); void b.offsetWidth; b.classList.add('rel'); setTimeout(() => b.classList.remove('rel'), 140); });
+
 // ---------- camera ----------
 function updateCamera(dt) {
   const P = G.player, c = G.cam;
