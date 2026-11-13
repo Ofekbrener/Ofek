@@ -13,7 +13,7 @@ files = {}
 audio = set(re.findall(r"'([A-Za-z_0-9]+)'", open(os.path.join(src, 'js/audio.js')).read()))
 for d, _, fs in os.walk(src):
     rel = os.path.relpath(d, src)
-    if rel.startswith(('tools', '.')): continue
+    if rel.startswith(('tools', 'android', '.')): continue
     for f in fs:
         r = os.path.normpath(os.path.join(rel, f))
         if r in ('index.html', '.gitignore', 'CREDITS.md'): continue
