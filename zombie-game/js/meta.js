@@ -61,7 +61,7 @@ const COSMETICS = {
 const COS_TABS = [['hat', 'Hats'], ['outfit', 'Outfits'], ['skin', 'Weapon skins'], ['trail', 'Trails'], ['aura', 'Auras']];
 const cosKey = (kind, id) => kind + ':' + id;
 const ownsCos = (kind, id) => !!META.owned[cosKey(kind, id)];
-const equipped = kind => { const id = META.equip[kind]; return id ? COSMETICS[kind].find(c => c.id === id) : null; };
+const equipped = kind => { const t = typeof HOME !== 'undefined' && HOME.try; const id = t && t.kind === kind ? t.id : META.equip[kind]; return id ? COSMETICS[kind].find(c => c.id === id) : null; };
 function buyCos(kind, id) {
   const c = COSMETICS[kind].find(x => x.id === id); if (!c || ownsCos(kind, id) || META.gems < c.cost) return false;
   META.gems -= c.cost; META.owned[cosKey(kind, id)] = 1; META.equip[kind] = id; saveMeta(); return true;
@@ -70,13 +70,14 @@ function equipCos(kind, id) { META.equip[kind] = META.equip[kind] === id ? null 
 
 // ---------- putting cosmetics on the survivor ----------
 function hatMesh(h) {
-  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({color: c, roughness: .55}, o)), g = new THREE.Group();
+  // colors are picked as screen colors, so convert them to the renderer's linear space
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({color: new THREE.Color(c).convertSRGBToLinear(), roughness: .55}, o)), g = new THREE.Group();
   if (h.id === 'cap') { const d = new THREE.Mesh(new THREE.SphereGeometry(.17, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), M(h.col)); g.add(d); const b = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, .02, 16, 1, false, -Math.PI / 2, Math.PI), M(h.col)); b.position.set(0, 0, .1); g.add(b); }
   if (h.id === 'cowboy') { const br = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .03, 24), M(h.col)); g.add(br); const t = new THREE.Mesh(new THREE.CylinderGeometry(.14, .17, .2, 20), M(h.col)); t.position.y = .1; g.add(t); const band = new THREE.Mesh(new THREE.CylinderGeometry(.171, .171, .04, 20), M(0x2a1a0a)); band.position.y = .03; g.add(band); }
   if (h.id === 'horns') { const cap = new THREE.Mesh(new THREE.SphereGeometry(.17, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), M(0x8a8a90, {metalness: .7})); g.add(cap); for (const s of [-1, 1]) { const hn = new THREE.Mesh(new THREE.ConeGeometry(.05, .26, 12), M(h.col)); hn.position.set(s * .18, .1, 0); hn.rotation.z = -s * .9; g.add(hn); } }
   if (h.id === 'headphones') { const band = new THREE.Mesh(new THREE.TorusGeometry(.18, .02, 8, 20, Math.PI), M(h.col)); band.rotation.z = 0; g.add(band); for (const s of [-1, 1]) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(.07, .07, .05, 16), M(0xe03a3a)); cup.rotation.z = Math.PI / 2; cup.position.set(s * .18, -.06, 0); g.add(cup); } g.position.y = -.05; }
   if (h.id === 'halo') { const r = new THREE.Mesh(new THREE.TorusGeometry(.16, .025, 8, 28), new THREE.MeshBasicMaterial({color: h.col})); r.rotation.x = Math.PI / 2; r.position.y = .18; g.add(r); const l = new THREE.PointLight(h.col, 1.2, 3); l.position.y = .2; g.add(l); }
-  if (h.id === 'crown') { const ring = new THREE.Mesh(new THREE.CylinderGeometry(.15, .15, .1, 20, 1, true), M(h.col, {metalness: 1, roughness: .2, side: THREE.DoubleSide})); ring.position.y = .05; g.add(ring); for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2, sp = new THREE.Mesh(new THREE.ConeGeometry(.03, .09, 8), M(h.col, {metalness: 1, roughness: .2})); sp.position.set(Math.cos(a) * .15, .14, Math.sin(a) * .15); g.add(sp); } const gem = new THREE.Mesh(new THREE.OctahedronGeometry(.03), M(0x30d070, {emissive: 0x106030})); gem.position.set(0, .06, .155); g.add(gem); }
+  if (h.id === 'crown') { const ring = new THREE.Mesh(new THREE.CylinderGeometry(.15, .15, .1, 20, 1, true), M(h.col, {metalness: .55, roughness: .3, emissive: 0x3a2800, side: THREE.DoubleSide})); ring.position.y = .05; g.add(ring); for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2, sp = new THREE.Mesh(new THREE.ConeGeometry(.03, .09, 8), M(h.col, {metalness: .55, roughness: .3, emissive: 0x3a2800})); sp.position.set(Math.cos(a) * .15, .14, Math.sin(a) * .15); g.add(sp); } const gem = new THREE.Mesh(new THREE.OctahedronGeometry(.03), M(0x30d070, {emissive: 0x106030})); gem.position.set(0, .06, .155); g.add(gem); }
   return g;
 }
 // a hat sits just above the head bone and stays level with the body
@@ -102,7 +103,7 @@ function skinWeapon() {
   const P = G.player, m = P && P.wMesh; if (!m) return; const s = equipped('skin');
   if (!m.userData.baseMat) m.userData.baseMat = m.material;
   if (!s) { m.material = m.userData.baseMat; return; }
-  m.material = new THREE.MeshStandardMaterial({color: s.col, metalness: s.metal, roughness: s.rough, emissive: new THREE.Color(s.glow || 0), emissiveIntensity: s.glow ? .8 : 0});
+  m.material = new THREE.MeshStandardMaterial({color: new THREE.Color(s.col).convertSRGBToLinear(), metalness: Math.min(.6, s.metal), roughness: s.rough, emissive: new THREE.Color(s.glow || 0), emissiveIntensity: s.glow ? .8 : 0});
 }
 // the weapon trail color: elements show their own colors, otherwise the equipped trail
 function cosTrailCol() { const t = equipped('trail'); if (!t) return null; return t.col === 'rainbow' ? new THREE.Color().setHSL((G.time * .6) % 1, 1, .6).getHex() : t.col; }

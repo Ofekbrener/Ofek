@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Zombie Raid</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&family=Oswald:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Creepster&family=Oswald:wght@500;700&display=swap">
 <style>
 :root{--bg:#0d1018;--fg:#f2ede4;--accent:#ffcc33;--muted:#aab0c8;--common:#8fa0b8;--rare:#4fa3ff;--epic:#c15cff;color-scheme:dark}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:Oswald,Impact,system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -96,9 +96,15 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .reroll{margin:18px 0 10px;padding:9px 20px;border-radius:12px;border:1px solid #6b5a22;background:#1d1a10;color:#ffc83a;font-size:17px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .reroll small{color:#a99a6a}.reroll .coin{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3b0,#ffc83a 45%,#b98a10)}
 .reroll:disabled{opacity:.45;cursor:not-allowed}
-@media (max-width:640px){.cards{gap:10px}.card{display:grid;grid-template-columns:96px 1fr;grid-template-rows:auto auto auto auto;column-gap:10px;row-gap:4px;padding:0 10px 10px 0;width:min(380px,94vw)}
-  .card .art{grid-row:1/6;height:auto;min-height:120px;border-bottom:0;border-right:1px solid rgba(255,255,255,.08)}.card .art img{width:92px;height:92px}.card .art svg{width:60px;height:60px}
-  .card .title{padding:30px 0 0;font-size:20px}.stats,.bars,.card .flavor{padding:0}.card .rar{margin:0}.card .tag{top:8px;right:8px}.bar{grid-template-columns:50px 1fr 52px}}
+/* phones: the same three upright cards side by side, scaled down */
+@media (max-width:640px){#draft{padding-left:6px;padding-right:6px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;max-width:none}
+  .card{width:auto;min-width:0;gap:4px;padding:0 0 8px;border-radius:12px}.card .art{height:92px}.card .art img{width:92px;height:92px}.card .art svg{width:54px;height:54px}
+  .card .tag{top:5px;right:5px;font-size:7px;letter-spacing:1px;padding:2px 5px}.card .key{display:none}.card .ribbon{top:8px;left:-30px;font-size:8px;padding:2px 30px;letter-spacing:2px}
+  .card .title{padding:0 7px;font-size:14px;line-height:1.05;min-height:2.1em;display:flex;align-items:flex-end}.card .pips{padding:0 7px;gap:2px}.card .pips i{height:4px}
+  .stats,.bars{padding:0 7px;gap:2px}.st{font-size:10.5px;gap:3px;flex-wrap:wrap}.st span{display:none}.st b{font-size:11px}
+  .card .flavor{padding:0 7px;font-size:10.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .card .rar{margin:auto 7px 0;font-size:8px;letter-spacing:1px}.card .art .arti{width:20px;height:20px;left:5px;bottom:4px}.card .art .arti svg{width:20px;height:20px}
+  #draft .dchips span{font-size:12px;padding:4px 9px}.buildbar{padding:8px}.bchip{grid-template-columns:28px auto;padding:4px 8px 4px 4px}.bchip .bart{width:28px;height:28px}.bchip .bart svg,.bchip .bart img{width:24px;height:24px}}
 .minor{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
 #upd{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:14px;padding:10px 14px;border:1px solid #7dff8a;border-radius:12px;background:rgba(40,90,40,.35);font-size:16px}
 #upd button{font-family:inherit;font-size:16px;padding:7px 16px;border-radius:10px;cursor:pointer}
@@ -233,24 +239,62 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 @keyframes sheetup{from{transform:translateY(100%)}}#hsheet h3{margin:0 0 4px;font-size:22px;letter-spacing:3px;color:#ffcc33;text-align:center}
 #hsheet button{margin:0;display:flex;flex-direction:column;align-items:center}#hsheet button small{font-size:12px;opacity:.8;font-weight:400}#hsheet .hcred{font-family:system-ui,sans-serif;font-size:11px;color:#6f7590;text-align:center}
 #shop{position:fixed;inset:0;z-index:18;pointer-events:none}
-#shop .spanel{pointer-events:auto;position:absolute;left:0;top:0;bottom:0;width:min(470px,100%);box-sizing:border-box;padding:max(14px,env(safe-area-inset-top)) 14px 14px;background:linear-gradient(90deg,rgba(10,12,18,.97),rgba(10,12,18,.92));border-right:1px solid #2e3346;overflow-y:auto;animation:shopin .35s cubic-bezier(.2,1.2,.4,1)}
+#shop .spanel{pointer-events:auto;position:absolute;left:0;top:0;bottom:0;width:min(540px,100%);box-sizing:border-box;padding:0 0 12px;display:flex;flex-direction:column;
+  background:repeating-linear-gradient(115deg,rgba(255,255,255,.018) 0 2px,transparent 2px 7px),linear-gradient(180deg,#22252c,#15171c 40%,#101216);border-right:3px solid #0a0b0e;
+  box-shadow:inset -1px 0 0 #3a3e48,12px 0 40px rgba(0,0,0,.6);animation:shopin .35s cubic-bezier(.2,1.2,.4,1)}
 @keyframes shopin{from{transform:translateX(-100%)}}
-#shop .shead{display:flex;align-items:center;gap:10px}#shop h2{margin:0;font-size:28px;letter-spacing:4px;color:#fff;flex:1}#shop #sBack{margin:0;padding:6px 12px}
-#shop .stabs{display:grid;grid-template-columns:1fr 1fr;margin:12px 0 8px;border:2px solid #3a3f55;border-radius:12px;overflow:hidden}
-#shop .stabs button{font-family:inherit;font-size:15px;font-weight:700;letter-spacing:2px;padding:10px;border:0;background:#1a1d28;color:#aab0c8;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}#shop .stabs button.on{background:#ffcc33;color:#111}
-#shop .shint{font-family:system-ui,sans-serif;font-size:13px;color:#8f95ad;margin:4px 0 10px}
-#shop .sgrid{display:flex;flex-direction:column;gap:8px}
-#shop .sitem{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:8px;border-radius:14px;background:#171a25;border:1px solid #2e3346}#shop .sitem.maxed{opacity:.6}
-#shop .sic svg{width:46px;height:46px}#shop .sinfo{display:flex;flex-direction:column;gap:2px}#shop .sinfo b{font-size:17px;color:#fff}#shop .sinfo span{font-family:system-ui,sans-serif;font-size:13px;color:#aab0c8}
-#shop .spips{display:flex;gap:3px;margin-top:2px}#shop .spips em{width:16px;height:5px;border-radius:3px;background:#2b2f40}#shop .spips em.on{background:#7dff8a}
-#shop .sbuy{font-family:inherit;font-size:16px;font-weight:700;padding:10px 12px;border-radius:12px;border:0;background:#ffcc33;color:#111;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 0 #9a7400;min-width:84px;justify-content:center}
-#shop .sbuy:disabled{background:#2b2f40;color:#6f7590;box-shadow:none;cursor:default}
-#shop .ctabs{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 4px}#shop .ctabs button{font-family:inherit;font-size:13px;padding:6px 12px;border-radius:20px;border:1px solid #3a3f55;background:#151824;color:#cfd6ff;cursor:pointer}#shop .ctabs button.on{background:#30e070;color:#082a14;border-color:#30e070}
-#shop .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:8px}
-#shop .citem{font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:14px;border:2px solid #2e3346;background:#171a25;color:#fff;cursor:pointer;transition:transform .12s}
-#shop .citem:hover{transform:translateY(-3px)}#shop .citem.own{border-color:#3a6a4a}#shop .citem.on{border-color:#30e070;box-shadow:0 0 16px rgba(48,224,112,.35)}#shop .citem.nope{animation:nope .35s}@keyframes nope{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
-#shop .cic svg{width:54px;height:54px}#shop .citem b{font-size:14px}#shop .cprice{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:#30e070}
-@media (max-width:760px){#shop .spanel{top:auto;height:64%;width:100%;border-right:0;border-top:1px solid #2e3346;border-radius:20px 20px 0 0;animation-name:shopup}@keyframes shopup{from{transform:translateY(100%)}}
+#shop .hazard{height:12px;flex:none;background:repeating-linear-gradient(-45deg,#f2c400 0 14px,#111 14px 28px);box-shadow:0 2px 0 #000}
+#shop .shead{display:flex;align-items:center;gap:10px;padding:12px 14px 4px}
+#shop h2{margin:0;flex:1;font-family:'Black Ops One',Oswald,Impact,sans-serif;font-weight:400;font-size:34px;letter-spacing:2px;color:#e8e2d0;text-shadow:0 2px 0 #000,0 0 18px rgba(255,200,60,.15)}
+#shop .sx{width:40px;height:40px;border-radius:10px;border:2px solid #3a3e48;background:#1a1c22;color:#cfd6ff;font-size:18px;cursor:pointer}
+#shop .stabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:6px 14px 10px}
+#shop .stabs button{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px 12px 4px 4px;border:2px solid #34383f;border-bottom-width:4px;background:#1b1d23;color:#9aa0b4;cursor:pointer;font-family:'Black Ops One',Oswald,sans-serif;font-size:16px;letter-spacing:1px;text-align:left}
+#shop .stabs button span{display:flex;flex-direction:column;line-height:1.1}#shop .stabs small{font-family:system-ui,sans-serif;font-size:11px;letter-spacing:0;color:#6f7590}
+#shop .stabs button.on{background:linear-gradient(180deg,#3a3420,#241f12);border-color:#f2c400;color:#ffe48a}#shop .stabs button.on small{color:#c8b070}
+#shop .stabs .ccoin,#shop .stabs .cgem{transform:scale(1.5)}
+#shop .sbody{flex:1;overflow-y:auto;padding:4px 14px 8px}
+/* Safehouse: perks as blueprints pinned on the wall */
+#shop .bpgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#shop .bp{position:relative;padding:12px 12px 10px;border-radius:6px;color:#dfeaff;display:flex;flex-direction:column;gap:5px;
+  background:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px) 0 0/14px 14px,linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px) 0 0/14px 14px,linear-gradient(160deg,#1d4a7a,#123358);
+  border:1px solid #5a8ac0;box-shadow:0 4px 0 #0a1a30,0 8px 18px rgba(0,0,0,.45);transform:rotate(var(--r,0deg))}
+#shop .bp:nth-child(odd){--r:-.6deg}#shop .bp:nth-child(even){--r:.7deg}
+#shop .bp::before{content:"";position:absolute;top:-6px;left:50%;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff8a8a,#b01818);box-shadow:0 2px 3px rgba(0,0,0,.6)}
+#shop .bptag{font-size:10px;letter-spacing:3px;color:#9fc4ee}#shop .bpic{height:58px;display:grid;place-items:center}#shop .bpic svg{width:56px;height:56px;filter:grayscale(.2) drop-shadow(0 0 8px rgba(160,210,255,.5))}
+#shop .bpname{font-family:'Black Ops One',Oswald,sans-serif;font-size:18px;color:#fff;line-height:1.05}#shop .bpdesc{font-family:'Courier New',monospace;font-size:12px;line-height:1.3;color:#c8dcf4;min-height:3.9em}
+#shop .bplv{display:flex;gap:4px}#shop .bplv i{width:22px;height:20px;display:grid;place-items:center;font-style:normal;font-size:11px;border:1.5px dashed #6a9ad0;border-radius:3px;color:#6a9ad0}
+#shop .bplv i.on{border-style:solid;border-color:#7dff8a;background:rgba(125,255,138,.18);color:#7dff8a}
+#shop .build{margin-top:4px;display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;cursor:pointer;font-family:'Black Ops One',Oswald,sans-serif;font-size:14px;letter-spacing:1px;
+  color:#111;background:#f2c400;border:2px solid #111;box-shadow:0 3px 0 #6a5400,inset 0 0 0 2px rgba(255,255,255,.3)}
+#shop .build b{display:flex;align-items:center;gap:5px;font-family:Oswald,sans-serif;font-size:16px}#shop .build.poor{background:#4a4636;color:#8a8470;box-shadow:0 3px 0 #2a281e;border-color:#2a281e}
+#shop .bp.maxed{filter:saturate(.6)}#shop .stamp{align-self:center;margin-top:4px;font-family:'Black Ops One',sans-serif;font-size:20px;color:#ff5050;border:3px solid #ff5050;border-radius:6px;padding:0 10px;transform:rotate(-8deg);opacity:.85}
+/* Locker: steel cubbies with spotlit 3D renders */
+#shop .cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+#shop .cats button{flex:none;font-family:Oswald,sans-serif;font-size:14px;letter-spacing:1px;padding:7px 14px;border-radius:8px;border:2px solid #34383f;background:#1b1d23;color:#aab0c8;cursor:pointer}
+#shop .cats button.on{background:#30e070;border-color:#30e070;color:#082a14;font-weight:700}
+#shop .lockers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#shop .lk{position:relative;display:flex;flex-direction:column;align-items:center;padding:0 0 8px;border-radius:8px;cursor:pointer;color:#fff;font-family:inherit;overflow:hidden;
+  background:linear-gradient(180deg,#2c3038,#1a1d22);border:2px solid #0c0d10;box-shadow:inset 0 0 0 1px #4a4f5a,0 4px 0 #0a0b0e}
+#shop .lk::before{content:"";position:absolute;top:6px;left:8px;right:8px;height:6px;background:repeating-linear-gradient(90deg,#0c0d10 0 6px,transparent 6px 10px);opacity:.7}
+#shop .lkart{width:100%;aspect-ratio:1;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 30%,rgba(255,240,200,.22),transparent 65%)}
+#shop .lkart img{width:86%;height:86%;object-fit:contain;filter:drop-shadow(0 8px 6px rgba(0,0,0,.6))}
+#shop .tape{margin-top:-4px;padding:2px 10px;background:#e8dfc0;color:#2a2418;font-family:'Courier New',monospace;font-weight:700;font-size:12px;transform:rotate(-2deg);box-shadow:0 1px 2px rgba(0,0,0,.4);white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+#shop .price{position:absolute;top:10px;right:6px;display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:#0c2a18;border:1.5px solid #30e070;color:#7dff9a;font-weight:700;font-size:13px}
+#shop .lkst{margin-top:5px;font-size:11px;letter-spacing:2px;color:#8f95ad}#shop .lkst.eq{color:#30e070}
+#shop .lk.own{box-shadow:inset 0 0 0 1px #3a6a4a,0 4px 0 #0a0b0e}#shop .lk.on{border-color:#30e070;box-shadow:0 0 16px rgba(48,224,112,.4),0 4px 0 #0a0b0e}
+#shop .lk.sel{border-color:#ffcc33;transform:translateY(-3px)}
+#shop .trailart{width:80%;height:50%;position:relative}#shop .trailart i{position:absolute;inset:30% 0;background:var(--g);border-radius:50%;filter:blur(1px) drop-shadow(0 0 8px var(--gc));transform:rotate(-20deg);animation:tswish 1.6s ease-in-out infinite}
+#shop .trailart b{position:absolute;right:4%;top:30%;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 0 12px var(--gc)}@keyframes tswish{50%{transform:rotate(-14deg) scaleX(.85)}}
+#shop .auraart{position:relative;width:70%;height:80%}#shop .auraart b{position:absolute;left:35%;right:35%;top:15%;bottom:0;border-radius:40% 40% 10% 10%;background:#0a0b0e;box-shadow:0 0 18px var(--a1)}
+#shop .auraart i{position:absolute;left:var(--x);bottom:0;width:var(--s);height:var(--s);border-radius:50%;background:var(--a1);box-shadow:0 0 8px var(--a2);animation:arise 2s linear infinite;animation-delay:var(--d)}@keyframes arise{to{transform:translateY(-70px);opacity:0}}
+#shop .trybar{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;border-radius:12px;background:#0c0d10;border:1px dashed #3a3e48}
+#shop .trybar.on{border:2px solid #ffcc33;background:linear-gradient(90deg,#2a2412,#14130c)}
+#shop .tryname{flex:1;display:flex;flex-direction:column;font-size:18px;color:#fff}#shop .tryname small{font-size:10px;letter-spacing:3px;color:#ffcc33}
+#shop .tbtn{font-family:'Black Ops One',Oswald,sans-serif;font-size:16px;letter-spacing:1px;padding:10px 16px;border-radius:10px;border:2px solid #111;background:#ffcc33;color:#111;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 3px 0 #6a5400}
+#shop .tbtn.buy{background:#30e070;box-shadow:0 3px 0 #0a6a30}#shop .tbtn.poor{background:#3a4a3e;color:#7a8a7e;box-shadow:none}
+#shop .nope{animation:nope .35s}@keyframes nope{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media (max-width:760px){#shop .spanel{top:auto;height:62%;width:100%;border-right:0;border-top:3px solid #0a0b0e;border-radius:18px 18px 0 0;overflow:hidden;animation-name:shopup}@keyframes shopup{from{transform:translateY(100%)}}
+  #shop h2{font-size:26px}#shop .stabs button{font-size:14px;padding:8px}#shop .bpgrid{gap:8px}#shop .bpname{font-size:15px}#shop .bpdesc{font-size:11px}
   #home .hname{bottom:calc(140px + env(safe-area-inset-bottom))}.hbig{height:100px}}
 #menu .earn{display:flex;gap:12px;justify-content:center}#menu .earn span{display:inline-flex;align-items:center;gap:6px;color:#ffc83a}
 #draft .reroll .free{color:#7dff8a}

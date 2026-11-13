@@ -145,7 +145,7 @@ function cardPips(c) {
   return `<span class="pips">${Array.from({length: max}, (_, i) => `<i class="${i < cur ? 'on' : i === cur ? 'nx' : ''}"></i>`).join('')}</span>`;
 }
 function cardHTML(c, i) {
-  const pv = cardPreview(c), icon = emblem(c.icon, CAT_COL[c.cat] ? c.cat : 'epic');
+  const pv = cardPreview(c), icon = c.weaponCard ? '' : emblem(c.icon, CAT_COL[c.cat] ? c.cat : 'epic');
   const art = c.weaponCard ? `<img src="${WEAPON_ART[G.player.weapon] || ''}" alt="">` : pv ? pv + `<span class="arti">${icon}</span>` : icon;
   const tag = c.weaponCard ? weapon().name : c.id.startsWith('el_') ? 'ELEMENT' : c.cat === 'gear' ? 'AUTO GEAR' : {offense: 'OFFENSE', defense: 'DEFENSE', utility: 'UTILITY', epic: 'SPECIAL'}[c.cat];
   const body = `<div class="stats">${c.stat().map(([l, a, b]) => `<div class="st"><span>${l}</span><b><s>${a}</s> → ${b}</b></div>`).join('')}</div>`;

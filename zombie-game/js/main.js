@@ -230,5 +230,7 @@ window.simulate = function (secs, step = 1 / 60) {
   makePlayer(); G.player.z = 0; G.player.face = Math.PI / 2; renderPortrait(G.player.rig);
   document.querySelector('#menu .load').remove(); MENU_HTML = ui.innerHTML;
   showMenu(); checkUpdate();
+  // first launch: the story plays by itself, then the survivor creator, then training
+  if (firstTime()) setTimeout(() => { if (G.state !== 'menu') return; const after = () => lookSaved() ? newRun(null, {tutorial: !TUT_DONE()}) : openCreator('play'); STORY.seen() ? after() : STORY.intro(after); }, 400);
   requestAnimationFrame(frame);
 })();
