@@ -98,6 +98,8 @@ const BOSSES = {
   zero: {name: 'PATIENT ZERO', sub: 'Dr. Adler', tint: 0xd0a0ff, scale: 2.4, hp: 90, moves: ['charge', 'slam'], summon: 'mix', drops: 4,
     phases: [['charge', 'slam', 'throw'], ['summon', 'charge', 'lanes', 'slam'], ['charge', 'throw', 'lanes', 'slam', 'summon']]},
 };
-const areaIndex = wave => clamp(Math.floor((Math.max(1, wave) - 1) / 5), 0, AREAS.length - 1);
+// story waves 1 to 25 walk the 5 districts once; endless mode (wave 26 and up) loops them
+const areaIndex = wave => Math.floor((Math.max(1, wave) - 1) / 5) % AREAS.length;
+const storyFlag = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
 const curArea = () => AREAS[G.area || 0];
 const bossProfile = () => BOSSES[curArea().boss];

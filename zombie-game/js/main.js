@@ -57,7 +57,7 @@ const ui = document.getElementById('menu');
 const SAVE_KEY = 'ozCheckpoint';
 function saveCheckpoint() {
   const P = G.player; const {magnetPulse, ...up} = UP;
-  const cp = {wave: G.wave, weapon: P.weapon, maxHp: P.maxHp, coins: G.coins, score: G.score, kills: G.kills, reroll: DRAFT.rerollCost, up};
+  const cp = {wave: G.wave, endless: !!G.endless, weapon: P.weapon, maxHp: P.maxHp, coins: G.coins, score: G.score, kills: G.kills, reroll: DRAFT.rerollCost, up};
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(cp)); } catch (e) {}
 }
 function loadCheckpoint() { try { const c = JSON.parse(localStorage.getItem(SAVE_KEY)); return c && c.wave > 1 ? c : null; } catch (e) { return null; } }
@@ -67,7 +67,8 @@ function newRun(cp = null, opts = {}) {
   AU.resume(); clearZombies(); clearPickups(); clearFX(); clearTrail(); resetUpgrades(); POW.reset(); clearGear();
   if (G.player && G.player.javelin) { scene.remove(G.player.javelin.g); G.player.javelin = null; }
 
-  Object.assign(G, {wave: 0, score: 0, coins: 0, kills: 0, combo: 0, hitstop: 0, trauma: 0, slowT: 0, timeScale: 1, flash: 0, hurtFlash: 0});
+  G.endless = !!(opts.endless || (cp && cp.endless));
+  Object.assign(G, {wave: G.endless && !cp ? 25 : 0, score: 0, coins: 0, kills: 0, combo: 0, hitstop: 0, trauma: 0, slowT: 0, timeScale: 1, flash: 0, hurtFlash: 0});
   DRAFT.rerollCost = 10;
   makePlayer(); G.cam.x = 0; G.cam.z = 2;
   if (cp) { // resume: same weapon, upgrades, coins and score, full hearts, the wave you died on
@@ -84,8 +85,9 @@ function newRun(cp = null, opts = {}) {
 }
 function menuButtons(primaryLabel) {
   const cp = loadCheckpoint();
-  return (cp ? `<button id="go">Continue: ${AREAS[areaIndex(cp.wave)].short} · wave ${cp.wave}</button><button id="fresh" class="ghost">New story from the start</button>`
+  return (cp ? `<button id="go">Continue: ${cp.endless ? 'Endless' : AREAS[areaIndex(cp.wave)].short} · wave ${cp.wave}</button><button id="fresh" class="ghost">New story from the start</button>`
     : `<button id="go">${primaryLabel}</button>`) +
+    (storyFlag('ozEndless') ? `<button id="endless" class="ghost">Endless mode</button>` : '') +
     `<div class="minor"><button id="custom" class="ghost">Customize survivor</button><button id="howto" class="ghost">How to play</button><button id="story" class="ghost">Story</button></div>`;
 }
 const hapLabel = () => 'Vibration: ' + (HAPTIC.on ? 'on' : 'off');
@@ -94,6 +96,7 @@ function wireMenu() {
   // first launch: design the survivor, then the training run
   const play = c => !STORY.seen() && !c ? STORY.intro(() => play(c)) : lookSaved() ? newRun(c, {tutorial: !TUT_DONE()}) : openCreator('play');
   document.getElementById('story').onclick = () => STORY.intro(showMenu);
+  const en = document.getElementById('endless'); if (en) en.onclick = () => lookSaved() ? newRun(null, {endless: true}) : openCreator('play');
   go.disabled = false; go.onclick = () => play(cp); if (fresh) fresh.onclick = () => play(null); go.focus();
   document.getElementById('custom').onclick = () => openCreator('menu');
   document.getElementById('howto').onclick = () => { if (!lookSaved()) return openCreator('play'); newRun(null, {tutorial: true}); };
@@ -104,7 +107,8 @@ function waveCleared() {
   slowmo(.8); G.flash = .5; shake(.5); AU.play('waveClear', {vol: .9}); HAPTIC.fx('waveClear'); AU.duck(.2, 1.2);
   HUD.banner('WAVE ' + G.wave + ' CLEARED', '+' + (50 * G.wave) + ' bonus', '#7dff8a'); G.score += 50 * G.wave;
   for (const k of G.pickups) k.t = Math.max(k.t, 1); UP.magnetPulse = 1.5;
-  setTimeout(() => { if (!G.player.dead) openDraft(); }, 1800);
+  // beating Patient Zero on wave 25 ends the story
+  setTimeout(() => { if (!G.player.dead) { if (G.wave === 25 && !G.endless) showEnding(); else openDraft(); } }, 1800);
 }
 function gameOver() {
   G.state = 'dead'; ui.hidden = false;

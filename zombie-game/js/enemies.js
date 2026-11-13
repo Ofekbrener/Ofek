@@ -24,7 +24,7 @@ function makeWave(n) {
     else if (n >= 3 && r < .34 + n * .015) t = 'tank';
     else if (n >= 4 && r < .48 + n * .015) t = 'grabber';
     // each district mixes in its own zombies, and the ones from the districts before it
-    const mix = AREA_MIX[areaIndex(n)], q = Math.random();
+    const mix = AREA_MIX[n > 25 ? 4 : areaIndex(n)], q = Math.random();
     let acc = 0; for (const [type, p] of mix) { acc += p; if (q < acc) { t = type; break; } }
     list.push(t);
   }
@@ -54,7 +54,7 @@ function spawnZombie(type) {
   if (T.ambush && G.player) { const a = rnd(0, 7), r = rnd(3.5, 5); x = clamp(G.player.x + Math.cos(a) * r, -G.arena + 1, G.arena - 1); z = clamp(G.player.z + Math.sin(a) * r, -G.arena + 1, G.arena - 1); ring(x, z, 1.2, 0xa8c890, .9); AU.play('zGroan', {vol: .6, rate: 1.4, x, z, bus: 'voice'}); }
   const scale = (T.scale || 1) * (T.boss ? 1 : rnd(.93, 1.07));
   const BP = T.boss ? bossProfile() : null, rig = new Rig(T.model, {tint: BP ? BP.tint : T.tint, scale: BP ? BP.scale : scale});
-  const bossN = Math.max(1, Math.floor(G.wave / 5)), hpMul = T.boss ? BP.hp / T.hp : 1 + (G.wave - 1) * .08;
+  const bossN = Math.max(1, Math.floor(G.wave / 5)), hpMul = T.boss ? BP.hp / T.hp * (G.wave > 25 ? 1 + (G.wave - 25) / 20 : 1) * (curArea().boss === 'zero' && G.wave <= 25 && storyFlag('ozEnding') === 'static' ? 1.3 : 1) : 1 + (G.wave - 1) * .08;
   const zb = {type, T, rig, x, z, vx: 0, vz: 0, y: -2, vy: 0, r: T.r * (T.boss ? 1 : scale), face: Math.atan2(-z, -x),
     hp: Math.ceil(T.hp * hpMul), maxHp: Math.ceil(T.hp * hpMul), speed: rnd(...T.speed) * (1 + G.wave * .025),
     state: 'rise', st: 0, cd: rnd(.5, 1.2), flash: 0, stun: 0, burn: 0, bleed: 0, dying: null, wob: rnd(0, 7), groanT: rnd(2, 8)};

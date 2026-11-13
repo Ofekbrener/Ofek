@@ -26,6 +26,7 @@ RADIO.clear = function () { RADIO.q = []; RADIO.cur = null; if (RADIO.el) RADIO.
 RADIO.update = function () {
   const now = performance.now() / 1000, raw = Math.min(.1, now - (RADIO.last || now)); RADIO.last = now;
   const c = RADIO.cur; if (!c) return; RADIO.t += raw;
+  RADIO.el.classList.toggle('low', G.state === 'ending');
   RADIO.el.style.visibility = G.state === 'draft' || G.state === 'picking' || G.state === 'dead' || G.state === 'travel' ? 'hidden' : 'visible';
   const n = Math.min(c.text.length, Math.floor(RADIO.t * 42));
   if (n !== RADIO.chars) { RADIO.chars = n; const t = RADIO.el.querySelector('.rtext'); if (t) t.textContent = c.text.slice(0, n); }
@@ -51,14 +52,48 @@ function enterArea(i, then) {
 // after each draft: next wave, or the next district after a boss
 function nextWave() {
   const ni = areaIndex(G.wave + 1);
-  if (ni !== G.area) showCityMap(ni, () => enterArea(ni, () => setTimeout(startWave, 3000))); else startWave();
+  if (ni !== G.area && G.endless) enterArea(ni, () => setTimeout(startWave, 3000));
+  else if (ni !== G.area) showCityMap(ni, () => enterArea(ni, () => setTimeout(startWave, 3000))); else startWave();
 }
 function storyWaveStart() {
+  if (G.endless) return;
   const li = (G.wave - 1) % 5, A = curArea();
   const lines = li === 4 ? A.radio.boss : A.radio[li];
   if (lines) setTimeout(() => RADIO.say(lines), li === 0 ? 2200 : 900);
 }
-function storyBossDown() { const A = curArea(); setTimeout(() => RADIO.say(A.radio.after), 1500); }
+function storyBossDown() { if (G.endless || G.wave === 25) return; const A = curArea(); setTimeout(() => RADIO.say(A.radio.after), 1500); }
+
+// ---------- the ending: who gets the cure ----------
+const ENDINGS = {
+  army: {title: 'ENDING: DAWN', col: '#ffcc33', lines: ['The gate opens. Soldiers take the case from your hands.', 'Three weeks later, the first doses reach the city.', 'Somewhere in the static, a voice says thank you. Then nothing.']},
+  doc: {title: 'ENDING: STATIC', col: '#d0a0ff', lines: ['Dr. Adler drinks the cure in one go. His eyes clear.', '"You saved me," he says, and walks into the dark.', 'Behind you, the floodlights on the wall go out one by one.']},
+};
+function showEnding() {
+  const el = document.getElementById('ending'); G.state = 'ending'; el.hidden = false; RADIO.clear(); AU.musicTo('music_calm'); clearCheckpoint();
+  el.innerHTML = `<div class="ebox"><div class="etitle">THE CASE IS STILL WARM</div>
+    <p class="eline">Patient Zero is down. Two voices on the radio. One choice.</p>
+    <div class="echoice"><button id="eArmy" class="ecard army"><b>Give the cure to the army</b><span>They can make enough for the whole city.</span></button>
+    <button id="eDoc" class="ecard doc"><b>Give the cure to Doc</b><span>It is the only thing that keeps him human.</span></button></div></div>`;
+  RADIO.say([{who: 'ARMY', text: 'Survivor, bring the case to the gate. We can save everyone.'}, {who: 'DOC', text: 'Please. I made this. I only need one dose.'}]);
+  const pickE = id => { AU.play('cardPick', {vol: .9}); RADIO.clear(); playEnding(id); };
+  document.getElementById('eArmy').onclick = () => pickE('army'); document.getElementById('eDoc').onclick = () => pickE('doc');
+}
+function playEnding(id) {
+  const E = ENDINGS[id], el = document.getElementById('ending'); storyFlag('ozEnding', id === 'army' ? 'dawn' : 'static'); storyFlag('ozEndless', '1');
+  let i = 0;
+  const show = () => {
+    if (i >= E.lines.length) {
+      el.innerHTML = `<div class="ebox"><div class="etitle" style="color:${E.col}">${E.title}</div><p class="eline">Score ${G.score} · ${G.kills} kills</p>
+        <div class="eunlock">ENDLESS MODE UNLOCKED</div><p class="eline small">${id === 'doc' ? 'Start a new story and Patient Zero will remember you.' : 'The districts loop, and the horde keeps growing.'}</p>
+        <button id="eMenu" class="primary">Back to menu</button></div>`;
+      AU.play('levelUp', {vol: .8}); document.getElementById('eMenu').onclick = () => { el.hidden = true; clearZombies(); showMenu(); };
+      return;
+    }
+    el.innerHTML = `<div class="ebox"><div class="etitle" style="color:${E.col}">${E.title}</div><p class="eline big">${E.lines[i]}</p><p class="etap">tap to continue</p></div>`;
+    i++; el.onclick = e => { if (e.target.closest('button')) return; show(); };
+  };
+  show();
+}
 
 // ---------- city map between districts ----------
 const MAP_PTS = [[60, 250], [130, 170], [230, 205], [300, 120], [345, 62]];
