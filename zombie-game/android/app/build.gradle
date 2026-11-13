@@ -1,4 +1,5 @@
 plugins { id 'com.android.application' }
+def runNo = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
 android {
   namespace 'com.ofek.zombies'
   compileSdk 34
@@ -6,8 +7,8 @@ android {
     applicationId 'com.ofek.zombies'
     minSdk 24
     targetSdk 34
-    versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
-    versionName '1.0.' + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
+    versionCode runNo
+    versionName "1.0.${runNo}"
   }
   // one fixed key in the repo so a newer APK installs over an older one
   signingConfigs { shared { storeFile file('../shared.keystore'); storePassword 'zombies'; keyAlias 'zombies'; keyPassword 'zombies' } }
