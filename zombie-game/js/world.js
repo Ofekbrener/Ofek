@@ -166,7 +166,7 @@ function updatePickups(dt) {
   G.pickups = G.pickups.filter(k => k.life > 0);
 }
 function collectPickup(k) {
-  const p = G.player;
+  const p = G.player; flyPickup(k.type, k.x, k.z);
   if (k.type === 'coin') { G.coins++; G.score += 5; AU.play('coin', {vol: .5, rate: rnd(.95, 1.15), max: 4}); }
   if (k.type === 'heart') { p.hp = Math.min(p.maxHp, p.hp + 1); AU.play('heart', {vol: .7}); HAPTIC.fx('heart'); popText(p.x, p.z, '+1 ♥', '#ff5a6a', 28); ring(p.x, p.z, 1.6, 0xff4060, .3); }
   if (k.type === 'rage') { POW.add(50); AU.play('rage', {vol: .8}); popText(p.x, p.z, '+50 FURY', '#ff7a1a', 36, 2.6); ring(p.x, p.z, 3, 0xff7a1a, .4); slowmo(.3); }

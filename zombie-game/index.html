@@ -163,6 +163,13 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 #citymap.m3d .m3card.on{transform:none;opacity:1;pointer-events:auto}
 #citymap.m3d .m3tap{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-size:12px;letter-spacing:3px;color:#aab0c8}
 @media (max-width:760px){#citymap.m3d .m3card{left:16px;right:16px;width:auto}#citymap.m3d .m3head{flex-direction:column;align-items:center;gap:4px;font-size:12px;padding-top:max(70px,env(safe-area-inset-top))}}
+#draft.fading{transition:opacity .35s;opacity:0}#draft.fading .card{pointer-events:none}
+.flyer{position:fixed;left:0;top:0;z-index:30;pointer-events:none;display:grid;place-items:center;filter:drop-shadow(0 0 10px var(--fc)) drop-shadow(0 0 24px var(--fc));will-change:transform}
+.flyer>svg,.flyer>img{width:100%;height:100%;object-fit:contain}
+.flyspark{position:fixed;z-index:29;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;pointer-events:none;box-shadow:0 0 8px currentColor;animation:flyspark .5s ease-out forwards}
+@keyframes flyspark{to{transform:translate(var(--sx),var(--sy)) scale(.1);opacity:0}}
+.fcoin{display:block;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3b0,#ffc83a 45%,#a87410);box-shadow:0 0 6px #ffc83a}
+.fheart{font-size:30px;color:#ff4a5a;text-shadow:0 0 8px #ff4a5a}.frage{font-size:26px;color:#ff7a1a}
 #cutscene{position:fixed;inset:0;z-index:15;pointer-events:none}#cutscene .cbar{position:absolute;left:0;right:0;background:#000}#cutscene .ctop{top:0;height:11vh}
 #cutscene .cbot{bottom:0;height:17vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
 #cutText{font-family:Oswald,sans-serif;font-size:clamp(18px,4.2vw,28px);color:#f2ede4;min-height:1.3em;text-align:center;padding:0 16px}
@@ -242,6 +249,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 <script src="js/citymap3d.js"></script>
 <script src="js/creator.js"></script>
 <script src="js/hud.js"></script>
+<script src="js/flyers.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

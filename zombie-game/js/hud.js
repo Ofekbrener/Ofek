@@ -39,13 +39,15 @@ function drawHUD(dt) {
   const pi = PORTRAIT.img; hx.save(); hx.beginPath(); hx.arc(L + 28, T + 28, 28, 0, 7); const bg = hx.createRadialGradient(L + 28, T + 20, 4, L + 28, T + 28, 30); bg.addColorStop(0, '#3a3f58'); bg.addColorStop(1, '#14161f'); hx.fillStyle = bg; hx.fill(); hx.clip(); if (pi && pi.complete && pi.naturalWidth) hx.drawImage(pi, L - 4, T - 4, 64, 64); hx.restore();
   hx.lineWidth = 3; hx.strokeStyle = G.hurtFlash > 0 ? '#ff4040' : '#ffcc33'; hx.beginPath(); hx.arc(L + 28, T + 28, 28, 0, 7); hx.stroke();
   let hs = ''; for (let i = 0; i < P.maxHp; i++) hs += i < P.hp ? '♥' : '♡';
-  stroked(hs, L + 66, T + 22, FONT(24), '#ff4a5a', 4, 'left');
-  stroked('● ' + G.coins, L + 66, T + 50, FONT(18), '#ffc83a', 4, 'left');
+  const hsc = FLY.slotPop('hearts', L + 100, T + 14), csc = FLY.slotPop('coins', L + 76, T + 44, 12);
+  hx.save(); hx.translate(L + 66, T + 22); hx.scale(hsc, hsc); stroked(hs, 0, 0, FONT(24), '#ff4a5a', 4, 'left'); hx.restore();
+  hx.save(); hx.translate(L + 66, T + 50); hx.scale(csc, csc); stroked('● ' + G.coins, 0, 0, FONT(18), '#ffc83a', 4, 'left'); hx.restore();
   // FURY meter: fills from hits and kills, fires a power-up when full
   { const bx = L, by = T + 66, bw = 150, bh = 9, k = POW.active ? clamp(POW.t / POWERS[POW.active].dur, 0, 1) : POW.fury / 100;
     hx.fillStyle = 'rgba(0,0,0,.55)'; hx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
     const col = POW.active ? '#' + new THREE.Color(POWERS[POW.active].col).getHexString() : POW.fury > 85 ? `hsl(${20 + 20 * Math.sin(t * 12)},100%,55%)` : '#ff7a1a';
     hx.fillStyle = col; hx.fillRect(bx, by, bw * k, bh);
+    FLY.slotPop('fury', bx + bw / 2, by + 4, 10);
     stroked(POW.active ? POWERS[POW.active].name + ' ' + Math.ceil(POW.t) + 's' : 'FURY', bx + bw + 8, by + 9, FONT(13), POW.active ? col : '#ffb070', 3, 'left'); }
   // score, wave, remaining
   stroked(String(G.score), W - 16, 38, FONT(30), '#ffffff', 5, 'right');
@@ -55,11 +57,11 @@ function drawHUD(dt) {
   const narrow = W < 640, comboY = narrow ? 130 : 80;
   if (G.combo > 2) { const s = 1 + Math.min(.4, Math.max(0, G.comboT - 1.7) * 3), fs = 26 + Math.min(G.combo, 30) * .7; hx.save(); hx.translate(W - 16, comboY); hx.scale(s, s); stroked('x' + G.combo, 0, fs * .82, FONT(fs), '#ffcc33', 5, 'right'); stroked('COMBO', 0, fs * .82 + 15, FONT(12), '#ffe9a8', 3, 'right'); hx.restore(); }
   // weapon + upgrade badges
-  const w = weapon(), wi = WEAPON_IMG[P.weapon]; if (wi && wi.complete) hx.drawImage(wi, 6, H - 66, 56, 56);
+  const w = weapon(), wi = WEAPON_IMG[P.weapon], wsc = FLY.slotPop('weapon', 34, H - 38, 28); if (wi && wi.complete) hx.drawImage(wi, 34 - 28 * wsc, H - 38 - 28 * wsc, 56 * wsc, 56 * wsc);
   // element dots and gear icons with cooldown rings above the weapon name
-  elActive().forEach((e, i) => { hx.fillStyle = '#' + new THREE.Color(ELEMENTS[e].col).getHexString(); hx.beginPath(); hx.arc(70 + i * 16, H - 52, 6, 0, 7); hx.fill(); hx.strokeStyle = '#000'; hx.lineWidth = 2; hx.stroke(); stroked(String(UP.el[e]), 70 + i * 16, H - 48, FONT(9), '#000', 0); });
-  Object.keys(UP.gear).forEach((g, i) => { const x = 22 + i * 40, y = H - 92, img = gearImg(g);
-    hx.fillStyle = 'rgba(0,0,0,.6)'; hx.beginPath(); hx.arc(x, y, 17, 0, 7); hx.fill(); if (img.complete) hx.drawImage(img, x - 13, y - 13, 26, 26);
+  elActive().forEach((e, i) => { const es = FLY.slotPop('el' + i, 70 + i * 16, H - 52, 8); hx.fillStyle = '#' + new THREE.Color(ELEMENTS[e].col).getHexString(); hx.beginPath(); hx.arc(70 + i * 16, H - 52, 6 * es, 0, 7); hx.fill(); hx.strokeStyle = '#000'; hx.lineWidth = 2; hx.stroke(); stroked(String(UP.el[e]), 70 + i * 16, H - 48, FONT(9), '#000', 0); });
+  Object.keys(UP.gear).forEach((g, i) => { const x = 22 + i * 40, y = H - 92, img = gearImg(g), gs = FLY.slotPop('gear' + i, x, y, 17);
+    hx.fillStyle = 'rgba(0,0,0,.6)'; hx.beginPath(); hx.arc(x, y, 17 * gs, 0, 7); hx.fill(); if (img.complete) hx.drawImage(img, x - 13 * gs, y - 13 * gs, 26 * gs, 26 * gs);
     const cdMax = {molotov: 4 - .4 * (gearLvl(g) - 1), tesla: 2.5 - .2 * (gearLvl(g) - 1), pulse: 5 - .3 * (gearLvl(g) - 1)}[g];
     if (cdMax && GS.cd[g] !== undefined) { hx.strokeStyle = '#a8fff0'; hx.lineWidth = 3; hx.beginPath(); hx.arc(x, y, 17, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - clamp(GS.cd[g] / cdMax, 0, 1))); hx.stroke(); }
     stroked(String(gearLvl(g)), x + 13, y + 15, FONT(12), '#a8fff0', 3); });

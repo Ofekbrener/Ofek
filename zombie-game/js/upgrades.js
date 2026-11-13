@@ -168,10 +168,18 @@ function pickCard(i) {
   const btn = document.getElementById('card' + i); btn.classList.add('picked');
   DRAFT.el.querySelectorAll('.card').forEach(b => { if (b !== btn) b.classList.add('gone'); });
   c.apply(); if (!c.repeat) UP.taken.push(c.id); else UP.taken.push(c.id + '#'); AU.play('cardPick', {vol: .9}); HAPTIC.fx('card'); AU.play('levelUp', {vol: .5});
+  // the card's art flies out of the card into the survivor, bursts, then a small icon flies to its HUD slot
+  const col = (CAT_COL[c.cat] || CAT_COL.epic)[1], sub = (c.stat()[0] || [])[2];
   setTimeout(() => {
-    DRAFT.el.hidden = true; G.state = 'playing';
-    const P = G.player; ring(P.x, P.z, 2.5, 0xffcc33, .4); popText(P.x, P.z, c.title, '#ffcc33', 34, 3);
-    setTimeout(nextWave, 700);
-  }, 650);
+    const art = btn.querySelector('.art'), r = art.getBoundingClientRect(), html = art.innerHTML;
+    DRAFT.el.classList.add('fading'); art.style.visibility = 'hidden'; AU.play('swingWide', {vol: .6, rate: 1.3});
+    flyTo(html, {x: r.left + r.width / 2, y: r.top + r.height / 2}, HUD_SLOT.player, {dur: .8, arc: 140, size: Math.max(r.width, r.height), endScale: .3, spin: 1, col, onArrive: () => {
+      DRAFT.el.hidden = true; DRAFT.el.classList.remove('fading'); G.state = 'playing';
+      rewardBurst(col, c.title, sub ? 'now ' + sub : '');
+      const slot = cardSlot(c);
+      if (slot) setTimeout(() => flyTo(html, HUD_SLOT.player(), slot[1], {dur: .55, arc: 60, size: 46, endScale: .55, spin: 0, col, onArrive: () => { FLY.bump[slot[0]] = G.time; AU.play('cardPick', {vol: .6, rate: 1.3}); }}), 350);
+      setTimeout(nextWave, 1300);
+    }});
+  }, 420);
 }
 function WSND_DRAW(k) { const cls = WEAPONS[k].cls; AU.play(cls === 'blade' || cls === 'pierce' ? 'swingBlade' : cls === 'saw' ? 'hitSaw' : cls === 'heavy' ? 'hitAxe' : k === 'Guitar' ? 'guitarHit' : 'hitWood', {vol: .8, dur: .8}); }
