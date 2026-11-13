@@ -39,7 +39,7 @@ const bossN = () => Math.max(1, Math.floor(G.wave / 5));
 const bossDmg = () => bossN() === 1 ? 1 : 2;
 const bossTele = () => bossN() === 1 ? 1.3 : .95;
 function startWave() {
-  G.wave++; saveCheckpoint(); WAVE.queue = makeWave(G.wave); WAVE.total = WAVE.queue.length; WAVE.killed = 0; WAVE.spawnT = 1.2; WAVE.active = true; WAVE.boss = null;
+  G.wave++; G.waveKills0 = G.kills; G.waveBest = 0; saveCheckpoint(); WAVE.queue = makeWave(G.wave); WAVE.total = WAVE.queue.length; WAVE.killed = 0; WAVE.spawnT = 1.2; WAVE.active = true; WAVE.boss = null;
   HUD.banner('WAVE ' + G.wave, G.wave % 5 === 0 ? 'BOSS INCOMING' : WAVE.total + ' zombies', G.wave % 5 === 0 ? '#ff4f4f' : '#ffcc33');
   if (G.wave % 5 === 0) { const P = G.player; P.hp = P.maxHp; popText(P.x, P.z, 'FULL HEAL', '#7dff8a', 34, 3); AU.play('heart', {vol: .8}); }
   POW.lastStand = false;
@@ -245,7 +245,7 @@ function damageZombie(zb, dir, dmg, o = {}) {
     else popText(zb.x, zb.z, 'BLOCKED', '#9fb4ff', 20, 2.2);
     return;
   }
-  zb.hp -= dmg; zb.flash = .12; G.combo++; G.comboT = 2;
+  zb.hp -= dmg; zb.flash = .12; G.combo++; G.comboT = 2; if (G.combo > (G.waveBest || 0)) G.waveBest = G.combo;
   if (!o.dot) {
     const kb = (o.kb ?? w.kb + (o.finisher ? 4 : 0)) * (zb.dummy ? .05 : T.boss ? .08 : T.explode ? .4 : 1) * (zb.hp <= 0 ? 1.4 : 1);
     zb.vx += Math.cos(dir) * kb; zb.vz += Math.sin(dir) * kb;

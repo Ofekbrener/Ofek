@@ -128,6 +128,22 @@ function weaponStats(k) {
   };
   return row('DAMAGE', n.dmg, o.dmg, 3, v => v) + row('REACH', n.range, o.range, 3, v => v.toFixed(1) + ' m') + row('SPEED', n.speed, o.speed, 1.4, SPEED_WORD) + row('WIDTH', n.arc, o.arc, 1.8, v => v < .8 ? 'NARROW' : v < 1.3 ? 'MEDIUM' : 'WIDE');
 }
+// the player's build so far: weapon level, elements and gear, shown under the cards
+function buildBarHTML() {
+  const w = weapon(), els = elActive(), gear = Object.keys(UP.gear);
+  const chip = (art, lab, lv, max, col) => `<div class="bchip" style="--bc:${col}"><span class="bart">${art}</span><span class="blab">${lab}</span><span class="bpips">${Array.from({length: max}, (_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</span></div>`;
+  return `<div class="buildbar"><div class="btitle">YOUR BUILD</div><div class="bchips">
+    ${chip(`<img src="${WEAPON_ART[G.player.weapon] || ''}" alt="">`, w.name, UP.wlvl, 5, '#ffcc33')}
+    ${els.map(e => chip(emblem(ELEMENTS[e].icon || e, e), e.toUpperCase(), UP.el[e], 3, CAT_COL[e] ? CAT_COL[e][1] : '#fff')).join('')}
+    ${gear.map(g => chip(emblem(GEAR[g].icon, 'gear'), GEAR[g].name || g.toUpperCase(), gearLvl(g), 5, '#10a58a')).join('')}
+    ${!els.length && !gear.length ? '<span class="bempty">Elements and gear you pick show up here.</span>' : ''}</div></div>`;
+}
+// level pips on a card: filled up to the current level, the next level pulses
+function cardPips(c) {
+  const max = c.id === 'wlvl' ? 5 : c.id.startsWith('el_') ? 3 : c.id.startsWith('gear_') ? 5 : 0; if (!max) return '';
+  const cur = c.id === 'wlvl' ? UP.wlvl : c.id.startsWith('el_') ? UP.el[c.id.slice(3)] : gearLvl(c.id.slice(5));
+  return `<span class="pips">${Array.from({length: max}, (_, i) => `<i class="${i < cur ? 'on' : i === cur ? 'nx' : ''}"></i>`).join('')}</span>`;
+}
 function cardHTML(c, i) {
   const art = c.weaponCard ? `<img src="${WEAPON_ART[G.player.weapon] || ''}" alt="">` : emblem(c.icon, CAT_COL[c.cat] ? c.cat : 'epic');
   const tag = c.weaponCard ? weapon().name : c.id.startsWith('el_') ? 'ELEMENT' : c.cat === 'gear' ? 'AUTO GEAR' : {offense: 'OFFENSE', defense: 'DEFENSE', utility: 'UTILITY', epic: 'SPECIAL'}[c.cat];
@@ -136,7 +152,8 @@ function cardHTML(c, i) {
   return `<button class="card ${c.rarity} cat-${c.cat}" data-i="${i}" id="card${i}" style="--d:${i * .14}s">
     <span class="key">${i + 1}</span><span class="tag">${tag}</span>
     <span class="art">${art}</span>
-    <span class="title">${c.title}</span>${body}<span class="flavor">${flavor}</span>
+    ${(c.id.startsWith('el_') && !UP.el[c.id.slice(3)]) || (c.id.startsWith('gear_') && !gearLvl(c.id.slice(5))) ? '<span class="ribbon">NEW</span>' : ''}
+    <span class="title">${c.title}</span>${cardPips(c)}${body}<span class="flavor">${flavor}</span>
     <span class="rar"><i></i>${c.rarity}</span></button>`;
 }
 function openDraft() {
@@ -145,9 +162,16 @@ function openDraft() {
 }
 function renderDraft(deal) {
   const el = DRAFT.el = document.getElementById('draft'); el.hidden = false;
-  el.innerHTML = `<h2>WAVE ${G.wave} SURVIVED</h2><p class="sub">Take one. The night gets worse.</p>
-    <div class="cards ${deal ? 'deal' : 'deal'}">${DRAFT.cards.map(cardHTML).join('')}</div>
-    <button class="reroll" id="reroll" ${G.coins < DRAFT.rerollCost ? 'disabled' : ''}><span class="coin"></span>Reroll · ${DRAFT.rerollCost} <small>(you have ${G.coins})</small></button>`;
+  const nx = G.wave + 1, nA = AREAS[areaIndex(nx)], boss = nx % 5 === 0, newArea = areaIndex(nx) !== G.area;
+  const next = newArea ? `Next: travel to <b>${nA.name}</b>` : boss ? `Next: <b class="bossn">BOSS · ${BOSSES[nA.boss].name}</b>` : `Next: <b>wave ${nx}</b>`;
+  el.innerHTML = `<div class="drays"></div>
+    <div class="dhead"><div class="dwave">WAVE ${G.wave}</div><h2>CLEARED</h2>
+      <div class="dchips"><span><i>☠</i>${G.kills - (G.waveKills0 || 0)} kills</span><span><i>✦</i>best combo x${G.waveBest || 0}</span><span><i class="ccoin"></i>${G.coins}</span><span><i class="cheart">♥</i>${G.player.hp}/${G.player.maxHp}</span></div>
+      <div class="dnext">${next}</div></div>
+    <p class="sub">Choose 1 upgrade</p>
+    <div class="cards ${deal ? 'deal' : ''}">${DRAFT.cards.map(cardHTML).join('')}</div>
+    <button class="reroll" id="reroll" ${G.coins < DRAFT.rerollCost ? 'disabled' : ''}><span class="dice">⚄</span>Reroll <span class="coin"></span>${DRAFT.rerollCost}</button>
+    ${buildBarHTML()}`;
   el.querySelectorAll('.card').forEach((b, i) => {
     b.onclick = () => pickCard(+b.dataset.i);
     b.onpointerenter = () => AU.play('cardHover', {vol: .25, max: 1});
@@ -167,9 +191,10 @@ function pickCard(i) {
   G.state = 'picking';
   const btn = document.getElementById('card' + i); btn.classList.add('picked');
   DRAFT.el.querySelectorAll('.card').forEach(b => { if (b !== btn) b.classList.add('gone'); });
+  const stat0 = c.stat(), desc0 = typeof c.flavor === 'function' ? c.flavor() : c.flavor;
   c.apply(); if (!c.repeat) UP.taken.push(c.id); else UP.taken.push(c.id + '#'); AU.play('cardPick', {vol: .9}); HAPTIC.fx('card'); AU.play('levelUp', {vol: .5});
   // the card's art flies out of the card into the survivor, bursts, then a small icon flies to its HUD slot
-  const col = (CAT_COL[c.cat] || CAT_COL.epic)[1], sub = (c.stat()[0] || [])[2];
+  const col = (CAT_COL[c.cat] || CAT_COL.epic)[1], sub = (stat0[0] || [])[2];
   setTimeout(() => {
     const art = btn.querySelector('.art'), r = art.getBoundingClientRect(), html = art.innerHTML;
     DRAFT.el.classList.add('fading'); art.style.visibility = 'hidden'; AU.play('swingWide', {vol: .6, rate: 1.3});
@@ -178,7 +203,7 @@ function pickCard(i) {
       rewardBurst(col, c.title, sub ? 'now ' + sub : '');
       const slot = cardSlot(c);
       if (slot) setTimeout(() => flyTo(html, HUD_SLOT.player(), slot[1], {dur: .55, arc: 60, size: 46, endScale: .55, spin: 0, col, onArrive: () => { FLY.bump[slot[0]] = G.time; AU.play('cardPick', {vol: .6, rate: 1.3}); }}), 350);
-      setTimeout(nextWave, 1300);
+      setTimeout(() => showcase(c, nextWave, stat0, desc0), 700);
     }});
   }, 420);
 }

@@ -13,7 +13,7 @@ const POW = {fury: 0, active: null, t: 0, last: '', lastStand: false, tick: 0, h
 POW.is = id => POW.active === id;
 POW.reset = () => { if (POW.active) POW.end(true); POW.fury = 0; POW.lastStand = false; };
 POW.add = function (v) {
-  if (POW.active || G.state !== 'playing' || (typeof TUT !== 'undefined' && TUT.active)) return;
+  if (POW.active || G.state !== 'playing' || (typeof TUT !== 'undefined' && TUT.active) || (typeof SHOW !== 'undefined' && SHOW.active)) return;
   POW.fury = clamp(POW.fury + v, 0, 100);
   if (POW.fury >= 100) { const ids = ['frenzy', 'giant', 'storm', 'vampire', 'warp'].filter(i => i !== POW.last); POW.start(pick(ids)); }
 };

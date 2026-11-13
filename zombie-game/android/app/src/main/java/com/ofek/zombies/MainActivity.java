@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
     s.setAllowFileAccess(false);
     tts = new TextToSpeech(this, status -> { if (status == TextToSpeech.SUCCESS) { tts.setLanguage(Locale.US); ttsReady = true; } });
     web.addJavascriptInterface(new TtsBridge(), "AndroidTTS");
+    web.addJavascriptInterface(new Updater(this, web), "AndroidUpdate");
     web.setWebViewClient(new WebViewClient() {
       // links outside the game (the update download) open in the phone's browser
       @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {

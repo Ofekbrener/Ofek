@@ -137,11 +137,26 @@ function showUpdate() {
   const menu = document.getElementById('menu') || ui;
   if (!UPD.url || UPD.later || !menu || document.getElementById('upd') || (G.state !== 'menu' && G.state !== 'dead')) return;
   const d = document.createElement('div'); d.id = 'upd';
-  d.innerHTML = `<span>New version available (build ${UPD.build})</span><button id="updGo">Download</button><button id="updLater" class="ghost">Later</button>`;
+  d.innerHTML = `<span id="updMsg">New version available (build ${UPD.build})</span><div class="updbar" id="updBar" hidden><i></i></div><button id="updGo">Update now</button><button id="updLater" class="ghost">Later</button>`;
   (menu.querySelector('.minor') || menu.lastElementChild || menu).after(d);
-  document.getElementById('updGo').onclick = () => { location.href = UPD.url; };
+  document.getElementById('updGo').onclick = startUpdate;
   document.getElementById('updLater').onclick = () => { UPD.later = true; d.remove(); };
 }
+// the app downloads and installs the update itself; Android only asks the player to confirm the install
+function startUpdate() {
+  const A = window.AndroidUpdate; if (!A) { location.href = UPD.url; return; }
+  const msg = document.getElementById('updMsg'), go = document.getElementById('updGo');
+  if (!A.canInstall()) { msg.textContent = 'One-time step: allow Zombie Raid to install its updates, then come back.'; go.textContent = 'Allow'; go.onclick = () => { A.allow(); go.textContent = 'Update now'; go.onclick = startUpdate; }; return; }
+  go.disabled = true; go.textContent = 'Updating…'; document.getElementById('updBar').hidden = false; msg.textContent = 'Downloading the update…'; A.start(UPD.url);
+}
+window.UPD_EVENT = function (ev, v) {
+  const msg = document.getElementById('updMsg'), bar = document.querySelector('#updBar i'), go = document.getElementById('updGo'); if (!msg) return;
+  if (ev === 'progress') { msg.textContent = 'Downloading the update… ' + Math.max(0, v) + '%'; if (bar) bar.style.width = Math.max(0, v) + '%'; }
+  if (ev === 'installing') msg.textContent = 'Installing…';
+  if (ev === 'confirm') msg.textContent = 'Tap Install in the Android window. Your progress is kept.';
+  if (ev === 'done') msg.textContent = 'Updated. Restarting…';
+  if (ev === 'error') { msg.textContent = 'The update did not finish. Check your connection and try again.'; go.disabled = false; go.textContent = 'Try again'; }
+};
 let MENU_HTML = '';
 function showMenu() {
   G.state = 'menu'; ui.hidden = false; ui.innerHTML = MENU_HTML;
