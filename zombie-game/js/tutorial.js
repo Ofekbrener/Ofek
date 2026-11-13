@@ -60,7 +60,7 @@ TUT.render = function () {
   const keys = !touchUI() && s.keys.length ? `<div class="tkeys">${s.keys.map(k => `<kbd>${k}</kbd>`).join('')}</div>` : '';
   el.innerHTML = `<div class="thead"><div class="ticon"><svg viewBox="0 0 24 24">${TUT_ICON[s.icon]}</svg></div>
     <div class="tmain"><div class="tdots">${dots}</div><div class="ttitle">${s.title}</div></div><button id="tskip" class="tskip">Skip</button></div>
-    <div class="ttext">${s.text()}</div>${keys}<div class="tbar"><i id="tbar"></i></div>${s.button ? `<button id="tgo" class="primary">${s.button}</button>` : ''}`;
+    <div class="ttext">${s.text()}</div>${keys}<div class="tbar"><i id="tbar"></i></div>${s.button ? `<button id="tgo" class="primary">${icon('check')}${s.button}</button>` : ''}`;
   el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
   document.getElementById('tskip').onclick = () => TUT.finish(true);
   const go = document.getElementById('tgo'); if (go) go.onclick = () => TUT.complete();

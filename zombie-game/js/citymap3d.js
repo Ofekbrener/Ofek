@@ -76,7 +76,7 @@ MAP3D.show = function (next, go) {
   el.innerHTML = `<div class="m3head"><span>DAY 3 · ROUTE TO THE WALL</span><span>${G.kills} kills · ${G.score} pts</span></div>
     <div class="m3card" id="m3card"><div class="mnum">AREA ${next + 1} / ${AREAS.length}</div><div class="mnext">${A.name}</div><div class="mgoal">${A.goal}</div>
     <div class="mthreat">${A.newZombie ? `<span>NEW</span>${THREAT[A.newZombie]}` : ''}</div><div class="mthreat boss"><span>BOSS</span>${B.name}</div>
-    <button id="mapGo" class="primary">Travel</button></div><div class="m3tap" id="m3tap">tap to skip</div>`;
+    <button id="mapGo" class="primary">${icon('map')}Travel</button></div><div class="m3tap" id="m3tap">tap to skip</div>`;
   el.onclick = e => { if (!e.target.closest('button') && MAP3D.t < 4) MAP3D.t = 4; };
   document.getElementById('mapGo').onclick = () => {
     MAP3D.finish(); AU.play('cardPick', {vol: .7}); const f = document.getElementById('fade'); f.classList.add('on');

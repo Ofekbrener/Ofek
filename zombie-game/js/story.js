@@ -38,7 +38,7 @@ RADIO.update = function () {
 // ---------- area card and area change ----------
 function areaCard(i) {
   const A = AREAS[i], el = document.getElementById('areacard');
-  el.innerHTML = `<div class="anum">AREA ${i + 1} / ${AREAS.length}</div><div class="aname">${A.name}</div><div class="agoal">${A.goal}</div>`;
+  el.innerHTML = `<div class="anum">AREA ${i + 1} / ${AREAS.length}</div><div class="aname">${UI.letters(A.name, 200)}</div><div class="agoal">${A.goal}</div>`;
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   clearTimeout(areaCard.t); areaCard.t = setTimeout(() => el.classList.remove('on'), 3600);
 }
@@ -73,10 +73,10 @@ const ENDINGS = {
 const ENDING_RADIO = [{who: 'ARMY', text: 'Survivor, bring the case to the gate. We can save everyone.'}, {who: 'DOC', text: 'Please. I made this. I only need one dose.'}];
 function showEnding() {
   const el = document.getElementById('ending'); G.state = 'ending'; el.hidden = false; RADIO.clear(); AU.musicTo('music_calm'); clearCheckpoint();
-  el.innerHTML = `<div class="ebox"><div class="etitle">THE CASE IS STILL WARM</div>
+  el.innerHTML = `<div class="ebox"><div class="etitle">${UI.letters('THE CASE IS STILL WARM')}</div><span class="hzstrip"></span>
     <p class="eline">Patient Zero is down. Two voices on the radio. One choice.</p>
-    <div class="echoice"><button id="eArmy" class="ecard army"><b>Give the cure to the army</b><span>They can make enough for the whole city.</span></button>
-    <button id="eDoc" class="ecard doc"><b>Give the cure to Doc</b><span>It is the only thing that keeps him human.</span></button></div></div>`;
+    <div class="echoice"><button id="eArmy" class="ecard army" style="--i:0"><span class="eico">${icon('map')}</span><b>Give the cure to the army</b><span>They can make enough for the whole city.</span></button>
+    <button id="eDoc" class="ecard doc" style="--i:1"><span class="eico">${icon('radio')}</span><b>Give the cure to Doc</b><span>It is the only thing that keeps him human.</span></button></div></div>`;
   RADIO.say(ENDING_RADIO);
   const pickE = id => { AU.play('cardPick', {vol: .9}); RADIO.clear(); playEnding(id); };
   document.getElementById('eArmy').onclick = () => pickE('army'); document.getElementById('eDoc').onclick = () => pickE('doc');
@@ -87,8 +87,8 @@ function playEnding(id) {
   const show = () => {
     if (i >= E.lines.length) {
       el.innerHTML = `<div class="ebox"><div class="etitle" style="color:${E.col}">${E.title}</div><p class="eline">Score ${G.score} · ${G.kills} kills</p>
-        <div class="eunlock">ENDLESS MODE UNLOCKED</div><p class="eline small">${id === 'doc' ? 'Start a new story and Patient Zero will remember you.' : 'The districts loop, and the horde keeps growing.'}</p>
-        <button id="eMenu" class="primary">Back to menu</button></div>`;
+        <div class="eunlock">ENDLESS MODE UNLOCKED<i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i></div><p class="eline small">${id === 'doc' ? 'Start a new story and Patient Zero will remember you.' : 'The districts loop, and the horde keeps growing.'}</p>
+        <button id="eMenu" class="primary">${icon('back')}Back to menu</button></div>`;
       AU.play('levelUp', {vol: .8}); document.getElementById('eMenu').onclick = () => { el.hidden = true; clearZombies(); showMenu(); };
       return;
     }

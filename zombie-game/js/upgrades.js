@@ -145,17 +145,23 @@ function cardPips(c) {
   return `<span class="pips">${Array.from({length: max}, (_, i) => `<i class="${i < cur ? 'on' : i === cur ? 'nx' : ''}"></i>`).join('')}</span>`;
 }
 function cardHTML(c, i) {
-  const pv = cardPreview(c), icon = c.weaponCard ? '' : emblem(c.icon, CAT_COL[c.cat] ? c.cat : 'epic');
-  const art = c.weaponCard ? `<img src="${WEAPON_ART[G.player.weapon] || ''}" alt="">` : pv ? pv + `<span class="arti">${icon}</span>` : icon;
+  const pv = cardPreview(c), emb = c.weaponCard ? '' : emblem(c.icon, CAT_COL[c.cat] ? c.cat : 'epic');
+  const art = c.weaponCard ? `<img src="${WEAPON_ART[G.player.weapon] || ''}" alt="">` : pv ? pv + `<span class="arti">${emb}</span>` : emb;
   const tag = c.weaponCard ? weapon().name : c.id.startsWith('el_') ? 'ELEMENT' : c.cat === 'gear' ? 'AUTO GEAR' : {offense: 'OFFENSE', defense: 'DEFENSE', utility: 'UTILITY', epic: 'SPECIAL'}[c.cat];
   const body = `<div class="stats">${c.stat().map(([l, a, b]) => `<div class="st"><span>${l}</span><b><s>${a}</s> → ${b}</b></div>`).join('')}</div>`;
   const flavor = typeof c.flavor === 'function' ? c.flavor() : c.flavor;
-  return `<button class="card ${c.rarity} cat-${c.cat}" data-i="${i}" id="card${i}" style="--d:${i * .14}s">
+  return `<button class="card ${c.rarity} cat-${c.cat}" data-i="${i}" id="card${i}" style="--d:${i * .14}s;--i:${i}"><span class="cback">${icon('skull')}</span><span class="shine"></span>
     <span class="key">${i + 1}</span><span class="tag">${tag}</span>
     <span class="art">${art}</span>
     ${(c.id.startsWith('el_') && !UP.el[c.id.slice(3)]) || (c.id.startsWith('gear_') && !gearLvl(c.id.slice(5))) ? '<span class="ribbon">NEW</span>' : ''}
     <span class="title">${c.title}</span>${cardPips(c)}${body}<span class="flavor">${flavor}</span>
     <span class="rar"><i></i>${c.rarity}</span></button>`;
+}
+// deal face down, flip, shine, hop; taps wait until the flips finish (about 1 s)  [docs/UI-MOTION.md §3.3]
+function draftDeal(el) {
+  const cards = [...el.querySelectorAll('.card')], n = cards.length; el.classList.add('locked'); clearTimeout(draftDeal.t1); clearTimeout(draftDeal.t2);
+  draftDeal.t1 = setTimeout(() => { cards.forEach(c => c.classList.add('flip')); AU.play('cardHover', {vol: .35, rate: 1.4, max: 3}); }, 420 + (n - 1) * 90);
+  draftDeal.t2 = setTimeout(() => { el.classList.remove('locked'); cards.forEach(c => { c.classList.remove('flip'); c.classList.add('hop'); const b = c.querySelector('.cback'); if (b) b.remove(); }); }, 420 + (n - 1) * 90 + 300 + (n - 1) * 50 + 30);
 }
 function openDraft() {
   G.state = 'draft'; DRAFT.free = safeLv('dice'); DRAFT.cards = rollCards(); AU.musicTo('music_calm'); AU.play('cardOpen', {vol: .8});
@@ -166,12 +172,12 @@ function renderDraft(deal) {
   const nx = G.wave + 1, nA = AREAS[areaIndex(nx)], boss = nx % 5 === 0, newArea = areaIndex(nx) !== G.area;
   const next = newArea ? `Next: travel to <b>${nA.name}</b>` : boss ? `Next: <b class="bossn">BOSS · ${BOSSES[nA.boss].name}</b>` : `Next: <b>wave ${nx}</b>`;
   el.innerHTML = `<div class="drays"></div>
-    <div class="dhead"><div class="dwave">WAVE ${G.wave}</div><h2>CLEARED</h2>
-      <div class="dchips"><span><i>☠</i><b data-n="${G.kills - (G.waveKills0 || 0)}">${G.kills - (G.waveKills0 || 0)}</b> kills</span><span><i>✦</i>best combo <b data-n="${G.waveBest || 0}" data-pre="x">x${G.waveBest || 0}</b></span><span><i class="ccoin"></i><b data-n="${G.coins}">${G.coins}</b></span><span><i class="cheart">♥</i>${G.player.hp}/${G.player.maxHp}</span></div>
+    <div class="dhead"><div class="dwave">WAVE ${G.wave}</div><h2>${deal ? UI.letters('CLEARED') : 'CLEARED'}</h2>
+      <div class="dchips"><span style="--i:0">${icon('skull')}${UI.odoHTML(G.kills - (G.waveKills0 || 0))} kills</span><span style="--i:1">${icon('bolt')}best combo x${UI.odoHTML(G.waveBest || 0)}</span><span style="--i:2"><i class="ccoin"></i>${UI.odoHTML(G.coins)}</span><span style="--i:3"><span class="cheart">${icon('heart')}</span>${G.player.hp}/${G.player.maxHp}</span></div>
       <div class="dnext">${next}</div></div>
     <p class="sub">Choose 1 upgrade</p>
     <div class="cards ${deal ? 'deal' : ''}">${DRAFT.cards.map(cardHTML).join('')}</div>
-    <button class="reroll" id="reroll" ${G.coins < DRAFT.rerollCost && !DRAFT.free ? 'disabled' : ''}><span class="dice">⚄</span>Reroll ${DRAFT.free ? '<b class="free">FREE</b>' : `<span class="coin"></span>${DRAFT.rerollCost}`}</button>
+    <button class="reroll" id="reroll" ${G.coins < DRAFT.rerollCost && !DRAFT.free ? 'disabled' : ''}>${icon('dice')}Reroll ${DRAFT.free ? '<b class="free">FREE</b>' : `<span class="coin"></span>${DRAFT.rerollCost}`}</button>
     ${buildBarHTML()}`;
   el.querySelectorAll('.card').forEach((b, i) => {
     b.onclick = () => pickCard(+b.dataset.i);
@@ -181,7 +187,7 @@ function renderDraft(deal) {
     setTimeout(() => AU.play(DRAFT.cards[i].rarity === 'epic' ? 'levelUp' : 'cardHover', {vol: DRAFT.cards[i].rarity === 'epic' ? .5 : .3, rate: 1 + i * .12, max: 3}), 140 * i + 120);
   });
   document.getElementById('reroll').onclick = reroll;
-  if (deal) countUp(el.querySelector('.dchips'));
+  if (deal) { UI.rollAll(el.querySelector('.dchips'), 450); draftDeal(el); } else el.querySelectorAll('.card .cback').forEach(c => c.remove());
   setTimeout(() => { const f = document.getElementById('card0'); f && f.focus({preventScroll: true}); }, 500);
 }
 function reroll() {

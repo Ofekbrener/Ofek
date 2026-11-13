@@ -28,7 +28,7 @@ function showcase(c, done, stat0, desc0) {
   const el = document.getElementById('showcase'), cardArt = c.weaponCard ? `<img src="${WEAPON_ART[P.weapon] || ''}" alt="">` : emblem(c.icon, CAT_COL[c.cat] ? c.cat : 'epic');
   el.style.setProperty('--sc', col);
   el.innerHTML = `<div class="scart">${cardArt}</div><div class="scbody"><div class="sctag">${st[1] && st[1] !== 'none' && st[1] !== 'new' ? 'UPGRADED' : 'NEW'}</div><div class="sctitle">${c.title}</div>
-    <div class="scdesc">${(desc0 || '').replace(/^Next: /, '')}</div>${st.length ? `<div class="scstat">${st[0]} <s>${st[1]}</s> → <b>${st[2]}</b></div>` : ''}<div class="scbar"><i></i></div></div><button class="scskip" id="scskip">Next wave ›</button>`;
+    <div class="scdesc">${(desc0 || '').replace(/^Next: /, '')}</div>${st.length ? `<div class="scstat">${st[0]} <s>${st[1]}</s> → <b>${st[2]}</b></div>` : ''}<div class="scbar"><i></i></div></div><button class="scskip" id="scskip">Next wave${icon('play')}</button>`;
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); el.hidden = false;
   document.getElementById('scskip').onclick = () => endShowcase();
   later(4200, endShowcase);

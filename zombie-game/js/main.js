@@ -37,10 +37,6 @@ cv3.addEventListener('touchmove', e => { for (const t of e.changedTouches) if (I
 const endTouch = e => { for (const t of e.changedTouches) { if (INPUT.joy && t.identifier === INPUT.joy.id) INPUT.joy = null; for (const k in HUD.btn) if (HUD.btn[k].down === t.identifier) HUD.btn[k].down = null; } };
 cv3.addEventListener('touchend', endTouch); cv3.addEventListener('touchcancel', endTouch);
 
-// menu buttons: the click sound and a light tap on press, a springy release (see button.rel in index.html)
-addEventListener('pointerdown', e => { const b = e.target.closest && e.target.closest('button'); if (!b || b.disabled || b.classList.contains('card')) return; AU.play('cardPick', {vol: .3, rate: 1.3, max: 2}); HAPTIC.fx('card'); });
-addEventListener('pointerup', e => { const b = e.target.closest && e.target.closest('button'); if (!b || b.classList.contains('card')) return; b.classList.remove('rel'); void b.offsetWidth; b.classList.add('rel'); setTimeout(() => b.classList.remove('rel'), 140); });
-
 // ---------- camera ----------
 function updateCamera(dt) {
   const P = G.player, c = G.cam;
@@ -96,8 +92,8 @@ function newRun(cp = null, opts = {}) {
 // minor = false (game over): only play buttons; customizing, training, story and settings live on the home screen
 function menuButtons(primaryLabel, minor = true) {
   const cp = loadCheckpoint();
-  return (cp ? `<button id="go">Continue: ${cp.endless ? 'Endless' : AREAS[areaIndex(cp.wave)].short} · wave ${cp.wave}</button><button id="fresh" class="ghost">New story from the start</button>`
-    : `<button id="go">${primaryLabel}</button>`) +
+  return (cp ? `<button id="go">${icon('play')}Continue: ${cp.endless ? 'Endless' : AREAS[areaIndex(cp.wave)].short} · wave ${cp.wave}</button><button id="fresh" class="ghost">New story from the start</button>`
+    : `<button id="go">${icon('play')}${primaryLabel}</button>`) +
     (storyFlag('ozEndless') && (minor || !cp) ? `<button id="endless" class="ghost">Endless mode</button>` : '') +
     (minor ? `<div class="minor"><button id="custom" class="ghost">Customize survivor</button><button id="howto" class="ghost">How to play</button><button id="story" class="ghost">Story</button></div>` : '');
 }
@@ -124,30 +120,33 @@ function waveCleared() {
   // beating Patient Zero on wave 25 ends the story
   setTimeout(() => { if (!G.player.dead) { if (G.wave === 25 && !G.endless) showEnding(); else openDraft(); } }, 1800);
 }
+// Game over timeline (docs/UI-MOTION.md §3.6, timed from this screen): red vignette 0 ms, YOU FELL letters from 150 ms,
+// stat rows from 500 ms 120 ms apart with rolling numbers, best badge 1000 ms, buttons rise from 1100 ms.
+// A tap before the buttons land skips to the end; the buttons only take taps once they are in place.
 function gameOver() {
   G.state = 'dead'; ui.hidden = false; ui.className = 'overlay gameover';
   // a clean screen: no HUD, banner or upgrade card behind the title
   hudCv.style.visibility = 'hidden'; HUD.bannerT = 0; if (SHOW.active) endShowcase(); document.getElementById('showcase').hidden = true;
   let best = 0; try { best = +localStorage.getItem('ozBest') || 0; if (G.score > best) { localStorage.setItem('ozBest', G.score); } } catch (e) {}
-  const rc = G.runCoins || 0, rg = G.runGems || 0;
-  ui.innerHTML = `<h1>YOU FELL</h1><p class="big">Wave <b data-n="${G.wave}">${G.wave}</b> · <b data-n="${G.score}">${G.score}</b> points · <b data-n="${G.kills}">${G.kills}</b> kills</p>
-    <p>${G.score > best ? 'New best score!' : 'Best: ' + best}</p>
-    <p class="earn"><span><i class="ccoin"></i><b data-n="${rc}" data-pre="+">+${rc}</b> ${rc === 1 ? 'coin' : 'coins'} kept</span>${rg ? `<span><i class="cgem"></i><b data-n="${rg}" data-pre="+">+${rg}</b> ${rg === 1 ? 'emerald' : 'emeralds'}</span>` : ''}</p>${menuButtons('Play again', false)}
-    <button id="toHome" class="ghost">Home · spend your coins</button>`;
-  wireMenu(); saveMeta(); document.getElementById('toHome').onclick = showMenu;
-  countUp(ui);
-}
-// results numbers count up over 0.8 s with ease-out, a rising tick every 4th step, then a small scale pop
-function countUp(root) {
-  const els = [...root.querySelectorAll('[data-n]')], t0 = performance.now(), D = 800; let step = 0;
-  for (const e of els) e.textContent = (e.dataset.pre || '') + '0';
-  const tick = now => {
-    const k = Math.min(1, (now - t0) / D), e = easeOutCubic(k);
-    for (const el of els) el.textContent = (el.dataset.pre || '') + Math.round(+el.dataset.n * e);
-    if (Math.floor(k * 24) > step) { step = Math.floor(k * 24); if (step % 4 === 0) AU.play('coin', {vol: .25, rate: .8 + step * .03, max: 2}); }
-    if (k < 1) requestAnimationFrame(tick); else for (const el of els) { el.classList.remove('npop'); void el.offsetWidth; el.classList.add('npop'); }
-  };
-  requestAnimationFrame(tick);
+  const rc = G.runCoins || 0, rg = G.runGems || 0, cp = loadCheckpoint(), newBest = G.score > best;
+  const row = (i, ic, label, v, cls = '') => `<div class="go-row ${cls}" style="--i:${i}">${ic}<span>${label}</span><b>${UI.odoHTML(v)}</b></div>`;
+  ui.innerHTML = `<div class="go-vig"></div><h1>${UI.letters('YOU FELL', 150)}</h1>
+    <div class="go-stats">${row(0, icon('map'), 'Wave reached', G.wave)}${row(1, icon('bolt'), 'Points', G.score)}${row(2, icon('skull'), 'Kills', G.kills)}
+      ${row(3, '<i class="ccoin"></i>', rc === 1 ? 'Coin kept' : 'Coins kept', rc, 'coin')}${rg ? row(4, '<i class="cgem"></i>', rg === 1 ? 'Emerald' : 'Emeralds', rg, 'gem') : ''}
+      ${newBest ? '<div class="go-best">NEW BEST<i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i></div>' : `<div class="go-best dim">Best ${best}</div>`}</div>
+    <div class="go-actions"><div class="halo" style="--i:0"><button id="go" class="hero">${icon('play')}${cp ? `Continue · wave ${cp.wave}` : 'Play again'}</button></div>
+      ${cp ? `<button id="fresh" class="ghost" style="--i:1">${icon('story')}New story from the start</button>` : ''}
+      <button id="toHome" class="ghost" style="--i:2">${icon('shop')}Home · spend your coins</button></div>`;
+  const cpNow = cp, play = c => lookSaved() ? newRun(c, {tutorial: !TUT_DONE()}) : openCreator('play');
+  const iris = then => { const o = document.createElement('div'); o.className = 'go-iris'; document.body.appendChild(o); setTimeout(() => { then(); setTimeout(() => o.remove(), 60); }, 300); };
+  document.getElementById('go').onclick = () => iris(() => play(cpNow));
+  const fr = document.getElementById('fresh'); if (fr) fr.onclick = () => play(null);
+  document.getElementById('toHome').onclick = showMenu; saveMeta(); showUpdate();
+  const rows = ui.querySelectorAll('.go-row .odo'), timers = [...rows].map((el, i) => { const n = +el.dataset.n; el.textContent = ''; UI.odo(el, 0); return setTimeout(() => { UI.odo(el, n); AU.play('coin', {vol: .25, rate: .9 + i * .08, max: 2}); }, 560 + i * 120); });
+  const skip = () => { ui.removeEventListener('pointerdown', skip); ui.classList.add('skip'); timers.forEach(clearTimeout); rows.forEach(el => UI.odo(el, +el.dataset.n)); clearTimeout(readyT); setTimeout(ready, 60); };
+  const ready = () => { ui.removeEventListener('pointerdown', skip); if (G.state !== 'dead') return; ui.classList.add('ready'); const g = document.getElementById('go'); if (g) g.focus({preventScroll: true}); };
+  const readyT = setTimeout(ready, 1100 + 420 + 140);
+  ui.addEventListener('pointerdown', skip);
 }
 // APK only: the build number comes from js/build.js (written by tools/prepare-android.sh).
 // One request per launch to the release; a newer build shows a download strip on the menu.
@@ -165,7 +164,7 @@ function checkUpdate() {
 function showUpdate() {
   if (!UPD.url || UPD.later || document.getElementById('upd') || (G.state !== 'menu' && G.state !== 'dead')) return;
   const d = document.createElement('div'); d.id = 'upd';
-  d.innerHTML = `<span id="updMsg">New version available (build ${UPD.build})</span><div class="updbar" id="updBar" hidden><i></i></div><button id="updGo">Update now</button><button id="updLater" class="ghost">Later</button>`;
+  d.innerHTML = `<span class="hzstrip"></span><span class="uico">${icon('download')}</span><span id="updMsg">New version available (build ${UPD.build})</span><div class="updbar" id="updBar" hidden><i></i></div><button id="updLater" class="ghost">Later</button><button id="updGo">${icon('download')}Update now</button>`;
   // a card pinned near the top of the screen, above the home screen and the menu
   document.body.appendChild(d);
   document.getElementById('updGo').onclick = startUpdate;
