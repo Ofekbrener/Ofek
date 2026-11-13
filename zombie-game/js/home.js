@@ -58,10 +58,18 @@ function settingsSheet() {
   const el = sheet(`<h3>Settings</h3><button class="row-btn" id="sVox"><span class="rico">${icon('radio')}</span><span class="rtx">Radio voices<small>Doc, the army and the narrator</small></span>${tog(VOICE.on)}</button>
     <button class="row-btn" id="sHap"><span class="rico">${icon('vibrate')}</span><span class="rtx">Vibration<small>on hits, kills and damage</small></span>${tog(HAPTIC.on)}</button>
     <button class="row-btn" id="sHow"><span class="rico">${icon('train')}</span><span class="rtx">How to play<small>replay the training run</small></span>${icon('play')}</button>
+    <button class="row-btn danger" id="sReset"><span class="rico">${icon('close')}</span><span class="rtx">Reset progress<small>coins, emeralds, perks, cosmetics, story, best score</small></span></button>
     <p class="hcred">Models: Quaternius (CC0) · Sound: Meta Oculus Audio Pack (CC BY 4.0) · Voices: Piper, LibriTTS (CC BY 4.0) · Fonts: SIL OFL</p>`);
   const setTog = (id, on) => { document.querySelector('#' + id + ' .tog').outerHTML = tog(on); };
   document.getElementById('sVox').onclick = () => { VOICE.toggle(); setTog('sVox', VOICE.on); };
   document.getElementById('sHap').onclick = () => { HAPTIC.toggle(); setTog('sHap', HAPTIC.on); };
+  // two taps to erase: the first arms the button for 5 s
+  const rb = document.getElementById('sReset');
+  rb.onclick = () => {
+    if (!rb.classList.contains('armed')) { rb.classList.add('armed'); rb.querySelector('.rtx').innerHTML = 'Tap again to erase everything<small>this cannot be undone</small>'; UI.shake && UI.shake(rb, 6, 500); clearTimeout(rb.t); rb.t = setTimeout(() => { rb.classList.remove('armed'); rb.querySelector('.rtx').innerHTML = 'Reset progress<small>coins, emeralds, perks, cosmetics, story, best score</small>'; }, 5000); return; }
+    try { for (const k of ['ozMeta', 'ozCheckpoint', 'ozBest', 'ozEnding', 'ozEndless', 'ozIntro', 'ozFtue']) localStorage.removeItem(k); } catch (e) {}
+    location.reload();
+  };
   document.getElementById('sHow').onclick = () => { el.hidden = true; HOME.on = false; newRun(null, {tutorial: true}); };
 }
 

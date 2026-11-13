@@ -52,7 +52,7 @@ RADIO.update = function () {
   const now = performance.now() / 1000, raw = Math.min(.1, now - (RADIO.last || now)); RADIO.last = now;
   const c = RADIO.cur; if (!c) return; RADIO.t += raw;
   RADIO.el.classList.toggle('low', G.state === 'ending');
-  RADIO.el.style.visibility = G.state === 'draft' || G.state === 'picking' || G.state === 'dead' || G.state === 'travel' || SHOW.active ? 'hidden' : 'visible';
+  RADIO.el.style.visibility = G.state === 'draft' || G.state === 'picking' || G.state === 'dead' || G.state === 'travel' || G.state === 'paused' || SHOW.active ? 'hidden' : 'visible';
   const n = Math.min(c.text.length, Math.floor(RADIO.t * 42));
   // the whole line is laid out from the start, the untyped rest is transparent, so the box never reflows or cuts a word
   if (n !== RADIO.chars) { RADIO.chars = n; const t = RADIO.el.querySelector('.rtext'); if (t) { t.firstChild.textContent = c.text.slice(0, n); t.lastChild.textContent = c.text.slice(n); } }

@@ -675,6 +675,23 @@ button:focus:not(:focus-visible){outline:none}
 #clue .cfrow.new{opacity:1}#clue .cfrow.new b{color:#a01818}
 #clue .cfrow i{position:absolute;right:0;top:2px;font:400 11px/1 'Black Ops One',sans-serif;font-style:normal;color:#a01818;border:2px solid #a01818;padding:3px 5px;rotate:6deg;animation:stamp .4s var(--ease-back,ease) .5s both}
 @keyframes stamp{from{scale:2.2;opacity:0}to{scale:1;opacity:1}}
+
+/* settings: reset progress, red when armed */
+.row-btn.danger .rico{color:#ff6a6a}
+.row-btn.danger.armed{background:linear-gradient(180deg,#7a1414,#4a0a0a);border-color:#ff4a4a;color:#fff}
+
+/* pause button (top centre, only during a fight) and the pause sheet */
+#pauseBtn{position:fixed;z-index:14;left:50%;translate:-50% 0;top:max(10px,env(safe-area-inset-top));width:44px;height:44px;border-radius:12px;border:2px solid var(--steel-lo,#2a3240);background:rgba(16,20,28,.75);color:var(--ink,#f2ede4);display:grid;place-items:center;padding:0;cursor:pointer}
+#pauseBtn .ico{width:20px;height:20px}
+#pause{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(4,6,10,.62);padding:16px}
+#pause[hidden]{display:none}
+#pause .pbox{position:relative;width:min(360px,100%);box-sizing:border-box;padding:26px 20px 18px;border-radius:14px;border:2px solid var(--steel-lo,#2a3240);background:linear-gradient(180deg,#262d3a,#151a23);display:flex;flex-direction:column;gap:12px;text-align:center;overflow:hidden;animation:dialog-in 420ms var(--ease-back,ease) both}
+#pause .pbox .hzstrip{position:absolute;left:0;right:0;top:0}
+#pause h3{margin:4px 0 0;font:400 30px/1 'Black Ops One',Oswald,sans-serif;letter-spacing:2px;color:var(--ink,#f2ede4)}
+#pause p{margin:0 0 4px;font:500 15px/1.3 Oswald,sans-serif;color:rgba(242,237,228,.75)}
+#pause button{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;font-size:20px}
+#pause button .ico{width:22px;height:22px}
+#pause small{font:400 13px/1.35 Oswald,sans-serif;color:rgba(242,237,228,.6)}
 </style>
 </head>
 <body>
@@ -702,6 +719,8 @@ button:focus:not(:focus-visible){outline:none}
 <div id="tut" hidden></div>
 <div id="showcase" hidden></div>
 <div id="radio"></div>
+<button id="pauseBtn" aria-label="Pause" hidden></button>
+<div id="pause" hidden></div>
 <div id="areacard"></div>
 <div id="fade"></div>
 <div id="citymap" class="overlay" hidden></div>

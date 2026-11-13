@@ -62,7 +62,7 @@ function drawHUD(dt) {
   const hsc = FLY.slotPop('hearts', L + 100, T + 14), csc = FLY.slotPop('coins', L + 76, T + 44, 12);
   hx.save(); hx.translate(L + 66, T + 22); hx.scale(hsc, hsc); stroked(hs, 0, 0, FONT(24), '#ff4a5a', 4, 'left'); hx.restore();
   // in a run only this run's pickups show; the bank totals live on the home screen
-  const inRun = G.state === 'playing', coins = inRun ? G.runCoins || 0 : G.coins, gems = inRun ? G.runGems || 0 : META.gems;
+  const inRun = G.state === 'playing' || G.state === 'paused', coins = inRun ? G.runCoins || 0 : G.coins, gems = inRun ? G.runGems || 0 : META.gems;
   hx.save(); hx.translate(L + 66, T + 50); hx.scale(csc, csc); curIcon(CUR_IMG.coin, -1, -18, 21, 0); stroked('' + coins, 25, 0, FONT(18), '#ffd44a', 4, 'left'); hx.restore();
   if (!inRun || gems) { const gsc = FLY.slotPop('gems', L + 150, T + 44, 12); hx.save(); hx.translate(L + 138, T + 50); hx.scale(gsc, gsc); curIcon(CUR_IMG.gem, 0, -19, 21, 1.4); stroked('' + gems, 24, 0, FONT(18), '#5cf598', 4, 'left'); hx.restore(); }
   // FURY meter: fills from hits and kills, fires a power-up when full

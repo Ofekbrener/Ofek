@@ -62,6 +62,8 @@ const ICON = {
   settings: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M5.5 18.5l2.1-2.1M16.4 7.6l2.1-2.1"/>',
   shop: '<path d="M3.5 9.5h17l-1.6 10.2a1.5 1.5 0 0 1-1.5 1.3H6.6a1.5 1.5 0 0 1-1.5-1.3z"/><path d="M8 9.5l2.2-6M16 9.5l-2.2-6M9 14v3M15 14v3"/>',
   play: '<path d="M8 4.8v14.4L19.5 12z" fill="currentColor"/>',
+  pause: '<rect x="6.5" y="5" width="3.8" height="14" rx="1" fill="currentColor"/><rect x="13.7" y="5" width="3.8" height="14" rx="1" fill="currentColor"/>',
+  home: '<path d="M4 11.5L12 4.5l8 7M6.5 9.8V19.5h11V9.8"/><path d="M10 19.5v-5h4v5"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   back: '<path d="M14.5 5L7.5 12l7 7"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',

@@ -8,6 +8,7 @@ const INPUT = {keys: {}, joy: null,
   }};
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase(); INPUT.keys[k] = 1;
+  if (k === 'escape' || k === 'p') { if (G.state === 'playing') pauseGame(); else if (G.state === 'paused') resumeGame(); return; }
   if (G.state === 'draft' && ['1', '2', '3'].includes(k)) { pickCard(+k - 1); return; }
   if (G.state !== 'playing') return;
   if (k === ' ') { jump(); e.preventDefault(); }
@@ -187,13 +188,40 @@ window.UPD_EVENT = function (ev, v) {
   if (ev === 'done') msg.textContent = 'Updated. Restarting…';
   if (ev === 'error') { msg.textContent = 'The update did not finish. Check your connection and try again.'; go.disabled = false; go.textContent = 'Try again'; }
 };
+// ---------- pause and quit to home ----------
+// the pause button sits top-centre during a fight; quitting keeps the checkpoint, so PLAY continues from the start of this wave
+function pauseGame() {
+  if (G.state !== 'playing') return; G.state = 'paused'; VOICE.stop(); if (RADIO.el) RADIO.el.style.visibility = 'hidden';
+  const el = document.getElementById('pause'), cp = loadCheckpoint();
+  el.innerHTML = `<div class="pbox"><span class="hzstrip"></span><h3>Paused</h3><p>Wave ${G.wave || 1}${G.endless ? ' · Endless' : ' · ' + AREAS[G.area].name}</p>
+    <button id="pResume" class="btn-primary">${icon('play')}Resume</button>
+    <button id="pQuit" class="ghost">${icon('home')}Quit to home</button>
+    <small>${cp ? 'Your run is saved at wave ' + cp.wave + '. PLAY continues from there.' : 'Quitting ends this run. Coins you picked up are kept.'}</small></div>`;
+  el.hidden = false; document.getElementById('pResume').onclick = resumeGame; document.getElementById('pQuit').onclick = quitToHome;
+  try { if (AU.ctx && AU.ctx.state === 'running') AU.ctx.suspend(); } catch (e) {}
+}
+function resumeGame() {
+  if (G.state !== 'paused') return; document.getElementById('pause').hidden = true; G.state = 'playing';
+  try { if (AU.ctx && AU.ctx.state === 'suspended') AU.ctx.resume(); } catch (e) {}
+}
+function quitToHome() {
+  document.getElementById('pause').hidden = true; try { if (AU.ctx && AU.ctx.state === 'suspended') AU.ctx.resume(); } catch (e) {}
+  if (SHOW.active) endShowcase();
+  if (TUT.active) { TUT.active = false; if (TUT.el) TUT.el.hidden = true; if (TUT.marker) { scene.remove(TUT.marker); scene.remove(TUT.arrow); } }
+  RADIO.clear(); clearZombies(); clearPickups(); clearFX(); clearTrail(); clearGear(); clearHazards();
+  Object.assign(WAVE, {queue: [], alive: 0, total: 0, killed: 0, boss: null, active: false}); G.runId = (G.runId || 0) + 1;
+  HUD.bannerT = 0; const ac = document.getElementById('areacard'); if (ac) ac.classList.remove('on');
+  saveMeta(); showMenu();
+}
+const PAUSE_BTN = document.getElementById('pauseBtn'); PAUSE_BTN.innerHTML = icon('pause');
+PAUSE_BTN.onclick = e => { e.stopPropagation(); pauseGame(); };
 // silence everything while the app is in the background (home button, app switcher, screen off); resume on return
 function appHidden(h) {
   try { if (h) { if (AU.ctx && AU.ctx.state === 'running') AU.ctx.suspend(); VOICE.stop(); if (window.speechSynthesis) speechSynthesis.cancel(); }
     else if (AU.ctx && AU.ctx.state === 'suspended') AU.ctx.resume(); } catch (e) {}
 }
 window.APP_PAUSE = () => appHidden(true); window.APP_RESUME = () => appHidden(false);
-document.addEventListener('visibilitychange', () => appHidden(document.hidden));
+document.addEventListener('visibilitychange', () => { appHidden(document.hidden); if (document.hidden && G.state === 'playing') pauseGame(); });
 window.addEventListener('pagehide', () => appHidden(true)); window.addEventListener('blur', () => { if (document.hidden) appHidden(true); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && (G.state === 'menu' || G.state === 'dead')) checkUpdate(); });
 let MENU_HTML = '';
@@ -229,6 +257,7 @@ function frame(ts) {
   if (G.state === 'travel' && MAP3D.on) MAP3D.update(raw);
   if (G.state === 'playing') TUT.update(dt);
   RADIO.update(raw);
+  const pb = G.state !== 'playing' || SHOW.active; if (PAUSE_BTN.hidden !== pb) PAUSE_BTN.hidden = pb;
   if (UP.magnetPulse > 0) { UP.magnetPulse -= raw; for (const k of G.pickups) { const P = G.player, dx = P.x - k.x, dz = P.z - k.z, d = Math.hypot(dx, dz) || 1; k.x += dx / d * 14 * raw; k.z += dz / d * 14 * raw; } }
   updateFX(dt || raw * .02); updateRain(raw);
   G.trauma = Math.max(0, G.trauma - raw * 1.6); G.flash = Math.max(0, G.flash - raw * 2); G.hurtFlash = Math.max(0, G.hurtFlash - raw * 2);
