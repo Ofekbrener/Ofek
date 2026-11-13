@@ -70,6 +70,8 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .card .art img{width:150px;height:150px;object-fit:contain;filter:drop-shadow(0 8px 10px rgba(0,0,0,.6));animation:float 3s ease-in-out infinite}
 .card .art svg{width:92px;height:92px;filter:drop-shadow(0 0 14px var(--c2)) drop-shadow(0 6px 6px rgba(0,0,0,.6));animation:float 3s ease-in-out infinite}
 @keyframes float{50%{transform:translateY(-6px) rotate(-2deg)}}
+.card .art svg.pv{width:100%;height:100%;filter:none;animation:none}.card .art:has(svg.pv){padding:0;overflow:hidden}
+.card .art .arti{position:absolute;left:8px;bottom:6px;width:30px;height:30px}.card .art .arti svg{width:30px;height:30px;animation:none;filter:drop-shadow(0 0 6px var(--c2))}
 .card.epic .art::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.28) 48%,transparent 62%);background-size:250% 100%;animation:shine 2.4s linear infinite}
 @keyframes shine{from{background-position:150% 0}to{background-position:-100% 0}}
 .card .tag{position:absolute;top:10px;right:10px;z-index:2;font-size:11px;letter-spacing:2px;padding:3px 8px;border-radius:20px;background:rgba(0,0,0,.55);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 50%,transparent)}
@@ -280,6 +282,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 <script src="js/bossgear.js"></script>
 <script src="js/gear.js"></script>
 <script src="js/powers.js"></script>
+<script src="js/previews.js"></script>
 <script src="js/upgrades.js"></script>
 <script src="js/look.js"></script>
 <script src="js/tutorial.js"></script>
