@@ -26,7 +26,7 @@ function showHome() {
   document.getElementById('hCustom').onclick = () => { HOME.on = false; openCreator('menu'); };
   document.getElementById('hStory').onclick = () => { HOME.on = false; STORY.intro(showMenu); };
   document.getElementById('hSet').onclick = () => settingsSheet();
-  AU.play('cardOpen', {vol: .5}); showUpdate();
+  AU.play('cardOpen', {vol: .5}); showUpdate(); checkUpdate();
 }
 function sheet(html) { const el = document.getElementById('hsheet'); el.innerHTML = `<div class="hsbox">${html}<button class="ghost hsclose" id="hsClose">Close</button></div>`; el.hidden = false; document.getElementById('hsClose').onclick = () => { el.hidden = true; }; el.onclick = e => { if (e.target === el) el.hidden = true; }; return el; }
 function playChooser() {
