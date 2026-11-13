@@ -88,7 +88,9 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 #creator h2{margin:0;font-family:Creepster,Oswald,cursive;font-weight:400;font-size:40px;color:#7dff6a;letter-spacing:1px}
 #creator h3{margin:6px 0 0;font-size:16px;letter-spacing:2px;color:#aab0c8}
 #creator .hint{position:absolute;left:16px;bottom:max(16px,env(safe-area-inset-bottom));margin:0;color:#8f95ad;font-size:14px}
-.chars{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.chars{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.gender{display:grid;flex-shrink:0;grid-template-columns:1fr 1fr;gap:0;border:2px solid #3a3f55;border-radius:12px;overflow:hidden;margin-bottom:8px}
+.gender button{font-family:inherit;font-size:16px;font-weight:700;letter-spacing:1px;padding:8px;border:0;background:#1a1d28;color:#aab0c8;cursor:pointer}.gender button.on{background:var(--accent);color:#111}
 .char{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:10px;border:2px solid #3a3f55;background:#1a1d28;color:#fff;cursor:pointer}
 .char b{font-size:16px}.char small{font-size:11px;color:#8f95ad;font-family:system-ui,sans-serif}
 .char.on,.wep.on{border-color:var(--accent);background:#2a2614}
@@ -238,6 +240,7 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 <script src="js/player.js"></script>
 <script src="js/enemies.js"></script>
 <script src="js/hazards.js"></script>
+<script src="js/bossgear.js"></script>
 <script src="js/gear.js"></script>
 <script src="js/powers.js"></script>
 <script src="js/upgrades.js"></script>

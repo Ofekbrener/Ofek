@@ -76,6 +76,7 @@ class Rig {
   }
   // play a clip; one-shots clamp on their last frame
   play(name, {fade = .12, loop = true, speed = 1, restart = false} = {}) {
+    if (!this.acts[name] && this.alias && this.alias[name]) name = this.alias[name]; // bosses on other bodies map missing clips
     const a = this.acts[name]; if (!a) return null;
     if (this.cur === a && !restart) { a.timeScale = speed; return a; }
     a.reset(); a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity); a.clampWhenFinished = !loop;
@@ -83,7 +84,7 @@ class Rig {
     if (this.cur && fade > 0) a.crossFadeFrom(this.cur, fade, false); else if (this.cur) this.cur.stop();
     a.play(); this.cur = a; this.curName = name; return a;
   }
-  dur(name) { const a = this.acts[name]; return a ? a.getClip().duration : 1; }
+  dur(name) { if (!this.acts[name] && this.alias && this.alias[name]) name = this.alias[name]; const a = this.acts[name]; return a ? a.getClip().duration : 1; }
   flash(v, r = 1, g = 1, b = 1) { for (const m of this.mats) m.emissive.setRGB(v * r, v * g, v * b); }
   dispose() { scene.remove(this.root); this.mixer.stopAllAction(); }
 }

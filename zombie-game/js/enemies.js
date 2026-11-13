@@ -53,7 +53,9 @@ function spawnZombie(type) {
   let x = sp[0] + rnd(-3, 3), z = sp[1] + rnd(-3, 3);
   if (T.ambush && G.player) { const a = rnd(0, 7), r = rnd(3.5, 5); const q = {x: G.player.x + Math.cos(a) * r, z: G.player.z + Math.sin(a) * r}; clampToBounds(q, 1); x = q.x; z = q.z; ring(x, z, 1.2, 0xa8c890, .9); AU.play('zGroan', {vol: .6, rate: 1.4, x, z, bus: 'voice'}); }
   const scale = (T.scale || 1) * (T.boss ? 1 : rnd(.93, 1.07));
-  const BP = T.boss ? bossProfile() : null, rig = new Rig(T.model, {tint: BP ? BP.tint : T.tint, scale: BP ? BP.scale : scale});
+  const BP = T.boss ? bossProfile() : null;
+  const model = BP ? (BP.model === 'human' ? (MODELS[docModel()] ? docModel() : 'Characters_' + LOOK.char) : BP.model) : T.model;
+  const rig = new Rig(model, {tint: BP ? BP.tint : T.tint, scale: BP ? BP.scale : scale}); if (BP) { rig.alias = BP.alias || null; rig.model.traverse(o => { if (WEAPON_MESHES.includes(o.name)) o.visible = false; }); }
   const bossN = Math.max(1, Math.floor(G.wave / 5)), hpMul = T.boss ? BP.hp / T.hp * (G.wave > 25 ? 1 + (G.wave - 25) / 20 : 1) * (curArea().boss === 'zero' && G.wave <= 25 && storyFlag('ozEnding') === 'static' ? 1.3 : 1) : 1 + (G.wave - 1) * .08;
   const zb = {type, T, rig, x, z, vx: 0, vz: 0, y: -2, vy: 0, r: T.r * (T.boss ? 1 : scale), face: Math.atan2(-z, -x),
     hp: Math.ceil(T.hp * hpMul), maxHp: Math.ceil(T.hp * hpMul), speed: rnd(...T.speed) * (1 + G.wave * .025),
@@ -62,7 +64,7 @@ function spawnZombie(type) {
   if (T.shield) { zb.shieldHp = 6; const s = new THREE.Mesh(new THREE.BoxGeometry(.85, 1.25, .07), new THREE.MeshStandardMaterial({color: 0x2c3a58, roughness: .4, metalness: .6, transparent: true, opacity: .92}));
     const v = new THREE.Mesh(new THREE.PlaneGeometry(.6, .22), new THREE.MeshBasicMaterial({color: 0xdfe6ff})); v.position.set(0, .3, .04); s.add(v); s.position.set(0, 1.05, .55); rig.root.add(s); zb.shieldMesh = s; }
   if (T.scream) zb.screamT = rnd(2.5, 4);
-  if (T.boss) { WAVE.boss = zb; zb.bossCd = 2.5; zb.lastMove = ''; zb.prof = BP; zb.bossName = BP.name; zb.r = T.r * BP.scale / T.scale; AU.play('bossIntro', {vol: 1}); HAPTIC.fx('boss'); AU.play('evilLaugh', {vol: .9, delay: .8, bus: 'voice'}); HUD.banner(BP.name, BP.sub, '#ff4f4f'); slowmo(.5); shake(.4); }
+  if (T.boss) { WAVE.boss = zb; zb.bossCd = 2.5; zb.lastMove = ''; zb.prof = BP; zb.bossName = BP.name; zb.r = T.r * BP.scale / T.scale; zb.speed *= BP.speedMul || 1; dressBoss(zb); AU.play('bossIntro', {vol: 1}); HAPTIC.fx('boss'); AU.play('evilLaugh', {vol: .9, delay: .8, bus: 'voice'}); HUD.banner(BP.name, BP.sub, '#ff4f4f'); slowmo(.5); shake(.4); }
   G.zombies.push(zb); WAVE.alive++;
 }
 function updateWaves(dt) {
@@ -152,13 +154,14 @@ function updateZombie(zb, dt) {
 function syncZombie(zb) {
   const rig = zb.rig; rig.root.position.set(zb.x, zb.y, zb.z); rig.root.rotation.y = yawFor(zb.face);
   if (zb.dying) { if (zb.dying.type !== 'burn' && zb.dying.type !== 'swell') rig.flash(zb.flash > 0 ? .45 : 0); return; }
-  if (zb.flash > 0) rig.flash(.45, 1, .95, .85); else if (zb.rage > 0) rig.flash(.25 + .1 * Math.sin(G.time * 14), .8, .3, 1); else if (zb.burn > 0) rig.flash(.35, 1, .4, 0); else if (zb.slow > 0) rig.flash(.4, .35, .75, 1); else if (zb.T.boss && zb.tele) rig.flash(.3 + .3 * Math.sin(G.time * 30), 1, .1, .1); else rig.flash(0);
+  if (zb.flash > 0) rig.flash(.45, 1, .95, .85); else if (zb.rage > 0) rig.flash(.25 + .1 * Math.sin(G.time * 14), .8, .3, 1); else if (zb.burn > 0) rig.flash(.35, 1, .4, 0); else if (zb.slow > 0) rig.flash(.4, .35, .75, 1); else if (zb.T.boss && zb.tele) rig.flash(.3 + .3 * Math.sin(G.time * 30), 1, .1, .1); else if (rig.zero) rig.flash(.22 + .1 * Math.sin(G.time * 5), .55, .2, 1); else rig.flash(0);
 }
 
 // ---------- boss: charge, slam, summon ----------
 const teleMat = new THREE.MeshBasicMaterial({color: 0xff2020, transparent: true, opacity: .35, depthWrite: false});
 function bossAI(zb, dt, d, toP) {
   const rig = zb.rig, P = G.player;
+  if (zb.prof && zb.prof.gear === 'zero' && Math.random() < .6) addPart({x: zb.x + rnd(-.8, .8), y: rnd(.5, 3.5), z: zb.z + rnd(-.8, .8), vx: 0, vz: 0, vy: rnd(.5, 1.5), g: -1, life: .7, max: .7, size: rnd(.08, .16), col: pick(['#b070ff', '#6a3aa0', '#e0c0ff']), drag: .95, rx: 0, ry: 0});
   if (zb.state === 'chase') {
     zb.face += angDiff(zb.face, toP) * damp(.05, dt);
     zb.vx = lerp(zb.vx, Math.cos(zb.face) * zb.speed, damp(.01, dt)); zb.vz = lerp(zb.vz, Math.sin(zb.face) * zb.speed, damp(.01, dt));
@@ -169,7 +172,10 @@ function bossAI(zb, dt, d, toP) {
       // Patient Zero gains moves as it weakens
       if (zb.prof && zb.prof.phases) { const ph = zb.hp < zb.maxHp * .33 ? 2 : zb.hp < zb.maxHp * .66 ? 1 : 0; if (ph !== zb.phase) { zb.phase = ph; if (ph) { HUD.banner('PHASE ' + (ph + 1), ph === 1 ? 'he calls the horde' : 'he stops holding back', '#d0a0ff'); slowmo(.5); shake(.5); zb.speed *= 1.15; } } zb.prof = Object.assign({}, zb.prof, {moves: zb.prof.phases[zb.phase]}); }
       const moves = (zb.prof ? zb.prof.moves : ['charge', 'slam', 'summon']).filter(m => m !== zb.lastMove && !(m === 'slam' && d > 9) && !(m === 'summon' && runners >= 4));
-      const m = d < 4 && moves.includes('slam') ? 'slam' : pick(moves.length ? moves : ['charge']); zb.lastMove = m; zb.state = m + 'Tele'; zb.st = 0; zb.vx = zb.vz = 0; zb.tele = true;
+      const m = zb.forceMove || (d < 4 && moves.includes('slam') ? 'slam' : pick(moves.length ? moves : ['charge'])); zb.forceMove = null; zb.lastMove = m; zb.state = m + 'Tele'; zb.st = 0; zb.vx = zb.vz = 0; zb.tele = true;
+      if (m === 'hook') hookStart(zb, toP);
+      if (m === 'blink') { blinkMove(zb); return; }
+      if (m === 'rush') { rushMove(zb); zb.state = 'recover'; zb.st = -1.2; zb.tele = false; }
       if (m === 'throw') { // the harbor master: containers drop on you and around you
         rig.play('Idle_Attack', {fade: .1}); AU.play('bossEffort', {vol: 1, bus: 'voice'}); const n = zb.prof.drops || 3;
         dropContainer(P.x, P.z); for (let i = 1; i < n; i++) { const a = rnd(0, 7), r = rnd(3, 5.5), q = {x: P.x + Math.cos(a) * r, z: P.z + Math.sin(a) * r}; clampToBounds(q, 1.5); dropContainer(q.x, q.z, i * .35); }
@@ -183,6 +189,7 @@ function bossAI(zb, dt, d, toP) {
       if (m === 'slam') { zb.slamX = P.x; zb.slamZ = P.z; zb.teleMesh = new THREE.Mesh(new THREE.CircleGeometry(4, 40), teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; zb.teleMesh.position.set(P.x, .04, P.z); scene.add(zb.teleMesh); rig.play('Jump', {loop: false, restart: true, fade: .1, speed: .5}); AU.play('bossEffort', {vol: 1, bus: 'voice', rate: .9}); }
       if (m === 'summon') { rig.play('Wave', {loop: false, restart: true, fade: .1}); AU.play('bossLaugh', {vol: 1, bus: 'voice'}); }
     }
+  } else if (zb.state === 'hookTele') { hookUpdate(zb, dt, toP);
   } else if (zb.state === 'chargeTele') {
     zb.chargeDir += angDiff(zb.chargeDir, toP) * damp(.1, dt);
     zb.face = zb.chargeDir; const L = 7; zb.teleMesh.position.set(zb.x + Math.cos(zb.chargeDir) * L, .04, zb.z + Math.sin(zb.chargeDir) * L); zb.teleMesh.rotation.z = -zb.chargeDir;
@@ -194,17 +201,22 @@ function bossAI(zb, dt, d, toP) {
     if (!zb.hitDone && d < zb.r + .7) { zb.hitDone = true; hurtPlayer(bossDmg(), zb.x, zb.z); }
     const bx = zb.x, bz = zb.z; collide(zb, zb.r);
     const blocked = Math.abs(bx - zb.x) + Math.abs(bz - zb.z) > .01 || outOfBounds(zb.x, zb.z, zb.r + .1);
-    if (zb.st > 1.15 || blocked) { // crashes into a wall: stunned and open
-      zb.state = 'stunned'; zb.st = 0; zb.vx *= -.2; zb.vz *= -.2; if (blocked) { shake(.6); HAPTIC.fx('slam', .6); AU.play('hitMetal', {vol: 1, rate: .6}); AU.play('explosion', {vol: .5, rate: 1.3}); dust(zb.x, zb.z, 20); }
+    if (zb.prof && zb.prof.gear === 'zero' && G.time - (zb.trailT || 0) > .25) { zb.trailT = G.time; acidPool(zb.x, zb.z, 1.1, 3); } // Patient Zero leaves acid
+    if ((zb.st > 1.15 || blocked) && zb.prof && zb.prof.chain && zb.hp < zb.maxHp * .5 && (zb.chainN || 0) < zb.prof.chain) { // the orderly turns and charges again
+      zb.chainN = (zb.chainN || 0) + 1; zb.vx *= -.2; zb.vz *= -.2; if (blocked) { shake(.4); AU.play('hitMetal', {vol: .8, rate: .7}); dust(zb.x, zb.z, 12); }
+      zb.chargeDir = toP; zb.teleMesh = new THREE.Mesh(new THREE.PlaneGeometry(14, 2.6), teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; scene.add(zb.teleMesh); zb.tele = true;
+      zb.state = 'chargeTele'; zb.st = Math.max(0, bossTele() - .6); rig.play('Idle_Attack', {fade: .08}); AU.play('bossEffort', {vol: .9, bus: 'voice'}); popText(zb.x, zb.z, 'AGAIN!', '#ff4f4f', 30, 4.5);
+    } else if (zb.st > 1.15 || blocked) { // crashes into a wall: stunned and open
+      zb.chainN = 0; zb.state = 'stunned'; zb.st = 0; zb.vx *= -.2; zb.vz *= -.2; if (blocked) { shake(.6); HAPTIC.fx('slam', .6); AU.play('hitMetal', {vol: 1, rate: .6}); AU.play('explosion', {vol: .5, rate: 1.3}); dust(zb.x, zb.z, 20); }
       rig.play('HitReact', {loop: false, restart: true, fade: .05, speed: .5});
     }
   } else if (zb.state === 'stunned') { zb.vx *= .9; zb.vz *= .9; if (zb.st > 1.4) { zb.state = 'chase'; zb.bossCd = rnd(1.5, 2.5); } }
   else if (zb.state === 'slamTele') {
-    const slamT = bossN() === 1 ? 1.3 : 1.1;
+    const slamT = zb.quickSlam ? .8 : bossN() === 1 ? 1.3 : 1.1;
     teleMat.opacity = .2 + .25 * (zb.st / slamT); zb.teleMesh.scale.setScalar(.3 + .7 * Math.min(1, zb.st / slamT));
     const k = clamp(zb.st / slamT, 0, 1); zb.x = lerp(zb.x, zb.slamX, k * .08); zb.z = lerp(zb.z, zb.slamZ, k * .08); zb.y = Math.sin(k * Math.PI) * 3.2;
     if (zb.st > slamT) {
-      scene.remove(zb.teleMesh); zb.tele = false; zb.y = 0; zb.state = 'recover'; zb.st = 0; rig.play('Punch', {loop: false, restart: true, fade: .05});
+      scene.remove(zb.teleMesh); zb.tele = false; zb.y = 0; zb.state = 'recover'; zb.st = 0; zb.quickSlam = false; rig.play('Punch', {loop: false, restart: true, fade: .05});
       ring(zb.slamX, zb.slamZ, 4.2, 0xff5040, .4); ring(zb.slamX, zb.slamZ, 2.4, 0xffffff, .25); shake(.8); hitstop(.08); boom(zb.slamX, zb.slamZ, 0xff5030, 8);
       burst(zb.slamX, zb.slamZ, 40, ['#6b6470', '#4a3b2c', '#3b2f24'], 10, .25, .9, .1); AU.play('explosion', {vol: 1}); AU.play('hitHardest', {vol: 1, rate: .6});
       HAPTIC.fx('bossSlam', Math.hypot(P.x - zb.slamX, P.z - zb.slamZ) < 6 ? 1 : .5);
@@ -219,6 +231,12 @@ function bossAI(zb, dt, d, toP) {
 function damageZombie(zb, dir, dmg, o = {}) {
   if (zb.dying || zb.state === 'rise') return;
   const w = o.w || weapon(), T = zb.T;
+  // the convoy boss: his shield blocks every hit from the front while he stands ready
+  if (zb.prof && zb.prof.frontGuard && zb.state !== 'stunned' && zb.state !== 'recover' && !o.dot && !o.slam && !o.finisher && !['truck', 'crush'].includes(o.kind) && Math.abs(angDiff(zb.face, dir + Math.PI)) < 1.1) {
+    sparks(zb.x, zb.z, dir + Math.PI, 14, '#cfe0ff'); AU.play('hitMetal', {vol: .8, rate: 1.1, max: 3}); G.combo++; G.comboT = 2;
+    if (G.time - (zb.blockMsgT || 0) > 1.2) { zb.blockMsgT = G.time; popText(zb.x, zb.z, 'BLOCKED: GET BEHIND HIM', '#9fb4ff', 22, 4.6); }
+    return;
+  }
   // riot shield: blocks hits from the front until it breaks; finishers, slams and damage over time get through
   if (zb.shieldHp > 0 && !o.dot && !o.finisher && !o.slam && !['truck', 'crush', 'storm', 'stormbody', 'pulse'].includes(o.kind) && Math.abs(angDiff(zb.face, dir + Math.PI)) < 1.05) {
     zb.shieldHp -= dmg; zb.vx += Math.cos(dir) * 2; zb.vz += Math.sin(dir) * 2; sparks(zb.x, zb.z, dir + Math.PI, 12, '#cfe0ff');

@@ -90,15 +90,24 @@ const AREAS = [
     }},
 ];
 // one boss per area; moves: charge, slam, summon (more to come per area)
+// one boss per area, each on its own body with its own gear and a signature move
+// alias maps the clips the boss AI asks for to clips this body has
+const RIB_ALIAS = {Idle_Attack: 'Idle', Run_Arms: 'Run', Wave: 'Idle', Punch: 'Jump_Land'};
+const HUMAN_ALIAS = {Idle_Attack: 'Idle', Run_Arms: 'Run', Jump_Land: 'Idle'};
 const BOSSES = {
-  orderly: {name: 'THE ORDERLY', sub: 'he charges in straight lines', tint: 0xcfeee8, scale: 2.0, hp: 30, moves: ['charge', 'charge', 'slam']},
-  conductor: {name: 'THE CONDUCTOR', sub: 'his whistle calls runners', tint: 0x9fd0a8, scale: 2.0, hp: 40, moves: ['summon', 'charge', 'summon', 'slam'], summon: 'runner'},
-  harbor: {name: 'THE HARBOR MASTER', sub: 'watch for shadows', tint: 0xffb080, scale: 2.3, hp: 52, moves: ['throw', 'slam', 'throw', 'charge'], drops: 3},
-  convoy: {name: 'THE CONVOY BOSS', sub: 'stay out of the red lanes', tint: 0xff9a8a, scale: 2.2, hp: 64, moves: ['lanes', 'charge', 'lanes', 'slam']},
-  zero: {name: 'PATIENT ZERO', sub: 'Dr. Adler', tint: 0xd0a0ff, scale: 2.4, hp: 90, moves: ['charge', 'slam'], summon: 'mix', drops: 4,
-    phases: [['charge', 'slam', 'throw'], ['summon', 'charge', 'lanes', 'slam'], ['charge', 'throw', 'lanes', 'slam', 'summon']]},
+  orderly: {name: 'THE ORDERLY', sub: 'charges with a gurney, three times when hurt', model: 'Zombie_Chubby', tint: 0xd8f0ec, scale: 2.1, hp: 70, gear: 'gurney', chain: 2,
+    moves: ['charge', 'charge', 'slam']},
+  conductor: {name: 'THE CONDUCTOR', sub: 'his whistle sends a stampede', model: 'Zombie_Ribcage', alias: RIB_ALIAS, tint: 0x9fd0a8, scale: 2.7, hp: 90, gear: 'hat', speedMul: 1.5,
+    moves: ['rush', 'summon', 'rush', 'charge'], summon: 'runner'},
+  harbor: {name: 'THE HARBOR MASTER', sub: 'throws containers, hooks you in', model: 'Zombie_Arm', tint: 0xffc040, scale: 2.4, hp: 120, gear: 'hook',
+    moves: ['throw', 'hook', 'slam', 'hook', 'throw'], drops: 3},
+  convoy: {name: 'THE CONVOY BOSS', sub: 'shield up front: hit him from behind', model: 'Zombie_Basic', tint: 0x5a6a8a, scale: 2.3, hp: 150, gear: 'riot', frontGuard: true,
+    moves: ['lanes', 'charge', 'lanes', 'slam']},
+  zero: {name: 'PATIENT ZERO', sub: 'Dr. Adler', model: 'human', alias: HUMAN_ALIAS, tint: 0xc090ff, scale: 2.3, hp: 220, gear: 'zero', summon: 'mix', drops: 4,
+    moves: ['charge', 'slam'], phases: [['charge', 'blink', 'slam', 'throw'], ['summon', 'blink', 'lanes', 'slam'], ['blink', 'charge', 'throw', 'lanes', 'rush', 'slam']]},
 };
-// story waves 1 to 25 walk the 5 districts once; endless mode (wave 26 and up) loops them
+// Patient Zero is a human body: a survivor model the player did not pick
+const docModel = () => 'Characters_' + (LOOK.char === 'Matt' ? 'Shaun' : 'Matt');
 const areaIndex = wave => Math.floor((Math.max(1, wave) - 1) / 5) % AREAS.length;
 const storyFlag = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
 const curArea = () => AREAS[G.area || 0];

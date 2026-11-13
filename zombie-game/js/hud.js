@@ -74,7 +74,7 @@ function drawHUD(dt) {
     hx.fillStyle = 'rgba(0,0,0,.65)'; hx.fillRect(bx - 3, by - 3, bw + 6, bh + 6);
     hx.fillStyle = '#5a0c0c'; hx.fillRect(bx, by, bw, bh); hx.fillStyle = '#ff3b3b'; hx.fillRect(bx, by, bw * Math.max(0, B.hp / B.maxHp), bh);
     hx.fillStyle = 'rgba(255,255,255,.18)'; hx.fillRect(bx, by, bw * Math.max(0, B.hp / B.maxHp), bh / 3);
-    stroked(B.bossName || 'THE BUTCHER', W / 2, by + 15, FONT(14), '#fff0f0', 3);
+    stroked((B.bossName || 'BOSS') + '   ' + Math.max(0, Math.ceil(B.hp)) + ' / ' + B.maxHp, W / 2, by + 15, FONT(14), '#fff0f0', 3);
   }
   // banner
   if (HUD.bannerT > 0) {

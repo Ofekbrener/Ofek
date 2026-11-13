@@ -19,7 +19,8 @@ function renderCreator() {
   const w = WEAPONS[LOOK.weapon];
   el.innerHTML = `<div class="panel">
     <h2>Your survivor</h2>
-    <div class="chars">${SURVIVORS.map(s => `<button class="char${LOOK.char === s.id ? ' on' : ''}" data-char="${s.id}"><b>${s.name}</b><small>${s.tag}</small></button>`).join('')}</div>
+    <div class="gender"><button class="${survivorGender() === 'F' ? 'on' : ''}" data-g="F">Woman</button><button class="${survivorGender() === 'M' ? 'on' : ''}" data-g="M">Man</button></div>
+    <div class="chars">${SURVIVORS.filter(s => s.g === survivorGender()).map(s => `<button class="char${LOOK.char === s.id ? ' on' : ''}" data-char="${s.id}"><b>${s.name}</b><small>${s.tag}</small></button>`).join('')}</div>
     ${CREATOR.loading ? '<p class="loadmsg">Loading survivor…</p>' : ''}
     <div class="parts">${LOOK_PARTS.map(p => `<div class="row"><span>${p.label}</span><div class="sws">${sw(p.id, null, !LOOK.colors[p.id])}${p.sw.map(c => sw(p.id, c, LOOK.colors[p.id] === c)).join('')}</div></div>`).join('')}</div>
     <h3>Starting weapon</h3>
@@ -27,6 +28,7 @@ function renderCreator() {
     <p class="wdesc"><b>${w.name}</b> · ${w.desc} Finisher: ${w.fin}, ${w.finText}.</p>
     <div class="acts"><button id="cStart" class="primary">${G.player && TUT_DONE() ? 'Start run' : 'Start training'}</button><button id="cBack" class="ghost">Back</button></div>
   </div><p class="hint">Drag to turn your survivor</p>`;
+  el.querySelectorAll('.gender button').forEach(b => b.onclick = () => { if (survivorGender() === b.dataset.g) return; LOOK.char = SURVIVORS.find(s => s.g === b.dataset.g).id; AU.play('cardHover', {vol: .4}); rebuildPreview(); renderCreator(); });
   el.querySelectorAll('.char').forEach(b => b.onclick = () => { if (LOOK.char === b.dataset.char) return; LOOK.char = b.dataset.char; AU.play('cardHover', {vol: .4}); rebuildPreview(); });
   el.querySelectorAll('.sw').forEach(b => b.onclick = () => { LOOK.colors[b.dataset.part] = b.dataset.c || null; if (G.player) applyLook(G.player.rig, LOOK); AU.play('cardHover', {vol: .3, rate: 1.3}); renderCreator(); });
   el.querySelectorAll('.wep').forEach(b => b.onclick = () => { LOOK.weapon = b.dataset.w; if (G.player) equipWeapon(LOOK.weapon); WSND_DRAW(LOOK.weapon); renderCreator(); });

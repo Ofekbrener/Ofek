@@ -79,6 +79,7 @@ function newRun(cp = null, opts = {}) {
   } else clearCheckpoint();
   ui.hidden = true; document.getElementById('draft').hidden = true; G.state = 'playing'; RADIO.clear();
   G.area = areaIndex(G.wave + 1); if (WORLD.built !== G.area) buildLayout(G.area); else resetBarrels();
+  if (G.area === 4) ensureCharacter(docModel().slice(11)).catch(() => {});
   AU.ambience(true);
   const w0 = G.wave, run = G.runId = (G.runId || 0) + 1;
   if (opts.tutorial) TUT.start(); else { areaCard(G.area); setTimeout(() => { if (G.state === 'playing' && G.wave === w0 && G.runId === run) startWave(); }, 2600); }

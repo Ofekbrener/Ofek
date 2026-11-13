@@ -3,9 +3,10 @@
 // by which bones the vertices sampling it follow, so a part can be recolored by rewriting its cells.
 'use strict';
 const SURVIVORS = [
-  {id: 'Matt', name: 'MATT', tag: 'Ex-mechanic'}, {id: 'Lis', name: 'LIS', tag: 'Paramedic'},
-  {id: 'Sam', name: 'SAM', tag: 'Night guard'}, {id: 'Shaun', name: 'SHAUN', tag: 'Skater'},
+  {id: 'Lis', name: 'LIS', tag: 'Paramedic', g: 'F'}, {id: 'Sam', name: 'SAM', tag: 'Night guard', g: 'F'},
+  {id: 'Matt', name: 'MATT', tag: 'Ex-mechanic', g: 'M'}, {id: 'Shaun', name: 'SHAUN', tag: 'Skater', g: 'M'},
 ];
+const survivorGender = () => (SURVIVORS.find(s => s.id === LOOK.char) || SURVIVORS[2]).g;
 const LOOK_PARTS = [
   {id: 'skin', label: 'Skin', sw: ['#f3cfb1', '#e0ac85', '#c68863', '#8d5a3b', '#5a3a26']},
   {id: 'hair', label: 'Hair', sw: ['#2b1d14', '#6b4226', '#b07a3a', '#e3c27a', '#c0392b', '#d8d8d8']},

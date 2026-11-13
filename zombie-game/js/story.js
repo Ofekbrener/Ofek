@@ -45,7 +45,7 @@ function areaCard(i) {
 function enterArea(i, then) {
   const f = document.getElementById('fade'); f.classList.add('on'); G.state = 'travel';
   setTimeout(() => {
-    G.area = i; RADIO.clear(); buildLayout(i); clearPickups(); clearFX(); clearTrail();
+    G.area = i; RADIO.clear(); buildLayout(i); if (i === 4) ensureCharacter(docModel().slice(11)).catch(() => {}); clearPickups(); clearFX(); clearTrail();
     const P = G.player; P.x = 0; P.z = 2; P.vx = P.vz = 0; G.cam.x = 0; G.cam.z = 2; buildGear();
     f.classList.remove('on'); G.state = 'playing'; areaCard(i); then && then();
   }, 700);

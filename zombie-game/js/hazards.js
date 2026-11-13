@@ -16,10 +16,11 @@ function dropContainer(x, z, delay = 0) {
   HZ.drops.push({x, z, t: -delay, tele: 1.3, sh, box: null});
 }
 // a red lane across the yard, then an armored truck drives through it
-function truckLane(axis, pos, delay = 0, dir = 1) {
+function truckLane(axis, pos, delay = 0, dir = 1, kind = 'truck') {
   const L = 44, w = 3.4, geo = new THREE.PlaneGeometry(axis === 'x' ? L : w, axis === 'x' ? w : L);
   const m = hzFloor(geo, 0xff2020, axis === 'x' ? 0 : pos, axis === 'x' ? pos : 0); m.material.opacity = 0;
-  HZ.lanes.push({axis, pos, dir, t: -delay, tele: 1.4, m, truck: null, hit: false, w});
+  if (kind === 'stampede') m.material.color.setHex(0x9fd0a8);
+  HZ.lanes.push({axis, pos, dir, t: -delay, tele: 1.4, m, truck: null, hit: false, w, kind});
 }
 function updateHazards(dt) {
   const P = G.player;
@@ -49,20 +50,27 @@ function updateHazards(dt) {
   for (const l of HZ.lanes) {
     l.t += dt; if (l.t < 0) continue;
     if (l.t < l.tele) { l.m.material.opacity = .15 + .3 * (.5 + .5 * Math.sin(l.t * 22)); continue; }
-    if (!l.truck) { l.truck = propClone('Vehicle_Truck_Armored'); scene.add(l.truck); l.s = -26 * l.dir; AU.play('explosion', {vol: .5, rate: .5}); AU.play('bossEffort', {vol: .8, rate: .6, bus: 'voice'}); }
+    if (!l.truck) {
+      if (l.kind === 'stampede') { // a pack of runners in a tight column
+        l.truck = new THREE.Group(); l.pack = []; for (let i = 0; i < 6; i++) { const r = new Rig('Zombie_Ribcage', {tint: 0xc8e8b0}); r.play('Run', {fade: 0, speed: 1.6}); r.cur.time = rnd(0, 1); l.truck.add(r.root); scene.remove(r.root); l.truck.add(r.root); r.root.position.set((i % 2 ? .7 : -.7), 0, -i * 1.3); l.pack.push(r); }
+        scene.add(l.truck); AU.play('zAttack', {vol: 1, rate: 1.4}); AU.play('zGroan', {vol: .9, rate: 1.3, delay: .1});
+      } else { l.truck = propClone('Vehicle_Truck_Armored'); scene.add(l.truck); AU.play('explosion', {vol: .5, rate: .5}); AU.play('bossEffort', {vol: .8, rate: .6, bus: 'voice'}); }
+      l.s = -26 * l.dir; }
+    if (l.pack) for (const r of l.pack) r.mixer.update(dt);
     l.s += l.dir * 34 * dt; const tx = l.axis === 'x' ? l.s : l.pos, tz = l.axis === 'x' ? l.pos : l.s;
     l.truck.position.set(tx, 0, tz); l.truck.rotation.y = l.axis === 'x' ? (l.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : (l.dir > 0 ? 0 : Math.PI);
     if (Math.random() < .8) dust(tx, tz, 3);
     const along = l.axis === 'x' ? P.x - tx : P.z - tz, across = l.axis === 'x' ? P.z - l.pos : P.x - l.pos;
-    if (!l.hit && Math.abs(along) < 2.4 && Math.abs(across) < l.w / 2 + .3) { l.hit = true; hurtPlayer(2, tx, tz); shake(.8); }
+    const reach = l.kind === 'stampede' ? 4.5 : 2.4;
+    if (!l.hit && Math.abs(along) < reach && Math.abs(across) < l.w / 2 + .3) { l.hit = true; hurtPlayer(l.kind === 'stampede' ? 1 : 2, tx, tz); shake(.8); }
     for (const zb of G.zombies) if (!zb.dying && !zb.T.boss && zb.state !== 'rise') { const za = l.axis === 'x' ? zb.x - tx : zb.z - tz, zc = l.axis === 'x' ? zb.z - l.pos : zb.x - l.pos; if (Math.abs(za) < 2.4 && Math.abs(zc) < l.w / 2 + .3) damageZombie(zb, l.axis === 'x' ? (l.dir > 0 ? 0 : Math.PI) : (l.dir > 0 ? Math.PI / 2 : -Math.PI / 2), 99, {w: weapon(), kind: 'truck', kb: 16}); }
-    if (Math.abs(l.s) > 27) { scene.remove(l.truck); scene.remove(l.m); l.done = true; }
+    if (Math.abs(l.s) > 27) { scene.remove(l.truck); scene.remove(l.m); if (l.pack) for (const r of l.pack) r.mixer.stopAllAction(); l.done = true; }
   }
   HZ.lanes = HZ.lanes.filter(l => !l.done);
 }
 function clearHazards() {
   for (const a of HZ.acid) scene.remove(a.m);
   for (const d of HZ.drops) { scene.remove(d.sh); if (d.box) scene.remove(d.box); }
-  for (const l of HZ.lanes) { scene.remove(l.m); if (l.truck) scene.remove(l.truck); }
+  for (const l of HZ.lanes) { scene.remove(l.m); if (l.truck) scene.remove(l.truck); if (l.pack) for (const r of l.pack) r.mixer.stopAllAction(); }
   HZ.acid = []; HZ.drops = []; HZ.lanes = [];
 }

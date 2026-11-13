@@ -81,8 +81,9 @@ function startAttack() {
     base, hit: false, swung: false, dir, fin: F || null,
     rep: F && F.rep ? F.rep + (UP.wlvl >= 5 ? 2 : 0) : 1, ticks: F && F.ticks ? F.ticks + (UP.wlvl >= 5 ? 3 : 0) : 0, tickN: 0, spin: F && F.spin ? F.spin : 0};
   P.face = dir; P.queued = false; P.vx *= .4; P.vz *= .4;
-  if (F) { AU.play('pEffort', {vol: .7, bus: 'voice', max: 1}); popText(P.x, P.z, w.fin + '!', '#' + new THREE.Color(w.col).getHexString(), 34, 3.2); }
-  else if (Math.random() < .3) AU.play('pEffort', {vol: .5, bus: 'voice', max: 1});
+  const vr = survivorGender() === 'F' ? 1.45 : 1; // a higher voice for the women
+  if (F) { AU.play('pEffort', {vol: .7, bus: 'voice', max: 1, rate: vr}); popText(P.x, P.z, w.fin + '!', '#' + new THREE.Color(w.col).getHexString(), 34, 3.2); }
+  else if (Math.random() < .3) AU.play('pEffort', {vol: .5, bus: 'voice', max: 1, rate: vr});
 }
 function endAttack() {
   const P = G.player; P.atk = null; P.lastAtkEnd = G.time; P.rig.body.scale.x = 1; P.rig.body.rotation.y = 0;
