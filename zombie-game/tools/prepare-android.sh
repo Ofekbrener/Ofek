@@ -12,4 +12,8 @@ sed -i -e 's#https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js#v
        -e 's#https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js#vendor/GLTFLoader.js#' \
        -e 's#https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js#vendor/SkeletonUtils.js#' "$WWW/index.html"
 grep -q 'vendor/three.min.js' "$WWW/index.html"
+# build number: the menu compares it with the newest release and offers the update
+echo "window.APP_BUILD = ${GITHUB_RUN_NUMBER:-0};" > "$WWW/js/build.js"
+sed -i 's#<script src="js/main.js"></script>#<script src="js/build.js"></script>\n<script src="js/main.js"></script>#' "$WWW/index.html"
+grep -q 'js/build.js' "$WWW/index.html"
 echo "assets ready: $(du -sh "$WWW" | cut -f1)"

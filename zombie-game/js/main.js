@@ -94,6 +94,7 @@ function wireMenu() {
   go.disabled = false; go.onclick = () => play(cp); if (fresh) fresh.onclick = () => play(null); go.focus();
   document.getElementById('custom').onclick = () => openCreator('menu');
   document.getElementById('howto').onclick = () => { if (!lookSaved()) return openCreator('play'); newRun(null, {tutorial: true}); };
+  showUpdate();
   if (HAPTIC.supported() && !document.getElementById('hap')) { const h = document.createElement('button'); h.id = 'hap'; h.className = 'ghost'; h.textContent = hapLabel(); h.onclick = () => { HAPTIC.toggle(); h.textContent = hapLabel(); }; document.querySelector('#menu .minor').append(h); }
 }
 function waveCleared() {
@@ -108,6 +109,28 @@ function gameOver() {
   ui.innerHTML = `<h1>YOU FELL</h1><p class="big">Wave ${G.wave} · ${G.score} points · ${G.kills} kills</p>
     <p>${G.score > best ? 'New best score!' : 'Best: ' + best}</p>${menuButtons('Play again')}`;
   wireMenu();
+}
+// APK only: the build number comes from js/build.js (written by tools/prepare-android.sh).
+// One request per launch to the release; a newer build shows a download strip on the menu.
+const UPD = {build: 0, url: '', later: false};
+function checkUpdate() {
+  if (!window.APP_BUILD || !navigator.onLine) return;
+  fetch('https://api.github.com/repos/Ofekbrener/Ofek/releases/tags/zombie-apk', {headers: {Accept: 'application/vnd.github+json'}})
+    .then(r => r.ok ? r.json() : null).then(rel => {
+      if (!rel) return;
+      const m = /build:\s*(\d+)/.exec(rel.body || ''), apk = (rel.assets || []).find(x => /\.apk$/.test(x.name));
+      if (!m || !apk || +m[1] <= window.APP_BUILD) return;
+      UPD.build = +m[1]; UPD.url = apk.browser_download_url; showUpdate();
+    }).catch(() => {});
+}
+function showUpdate() {
+  const menu = document.getElementById('menu') || ui;
+  if (!UPD.url || UPD.later || !menu || document.getElementById('upd') || (G.state !== 'menu' && G.state !== 'dead')) return;
+  const d = document.createElement('div'); d.id = 'upd';
+  d.innerHTML = `<span>New version available (build ${UPD.build})</span><button id="updGo">Download</button><button id="updLater" class="ghost">Later</button>`;
+  (menu.querySelector('.minor') || menu.lastElementChild || menu).after(d);
+  document.getElementById('updGo').onclick = () => { location.href = UPD.url; };
+  document.getElementById('updLater').onclick = () => { UPD.later = true; d.remove(); };
 }
 let MENU_HTML = '';
 function showMenu() {
@@ -168,6 +191,6 @@ window.simulate = function (secs, step = 1 / 60) {
   try { await ensureCharacter(LOOK.char); } catch (e) { LOOK.char = 'Matt'; }
   makePlayer(); G.player.z = 0; G.player.face = Math.PI / 2; renderPortrait(G.player.rig);
   document.querySelector('#menu .load').remove(); MENU_HTML = ui.innerHTML;
-  showMenu();
+  showMenu(); checkUpdate();
   requestAnimationFrame(frame);
 })();

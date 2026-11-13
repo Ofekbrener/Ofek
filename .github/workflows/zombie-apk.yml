@@ -53,6 +53,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           make_latest: true
           body: |
+            build: ${{ github.run_number }}
             Android build of Zombie Raid, from commit ${{ github.sha }}.
             Install: download ZombieRaid.apk on the phone, open it, and allow installing from this source.
           files: ZombieRaid.apk

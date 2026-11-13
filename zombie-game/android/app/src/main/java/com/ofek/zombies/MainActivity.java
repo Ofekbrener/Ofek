@@ -1,6 +1,7 @@
 package com.ofek.zombies;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -39,6 +40,13 @@ public class MainActivity extends Activity {
     s.setMediaPlaybackRequiresUserGesture(false);
     s.setAllowFileAccess(false);
     web.setWebViewClient(new WebViewClient() {
+      // links outside the game (the update download) open in the phone's browser
+      @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
+        Uri u = req.getUrl();
+        if (HOST.equals(u.getHost())) return false;
+        try { startActivity(new Intent(Intent.ACTION_VIEW, u)); } catch (Exception e) { /* no browser installed */ }
+        return true;
+      }
       @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
         Uri u = req.getUrl();
         if (!HOST.equals(u.getHost())) return null; // fonts and anything else load from the internet when online
