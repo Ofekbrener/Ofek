@@ -3,10 +3,19 @@
 'use strict';
 const TRAVEL = {on: false, t: 0, dur: 9, scene: null, done: null, extras: []};
 const TRIPS = [
-  {text: 'Through the dead streets, toward the subway.', dur: 9, build: tripStreets},
-  {text: 'Through the flooded river tunnel.', dur: 9, build: tripTunnel},
-  {text: 'Across the harbor on a stolen boat.', dur: 9, build: tripBoat},
-  {text: 'North on the highway. The floodlights are getting closer.', dur: 9, build: tripHighway},
+  // each trip is a chapter: a title, a short radio scene that moves the story, and a clue added to the case file
+  {chapter: 'CHAPTER 2', text: 'Underground', dur: 14, build: tripStreets,
+    lines: [{who: 'DOC', text: 'Keep the case cold and keep moving. The subway runs under the river.'}, {who: 'DOC', text: 'Three days ago I ran that hospital. Now I hide in a lab and talk to strangers on the radio.'}],
+    clue: {n: 1, title: 'THE CURE', text: 'One vial in a cold case. Doc says the army can copy it and save the city.'}},
+  {chapter: 'CHAPTER 3', text: 'The Notes', dur: 15, build: tripTunnel,
+    lines: [{who: 'NOTE', text: 'LAB NOTE 14. Subject zero: Dr. M. Adler. Dose given to self. Symptoms expected in 9 days.'}, {who: 'DOC', text: 'You read my notes. They are old. They mean nothing. Get to the harbor.'}],
+    clue: {n: 2, title: 'SUBJECT ZERO', text: 'Doc tested the virus on himself first. The outbreak started with him.'}},
+  {chapter: 'CHAPTER 4', text: 'Two Voices', dur: 15, build: tripBoat,
+    lines: [{who: 'ARMY', text: 'Survivor, this is the Wall. Adler started this. Do not give him the case.'}, {who: 'DOC', text: 'They will lock it in a vault while people die. Bring it to me. I can still fix this.'}],
+    clue: {n: 3, title: 'TWO SIDES', text: 'The army wants the cure to save the city. Doc wants it to stay human.'}},
+  {chapter: 'CHAPTER 5', text: 'The Wall', dur: 14, build: tripHighway,
+    lines: [{who: 'DOC', text: 'My hands are shaking. I can hear them now. The dead.'}, {who: 'ARMY', text: 'Floodlights are on. We see you. One more push.'}],
+    clue: {n: 4, title: 'THE CHOICE', text: 'One vial. Give it to the army and save the city, or give it to Doc and save the man who started it.'}},
 ];
 // a zombie that only walks in a cutscene
 function extraZombie(model, x, z, face, clip = 'Walk', speed = 1) {
@@ -66,7 +75,9 @@ TRAVEL.play = function (i, done) {
   const P = G.player; P.x = 0; P.z = 0; P.y = 0; P.face = 0; P.vx = P.vz = 0; P.rig.play(TRAVEL.scene.run ? 'Run' : 'Idle', {fade: 0, speed: 1.15});
   const el = document.getElementById('cutscene'); el.hidden = false; document.getElementById('cutText').textContent = '';
   document.getElementById('cutSkip').onclick = e => { e.stopPropagation(); TRAVEL.finish(); };
-  setTimeout(() => { if (TRAVEL.on) VOICE.speak('NARRATOR', trip.text); }, 600);
+  document.getElementById('cutText').innerHTML = `<small>${trip.chapter}</small>${trip.text}`;
+  setTimeout(() => { if (TRAVEL.on) RADIO.say(trip.lines); }, 1400);
+  TRAVEL.clueShown = false; TRAVEL.dur = 30;
   AU.musicTo('music_calm'); AU.ambience(true);
 };
 TRAVEL.update = function (raw) {
@@ -77,12 +88,22 @@ TRAVEL.update = function (raw) {
   for (const e of TRAVEL.extras) { const sp = e.r.curName === 'Run' ? 5.5 : e.r.curName === 'Crawl' ? 1.6 : 2.2; e.x += Math.cos(e.face) * sp * raw; e.z += Math.sin(e.face) * sp * raw; e.r.root.position.set(e.x, 0, e.z); e.r.root.rotation.y = yawFor(e.face); e.r.mixer.update(raw); }
   P.rig.mixer.update(raw); syncPlayer(); updateFX(raw); updateRain(raw);
   const [x, y, z, lx, ly, lz] = S.cam(t, P); camera.position.set(x, y, z); camera.lookAt(lx, ly, lz);
-  const cap = document.getElementById('cutText'), full = TRAVEL.trip.text, n = Math.min(full.length, Math.floor(Math.max(0, t - .4) * 34)); if (cap.textContent.length !== n) cap.textContent = full.slice(0, n);
-  document.getElementById('cutBar').style.width = Math.min(100, t / TRAVEL.trip.dur * 100) + '%';
-  if (t > TRAVEL.trip.dur) TRAVEL.finish();
+  // the clue card lands once the radio scene is over (or 4.5 s before the end)
+  if (!TRAVEL.clueShown && (t > 24 || (t > 4 && !RADIO.cur && !RADIO.q.length))) { TRAVEL.clueShown = true; showClue(TRAVEL.trip.clue); TRAVEL.dur = t + 5.5; }
+  document.getElementById('cutBar').style.width = Math.min(100, t / TRAVEL.dur * 100) + '%';
+  if (t > TRAVEL.dur) TRAVEL.finish();
 };
 TRAVEL.finish = function () {
-  if (!TRAVEL.on) return; TRAVEL.on = false; VOICE.stop();
+  if (!TRAVEL.on) return; TRAVEL.on = false; RADIO.clear(); const cl = document.getElementById('clue'); if (cl) cl.classList.remove('on');
   for (const e of TRAVEL.extras) e.r.dispose(); TRAVEL.extras = []; G.player.y = 0;
   document.getElementById('cutscene').hidden = true; const d = TRAVEL.done; TRAVEL.done = null; d && d();
 };
+
+// case file: the clues found so far, the newest one stamped in
+function showClue(c) {
+  if (!c) return; let el = document.getElementById('clue');
+  if (!el) { el = document.createElement('div'); el.id = 'clue'; document.body.appendChild(el); }
+  const all = TRIPS.slice(0, c.n).map(t => t.clue);
+  el.innerHTML = `<div class="cfhead">${icon('story')}CASE FILE<span>${c.n} / 4</span></div>` + all.map(k => `<div class="cfrow${k === c ? ' new' : ''}"><b>${k.n}. ${k.title}</b><p>${k.text}</p>${k === c ? '<i>NEW CLUE</i>' : ''}</div>`).join('');
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); AU.play('cardPick', {vol: .6});
+}

@@ -662,6 +662,19 @@ button:focus:not(:focus-visible){outline:none}
 .card .combos b{font:700 11px/1.2 Oswald,sans-serif;letter-spacing:.5px;color:#14100a;background:var(--cc,#ffcc33);border-radius:4px;padding:3px 6px;box-shadow:0 0 10px var(--cc,#ffcc33);animation:combo-glow 1.4s ease-in-out infinite alternate}
 .card .combos i{font:500 11px/1.25 Oswald,sans-serif;font-style:normal;color:rgba(242,237,228,.7)}
 @keyframes combo-glow{to{box-shadow:0 0 2px var(--cc,#ffcc33)}}
+
+/* chapter title in the cutscene bar, and the case file of clues */
+#cutText small{display:block;font:400 12px/1 'Black Ops One',Oswald,sans-serif;letter-spacing:4px;color:var(--gold,#ffcc33);margin-bottom:4px}
+#cutText{font-family:'Black Ops One',Oswald,sans-serif;letter-spacing:2px;text-transform:uppercase}
+#clue{position:fixed;z-index:16;left:50%;top:calc(11vh + 12px);translate:-50% -20px;width:min(420px,calc(100% - 28px));box-sizing:border-box;padding:12px 14px 10px;background:#e9e2cc;color:#2a2418;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.6);rotate:-1.2deg;opacity:0;pointer-events:none;transition:opacity .3s,translate .45s var(--ease-back,ease)}
+#clue.on{opacity:1;translate:-50% 0}
+#clue .cfhead{display:flex;align-items:center;gap:8px;font:400 14px/1 'Black Ops One',Oswald,sans-serif;letter-spacing:2px;border-bottom:2px solid #2a2418;padding-bottom:7px;margin-bottom:6px}
+#clue .cfhead .ico{width:18px;height:18px}#clue .cfhead span{margin-left:auto;font-size:12px;opacity:.7}
+#clue .cfrow{position:relative;padding:5px 0;opacity:.55;font-family:Oswald,sans-serif}
+#clue .cfrow b{font-size:14px;letter-spacing:1px}#clue .cfrow p{margin:2px 0 0;font-size:13px;line-height:1.3}
+#clue .cfrow.new{opacity:1}#clue .cfrow.new b{color:#a01818}
+#clue .cfrow i{position:absolute;right:0;top:2px;font:400 11px/1 'Black Ops One',sans-serif;font-style:normal;color:#a01818;border:2px solid #a01818;padding:3px 5px;rotate:6deg;animation:stamp .4s var(--ease-back,ease) .5s both}
+@keyframes stamp{from{scale:2.2;opacity:0}to{scale:1;opacity:1}}
 </style>
 </head>
 <body>

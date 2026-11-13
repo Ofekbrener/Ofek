@@ -173,11 +173,11 @@ function showCityMap(next, go) {
 
 // ---------- opening ----------
 const INTRO_SHOTS = [
-  {text: 'Day 3 of the outbreak. The city has gone quiet.', cam: t => [Math.sin(t * .12) * 26, 20, Math.cos(t * .12) * 26, 0, 0, 0]},
+  {text: 'Day 3. A virus has turned the city into the walking dead.', cam: t => [Math.sin(t * .12) * 26, 20, Math.cos(t * .12) * 26, 0, 0, 0]},
   {text: 'You wake up in the parking lot of St. Mercy Hospital.', cam: (t, P) => [P.x + 2.4 - t * .1, 1.5, P.z + 2.8 - t * .12, P.x, 1.15, P.z]},
   {text: 'Your radio crackles.', radio: [{who: 'DOC', text: 'If anyone can hear this... my name is Dr. Adler.'}], cam: (t, P) => [P.x - 1.8, 1.7, P.z + 2.2 - t * .08, P.x, 1.1, P.z]},
   {text: '', radio: [{who: 'DOC', text: 'I made a cure. It\'s in the hospital cold room. Bring it to the quarantine wall, and the army can make enough for everyone.'}], cam: (t, P) => [P.x + 3.5, 2.6 + t * .05, P.z + 3.5, P.x, 1, P.z]},
-  {text: 'Five districts stand between you and the wall.', cam: (t, P) => { const k = Math.min(1, t / 3), e = k * k * (3 - 2 * k); return [P.x, lerp(4, 11, e), P.z + lerp(6, 8.6, e), P.x, lerp(1, .9, e), P.z]; }},
+  {text: 'Your mission: carry the cure through 5 districts to the army\'s quarantine wall.', cam: (t, P) => { const k = Math.min(1, t / 3), e = k * k * (3 - 2 * k); return [P.x, lerp(4, 11, e), P.z + lerp(6, 8.6, e), P.x, lerp(1, .9, e), P.z]; }},
 ];
 const STORY = {i: 0, t: 0, done: null, on: false};
 STORY.seen = () => { try { return localStorage.getItem('ozIntro') === '1'; } catch (e) { return false; } };
