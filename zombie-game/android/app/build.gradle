@@ -11,8 +11,28 @@ android {
     versionName "1.0.${runNo}"
   }
   // one fixed key in the repo so a newer APK installs over an older one
-  signingConfigs { shared { storeFile file('../shared.keystore'); storePassword 'zombies'; keyAlias 'zombies'; keyPassword 'zombies' } }
-  buildTypes { release { minifyEnabled false; signingConfig signingConfigs.shared } debug { signingConfig signingConfigs.shared } }
-  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-  aaptOptions { noCompress 'json', 'mp3' }
+  signingConfigs {
+    shared {
+      storeFile file('../shared.keystore')
+      storePassword 'zombies'
+      keyAlias 'zombies'
+      keyPassword 'zombies'
+    }
+  }
+  buildTypes {
+    release {
+      minifyEnabled false
+      signingConfig signingConfigs.shared
+    }
+    debug {
+      signingConfig signingConfigs.shared
+    }
+  }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+  aaptOptions {
+    noCompress 'json', 'mp3'
+  }
 }
