@@ -90,6 +90,7 @@ function menuButtons(primaryLabel) {
     (storyFlag('ozEndless') ? `<button id="endless" class="ghost">Endless mode</button>` : '') +
     `<div class="minor"><button id="custom" class="ghost">Customize survivor</button><button id="howto" class="ghost">How to play</button><button id="story" class="ghost">Story</button></div>`;
 }
+const voiceLabel = () => 'Voices: ' + (VOICE.on ? 'on' : 'off');
 const hapLabel = () => 'Vibration: ' + (HAPTIC.on ? 'on' : 'off');
 function wireMenu() {
   const cp = loadCheckpoint(), go = document.getElementById('go'), fresh = document.getElementById('fresh');
@@ -101,6 +102,7 @@ function wireMenu() {
   document.getElementById('custom').onclick = () => openCreator('menu');
   document.getElementById('howto').onclick = () => { if (!lookSaved()) return openCreator('play'); newRun(null, {tutorial: true}); };
   showUpdate();
+  if (!document.getElementById('vox')) { const v = document.createElement('button'); v.id = 'vox'; v.className = 'ghost'; v.textContent = voiceLabel(); v.onclick = () => { VOICE.toggle(); v.textContent = voiceLabel(); }; const mi = document.querySelector('#menu .minor'); if (mi) mi.append(v); }
   if (HAPTIC.supported() && !document.getElementById('hap')) { const h = document.createElement('button'); h.id = 'hap'; h.className = 'ghost'; h.textContent = hapLabel(); h.onclick = () => { HAPTIC.toggle(); h.textContent = hapLabel(); }; document.querySelector('#menu .minor').append(h); }
 }
 function waveCleared() {
@@ -164,12 +166,14 @@ function frame(ts) {
   else if (G.state === 'menu' && G.player) { G.player.rig.mixer.update(raw); G.player.face += raw * .3; syncPlayer(); }
   else if (G.state === 'creator') updateCreator(raw);
   else if (G.state === 'intro') STORY.update(raw);
+  else if (G.state === 'cutscene') TRAVEL.update(raw);
+  if (G.state === 'travel' && MAP3D.on) MAP3D.update(raw);
   if (G.state === 'playing') TUT.update(dt);
   RADIO.update(raw);
   if (UP.magnetPulse > 0) { UP.magnetPulse -= raw; for (const k of G.pickups) { const P = G.player, dx = P.x - k.x, dz = P.z - k.z, d = Math.hypot(dx, dz) || 1; k.x += dx / d * 14 * raw; k.z += dz / d * 14 * raw; } }
   updateFX(dt || raw * .02); updateRain(raw);
   G.trauma = Math.max(0, G.trauma - raw * 1.6); G.flash = Math.max(0, G.flash - raw * 2); G.hurtFlash = Math.max(0, G.hurtFlash - raw * 2);
-  if (G.player && G.state !== 'creator' && G.state !== 'intro') updateCamera(raw);
+  if (G.player && G.state !== 'creator' && G.state !== 'intro' && G.state !== 'cutscene' && !MAP3D.on) updateCamera(raw);
   renderFX(); renderer.render(scene, camera); drawHUD(raw);
 }
 
@@ -194,7 +198,7 @@ window.simulate = function (secs, step = 1 / 60) {
   const total = MODEL_FILES.length + AU.fileList().length; let done = 0;
   const tick = () => { done++; bar.style.width = (done / total * 100).toFixed(0) + '%'; };
   try {
-    await Promise.all([loadModels(tick), AU.load(tick)]);
+    await Promise.all([loadModels(tick), AU.load(tick), VOICE.load()]);
   } catch (e) { console.error(e); go.textContent = 'Could not load the game files'; return; }
   buildArena(); renderWeaponArt();
   try { await ensureCharacter(LOOK.char); } catch (e) { LOOK.char = 'Matt'; }

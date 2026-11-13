@@ -51,7 +51,7 @@ function startWave() {
 function spawnZombie(type) {
   const T = ZTYPES[type], sp = pick(WORLD.spawnPoints);
   let x = sp[0] + rnd(-3, 3), z = sp[1] + rnd(-3, 3);
-  if (T.ambush && G.player) { const a = rnd(0, 7), r = rnd(3.5, 5); x = clamp(G.player.x + Math.cos(a) * r, -G.arena + 1, G.arena - 1); z = clamp(G.player.z + Math.sin(a) * r, -G.arena + 1, G.arena - 1); ring(x, z, 1.2, 0xa8c890, .9); AU.play('zGroan', {vol: .6, rate: 1.4, x, z, bus: 'voice'}); }
+  if (T.ambush && G.player) { const a = rnd(0, 7), r = rnd(3.5, 5); const q = {x: G.player.x + Math.cos(a) * r, z: G.player.z + Math.sin(a) * r}; clampToBounds(q, 1); x = q.x; z = q.z; ring(x, z, 1.2, 0xa8c890, .9); AU.play('zGroan', {vol: .6, rate: 1.4, x, z, bus: 'voice'}); }
   const scale = (T.scale || 1) * (T.boss ? 1 : rnd(.93, 1.07));
   const BP = T.boss ? bossProfile() : null, rig = new Rig(T.model, {tint: BP ? BP.tint : T.tint, scale: BP ? BP.scale : scale});
   const bossN = Math.max(1, Math.floor(G.wave / 5)), hpMul = T.boss ? BP.hp / T.hp * (G.wave > 25 ? 1 + (G.wave - 25) / 20 : 1) * (curArea().boss === 'zero' && G.wave <= 25 && storyFlag('ozEnding') === 'static' ? 1.3 : 1) : 1 + (G.wave - 1) * .08;
@@ -172,12 +172,12 @@ function bossAI(zb, dt, d, toP) {
       const m = d < 4 && moves.includes('slam') ? 'slam' : pick(moves.length ? moves : ['charge']); zb.lastMove = m; zb.state = m + 'Tele'; zb.st = 0; zb.vx = zb.vz = 0; zb.tele = true;
       if (m === 'throw') { // the harbor master: containers drop on you and around you
         rig.play('Idle_Attack', {fade: .1}); AU.play('bossEffort', {vol: 1, bus: 'voice'}); const n = zb.prof.drops || 3;
-        dropContainer(P.x, P.z); for (let i = 1; i < n; i++) { const a = rnd(0, 7), r = rnd(3, 5.5); dropContainer(clamp(P.x + Math.cos(a) * r, -17, 17), clamp(P.z + Math.sin(a) * r, -17, 17), i * .35); }
+        dropContainer(P.x, P.z); for (let i = 1; i < n; i++) { const a = rnd(0, 7), r = rnd(3, 5.5), q = {x: P.x + Math.cos(a) * r, z: P.z + Math.sin(a) * r}; clampToBounds(q, 1.5); dropContainer(q.x, q.z, i * .35); }
         zb.state = 'recover'; zb.st = -.8; zb.tele = false; }
       if (m === 'lanes') { // the convoy: trucks drive down marked lanes, the first one through your position
-        rig.play('Wave', {loop: false, restart: true, fade: .1}); AU.play('bossLaugh', {vol: 1, bus: 'voice'}); const ax = Math.random() < .5 ? 'x' : 'z', p0 = ax === 'x' ? P.z : P.x;
-        truckLane(ax, clamp(p0, -15, 15), 0, Math.random() < .5 ? 1 : -1); truckLane(ax, clamp(p0 + (p0 > 0 ? -6 : 6), -15, 15), .9, Math.random() < .5 ? 1 : -1);
-        if (zb.hp < zb.maxHp * .5) truckLane(ax === 'x' ? 'z' : 'x', clamp(ax === 'x' ? P.x : P.z, -15, 15), 1.8, 1);
+        rig.play('Wave', {loop: false, restart: true, fade: .1}); AU.play('bossLaugh', {vol: 1, bus: 'voice'}); const bb = boundsBox(), ax = bb.hw >= bb.hd ? 'x' : 'z', lim = (ax === 'x' ? bb.hd : bb.hw) - 1.5, p0 = ax === 'x' ? P.z : P.x;
+        truckLane(ax, clamp(p0, -lim, lim), 0, Math.random() < .5 ? 1 : -1); truckLane(ax, clamp(p0 + (p0 > 0 ? -4.5 : 4.5), -lim, lim), .9, Math.random() < .5 ? 1 : -1);
+        if (zb.hp < zb.maxHp * .5) truckLane(ax, clamp(-p0, -lim, lim), 1.8, 1);
         zb.state = 'recover'; zb.st = -1.6; zb.tele = false; }
       if (m === 'charge') { zb.chargeDir = toP; zb.teleMesh = new THREE.Mesh(new THREE.PlaneGeometry(14, 2.6), teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; scene.add(zb.teleMesh); rig.play('Idle_Attack', {fade: .1}); AU.play('bossEffort', {vol: 1, bus: 'voice'}); }
       if (m === 'slam') { zb.slamX = P.x; zb.slamZ = P.z; zb.teleMesh = new THREE.Mesh(new THREE.CircleGeometry(4, 40), teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; zb.teleMesh.position.set(P.x, .04, P.z); scene.add(zb.teleMesh); rig.play('Jump', {loop: false, restart: true, fade: .1, speed: .5}); AU.play('bossEffort', {vol: 1, bus: 'voice', rate: .9}); }
@@ -193,7 +193,7 @@ function bossAI(zb, dt, d, toP) {
     if (Math.random() < .6) dust(zb.x, zb.z, 2);
     if (!zb.hitDone && d < zb.r + .7) { zb.hitDone = true; hurtPlayer(bossDmg(), zb.x, zb.z); }
     const bx = zb.x, bz = zb.z; collide(zb, zb.r);
-    const blocked = Math.abs(bx - zb.x) + Math.abs(bz - zb.z) > .01 || Math.abs(zb.x) > G.arena - zb.r - .1 || Math.abs(zb.z) > G.arena - zb.r - .1;
+    const blocked = Math.abs(bx - zb.x) + Math.abs(bz - zb.z) > .01 || outOfBounds(zb.x, zb.z, zb.r + .1);
     if (zb.st > 1.15 || blocked) { // crashes into a wall: stunned and open
       zb.state = 'stunned'; zb.st = 0; zb.vx *= -.2; zb.vz *= -.2; if (blocked) { shake(.6); HAPTIC.fx('slam', .6); AU.play('hitMetal', {vol: 1, rate: .6}); AU.play('explosion', {vol: .5, rate: 1.3}); dust(zb.x, zb.z, 20); }
       rig.play('HitReact', {loop: false, restart: true, fade: .05, speed: .5});

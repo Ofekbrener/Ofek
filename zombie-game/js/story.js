@@ -20,8 +20,9 @@ RADIO.next = function () {
   const w = WHO[RADIO.cur.who] || WHO.DOC;
   el.innerHTML = `<div class="rhead"><i class="rled" style="background:${w.col}"></i><b style="color:${w.col}">${w.name}</b><span class="rwave"><i></i><i></i><i></i><i></i><i></i></span></div><div class="rtext"></div>`;
   el.className = 'on' + (RADIO.cur.who === 'NOTE' ? ' note' : ''); radioStatic();
+  const c = RADIO.cur, spoken = VOICE.speak(c.who, c.text); RADIO.hold = Math.max(c.text.length / 42 + 1.6 + c.text.length * .035, spoken + .9);
 };
-RADIO.clear = function () { RADIO.q = []; RADIO.cur = null; if (RADIO.el) RADIO.el.classList.remove('on'); };
+RADIO.clear = function () { RADIO.q = []; RADIO.cur = null; VOICE.stop(); if (RADIO.el) RADIO.el.classList.remove('on'); };
 // typed text, then a hold long enough to read it; runs on real time so slow motion never stalls it
 RADIO.update = function () {
   const now = performance.now() / 1000, raw = Math.min(.1, now - (RADIO.last || now)); RADIO.last = now;
@@ -30,7 +31,7 @@ RADIO.update = function () {
   RADIO.el.style.visibility = G.state === 'draft' || G.state === 'picking' || G.state === 'dead' || G.state === 'travel' ? 'hidden' : 'visible';
   const n = Math.min(c.text.length, Math.floor(RADIO.t * 42));
   if (n !== RADIO.chars) { RADIO.chars = n; const t = RADIO.el.querySelector('.rtext'); if (t) t.textContent = c.text.slice(0, n); }
-  if (RADIO.t > c.text.length / 42 + 1.6 + c.text.length * .035) RADIO.next();
+  if (RADIO.t > RADIO.hold) RADIO.next();
 };
 
 // ---------- area card and area change ----------
@@ -53,7 +54,7 @@ function enterArea(i, then) {
 function nextWave() {
   const ni = areaIndex(G.wave + 1);
   if (ni !== G.area && G.endless) enterArea(ni, () => setTimeout(startWave, 3000));
-  else if (ni !== G.area) showCityMap(ni, () => enterArea(ni, () => setTimeout(startWave, 3000))); else startWave();
+  else if (ni !== G.area) MAP3D.show(ni, () => enterArea(ni, () => setTimeout(startWave, 3000))); else startWave();
 }
 function storyWaveStart() {
   if (G.endless) return;
@@ -89,27 +90,59 @@ function playEnding(id) {
       AU.play('levelUp', {vol: .8}); document.getElementById('eMenu').onclick = () => { el.hidden = true; clearZombies(); showMenu(); };
       return;
     }
-    el.innerHTML = `<div class="ebox"><div class="etitle" style="color:${E.col}">${E.title}</div><p class="eline big">${E.lines[i]}</p><p class="etap">tap to continue</p></div>`;
+    el.innerHTML = `<div class="ebox"><div class="etitle" style="color:${E.col}">${E.title}</div><p class="eline big">${E.lines[i]}</p><p class="etap">tap to continue</p></div>`; VOICE.speak('NARRATOR', E.lines[i]);
     i++; el.onclick = e => { if (e.target.closest('button')) return; show(); };
   };
   show();
 }
 
 // ---------- city map between districts ----------
-const MAP_PTS = [[60, 250], [130, 170], [230, 205], [300, 120], [345, 62]];
+// An illustrated map: the river, the districts with icons, fog over the places not reached yet,
+// and the survivor's portrait walking the route to the next stop. Then the travel cutscene plays.
+const MAP_PTS = [[110, 320], [215, 250], [330, 285], [440, 190], [520, 90]];
+const MAP_ICON = {
+  0: '<path d="M-6 -2h4v-4h4v4h4v4h-4v4h-4v-4h-4z" fill="#d01010"/>',
+  1: '<text y="5" font-size="15" font-weight="700" fill="#9dffb4" text-anchor="middle">M</text>',
+  2: '<path d="M0 -7v12M-6 1a6 6 0 0 0 12 0M-3 -5h6" stroke="#ffb060" stroke-width="2" fill="none"/>',
+  3: '<path d="M-3 -7l-3 14M3 -7l3 14M0 -6v2M0 -1v2M0 4v2" stroke="#fff" stroke-width="1.6"/>',
+  4: '<path d="M-7 6v-9h14v9M-3 6v-5h6v5" stroke="#ffcc33" stroke-width="1.8" fill="none"/>',
+};
+const THREAT = {crawler: 'Crawlers climb out of the ground', bloater: 'Bloaters burst into acid', riot: 'Riot shields block hits from the front', screamer: 'Screamers enrage the horde'};
 function showCityMap(next, go) {
   const el = document.getElementById('citymap'); G.state = 'travel'; el.hidden = false; AU.musicTo('music_calm'); AU.play('cardOpen', {vol: .7});
-  const path = 'M' + MAP_PTS.map(p => p.join(' ')).join(' L');
-  const done = MAP_PTS.slice(0, next + 1).map(p => p.join(' ')).join(' L');
-  const nodes = AREAS.map((A, i) => { const [x, y] = MAP_PTS[i], st = i < next ? 'done' : i === next ? 'next' : 'lock';
-    return `<g class="mn ${st}" transform="translate(${x} ${y})"><circle r="${i === next ? 15 : 11}"/>${st === 'done' ? '<path d="M-5 0l3.5 4L6-5" class="chk"/>' : `<text y="5">${i + 1}</text>`}
-      <text class="ml" y="${y > 150 ? 32 : -22}">${A.short.toUpperCase()}</text></g>`; }).join('');
-  el.innerHTML = `<div class="mapbox"><div class="mtitle">THE ROUTE TO THE WALL</div>
-    <svg viewBox="0 0 420 290" class="mapsvg"><path d="${path}" class="mroute"/><path d="M${done}" class="mdone"/>${nodes}
-    <g transform="translate(395 22)" class="mwall"><rect x="-14" y="-12" width="28" height="24" rx="3"/><text y="5">⚑</text></g></svg>
-    <div class="mnext">Next: <b>${AREAS[next].name}</b></div><div class="mgoal">${AREAS[next].goal}</div>
-    <button id="mapGo" class="primary">Go</button></div>`;
-  document.getElementById('mapGo').onclick = () => { el.hidden = true; AU.play('cardPick', {vol: .7}); go(); };
+  const route = 'M' + MAP_PTS.map(p => p.join(' ')).join(' L');
+  const done = 'M' + MAP_PTS.slice(0, next).map(p => p.join(' ')).join(' L');
+  const leg = `M${MAP_PTS[next - 1].join(' ')} L${MAP_PTS[next].join(' ')}`;
+  const blobs = AREAS.map((A, i) => { const [x, y] = MAP_PTS[i], st = i < next ? 'done' : i === next ? 'next' : 'lock';
+    return `<g class="md ${st}"><ellipse cx="${x}" cy="${y}" rx="62" ry="40" class="mblob"/>
+      <g transform="translate(${x} ${y})"><circle r="17" class="mpin"/>${MAP_ICON[i]}${st === 'done' ? '<circle r="17" class="mdoneR"/><path d="M-6 0l4 4 8-9" class="chk"/>' : ''}</g>
+      <text x="${x}" y="${y + 34}" class="mname">${A.short.toUpperCase()}</text>${st === 'lock' ? `<ellipse cx="${x}" cy="${y}" rx="64" ry="42" class="mfog"/>` : ''}</g>`; }).join('');
+  const portrait = PORTRAIT.img ? PORTRAIT.img.src : '';
+  const A = AREAS[next], B = BOSSES[A.boss];
+  el.innerHTML = `<div class="mapwrap"><div class="mhead"><span>DAY 3 · ROUTE TO THE WALL</span><span>${G.kills} kills · ${G.score} pts</span></div>
+    <svg viewBox="0 0 600 400" class="mapsvg"><defs>
+      <pattern id="grid" width="22" height="22" patternUnits="userSpaceOnUse"><path d="M22 0H0V22" fill="none" stroke="#b9ad8e" stroke-width="1"/></pattern>
+      <clipPath id="pc"><circle r="15"/></clipPath>
+      <filter id="rough"><feTurbulence baseFrequency=".04" numOctaves="2" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="5"/></filter></defs>
+    <rect width="600" height="400" fill="#dcd2b4"/><rect width="600" height="400" fill="url(#grid)" opacity=".55"/>
+    <path d="M0 210 C120 170 200 300 300 250 S470 120 600 150 L600 190 C470 160 380 300 300 290 S110 220 0 250 Z" fill="#7aa0b4" opacity=".8" filter="url(#rough)"/>
+    <text x="40" y="238" class="mriver">RIVER</text>
+    <rect x="30" y="40" width="70" height="44" fill="#9bb88a" opacity=".6" rx="8"/><rect x="250" y="340" width="90" height="40" fill="#9bb88a" opacity=".6" rx="8"/>
+    <path d="M440 30 H600" stroke="#4a4030" stroke-width="10"/><path d="M505 30h30" stroke="#ffcc33" stroke-width="10"/><text x="560" y="22" class="mwallT">THE WALL</text>
+    <path d="${route}" class="mroute"/><path d="${done}" class="mdone"/>
+    ${blobs}
+    <path d="${leg}" class="mleg"/>
+    <g class="mme"><circle r="17" fill="#ffcc33"/><image href="${portrait}" x="-15" y="-15" width="30" height="30" clip-path="url(#pc)" preserveAspectRatio="xMidYMid slice"/>
+      <animateMotion dur="2.4s" fill="freeze" path="${leg}" keyPoints="0;1" keyTimes="0;1" calcMode="spline" keySplines=".5 0 .5 1"/></g>
+    </svg>
+    <div class="mcard"><div class="mnum">AREA ${next + 1} / ${AREAS.length}</div><div class="mnext">${A.name}</div><div class="mgoal">${A.goal}</div>
+      <div class="mthreat">${A.newZombie ? `<span>NEW</span>${THREAT[A.newZombie]}` : ''}</div><div class="mthreat boss"><span>BOSS</span>${B.name}</div>
+      <button id="mapGo" class="primary">Travel</button></div></div>`;
+  AU.play('step', {vol: .4, delay: .3}); AU.play('step', {vol: .4, delay: .9}); AU.play('step', {vol: .4, delay: 1.5});
+  document.getElementById('mapGo').onclick = () => {
+    el.hidden = true; AU.play('cardPick', {vol: .7}); const f = document.getElementById('fade'); f.classList.add('on');
+    setTimeout(() => { f.classList.remove('on'); TRAVEL.play(next - 1, () => { f.classList.add('on'); setTimeout(() => { f.classList.remove('on'); go(); }, 500); }); }, 650);
+  };
 }
 
 // ---------- opening ----------
@@ -135,7 +168,7 @@ STORY.next = function () {
   STORY.i++; STORY.t = 0;
   if (STORY.i >= INTRO_SHOTS.length) return STORY.finish();
   const s = INTRO_SHOTS[STORY.i], cap = document.getElementById('introText');
-  cap.textContent = ''; cap.dataset.full = s.text; RADIO.clear(); if (s.radio) RADIO.say(s.radio);
+  cap.textContent = ''; cap.dataset.full = s.text; RADIO.clear(); if (s.radio) RADIO.say(s.radio); else if (s.text) VOICE.speak('NARRATOR', s.text);
   document.getElementById('introDots').innerHTML = INTRO_SHOTS.map((_, i) => `<i class="${i <= STORY.i ? 'on' : ''}"></i>`).join('');
   AU.play('swingWide', {vol: .25, rate: .5});
 };

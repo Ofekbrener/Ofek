@@ -27,17 +27,19 @@ function buildArena() {
 }
 function clearLayout() {
   if (WORLD.layer) scene.remove(WORLD.layer);
-  WORLD.layer = null; G.props = []; G.colliders = []; G.barrels = []; WORLD.lamps = [];
+  WORLD.layer = null; G.props = []; G.colliders = []; G.barrels = []; WORLD.lamps = []; G.bounds = null; WORLD.water = null; WORLD.gate = null;
+  WORLD.spawnPoints = [[0, -23], [0, 23], [-23, 0], [23, 0]];
 }
 function buildLayout(i) {
   clearLayout(); const A = AREAS[i]; WORLD.built = i;
   WORLD.layer = new THREE.Group(); scene.add(WORLD.layer);
-  layoutStreet(A); if (A.dress) A.dress(A);
+  WORLD.barrelSpots = null;
+  if (A.layout && LAYOUTS[A.layout]) WORLD.barrelSpots = LAYOUTS[A.layout](A); else { layoutStreet(A); if (A.dress) A.dress(A); }
   resetBarrels(); applyAreaLook(A);
 }
 function resetBarrels() {
   for (const b of G.barrels) if (b.m.parent) b.m.parent.remove(b.m);
-  G.barrels = []; for (const [x, z] of (AREAS[WORLD.built].barrels || BARRELS)) addBarrel(x, z);
+  G.barrels = []; for (const [x, z] of (WORLD.barrelSpots || AREAS[WORLD.built].barrels || BARRELS)) addBarrel(x, z);
 }
 const BARRELS = [[-6, -3], [6.5, 3.5], [-3, 9.5], [3.5, -10], [-12, 4], [12, -3]];
 // the crossroads block every area is built on; areas pick the street tiles, cover and edge walls
@@ -98,7 +100,7 @@ function collide(e, r) {
   }
   for (const b of G.barrels) if (!b.dead) { const dx = e.x - b.x, dz = e.z - b.z, d = Math.hypot(dx, dz); if (d < r + b.r && d > 1e-4) { e.x = b.x + dx / d * (r + b.r); e.z = b.z + dz / d * (r + b.r); } }
 }
-function inArena(e, r) { const A = G.arena - r; e.x = clamp(e.x, -A, A); e.z = clamp(e.z, -A, A); }
+function inArena(e, r) { clampToBounds(e, r); }
 
 function hitBarrel(b) { if (b.dead || b.fuse >= 0) return; b.fuse = .18; for (const o of [b.m]) o.traverse(x => { if (x.isMesh) x.material.emissive.setRGB(1, .4, 0); }); }
 function explodeAt(x, z, radius, dmgZ, dmgP, src) {
@@ -129,6 +131,7 @@ function buildRain() {
   m.frustumCulled = false; scene.add(m); WORLD.rain = {m, pos, N, drops: Array.from({length: N}, () => ({x: rnd(-22, 22), y: rnd(0, 16), z: rnd(-22, 22), v: rnd(16, 22)}))};
 }
 function updateRain(dt) {
+  if (WORLD.water) { WORLD.water.offset.x += dt * .015; WORLD.water.offset.y += dt * .006; }
   const R = WORLD.rain; if (!R || !WORLD.raining) return; const cx = G.cam.x, cz = G.cam.z;
   for (let i = 0; i < R.N; i++) {
     const d = R.drops[i]; d.y -= d.v * dt; if (d.y < 0) { d.y = rnd(10, 16); d.x = cx + rnd(-22, 22); d.z = cz + rnd(-22, 22); if (Math.random() < .08) addPart({x: d.x, y: .05, z: d.z, vx: 0, vz: 0, vy: 1.2, g: 9, life: .15, max: .15, size: .05, col: '#8fa3c8', drag: 1, rx: 0, ry: 0}); }

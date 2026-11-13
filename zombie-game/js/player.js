@@ -174,7 +174,7 @@ function throwJavelin(dir) {
 function updateJavelin(dt) {
   const P = G.player, J = P.javelin; if (!J) return;
   J.t += dt; const w = weapon();
-  if (!J.back) { J.x += Math.cos(J.dir) * 22 * dt; J.z += Math.sin(J.dir) * 22 * dt; if (J.t > .55 || Math.abs(J.x) > G.arena || Math.abs(J.z) > G.arena) { J.back = true; J.hit.clear(); AU.play('swingLight', {vol: .7, rate: .7}); } }
+  if (!J.back) { J.x += Math.cos(J.dir) * 22 * dt; J.z += Math.sin(J.dir) * 22 * dt; if (J.t > .55 || outOfBounds(J.x, J.z)) { J.back = true; J.hit.clear(); AU.play('swingLight', {vol: .7, rate: .7}); } }
   else { const a = Math.atan2(P.z - J.z, P.x - J.x); J.dir = a; J.x += Math.cos(a) * 26 * dt; J.z += Math.sin(a) * 26 * dt; J.g.rotation.y = -a + Math.PI; if (Math.hypot(P.x - J.x, P.z - J.z) < .9) { scene.remove(J.g); P.javelin = null; if (P.wMesh && P.weapon === 'Spear') P.wMesh.visible = true; AU.play('hitMetal', {vol: .5, rate: 1.3, dur: .3}); ring(P.x, P.z, 1.2, w.col, .2); return; } }
   J.g.position.set(J.x, 1.3, J.z); J.roll.rotation.x += dt * 25;
   addPart({x: J.x, y: 1.3, z: J.z, vx: 0, vz: 0, vy: 0, g: 0, life: .2, max: .2, size: .08, col: '#7fe0ff', drag: 1, rx: 0, ry: 0});

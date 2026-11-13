@@ -2,6 +2,9 @@ package com.ofek.zombies;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.speech.tts.TextToSpeech;
+import android.webkit.JavascriptInterface;
+import java.util.Locale;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -26,6 +29,16 @@ public class MainActivity extends Activity {
     MIME.put("mp3", "audio/mpeg"); MIME.put("png", "image/png"); MIME.put("css", "text/css"); MIME.put("svg", "image/svg+xml");
   }
   private WebView web;
+  private TextToSpeech tts;
+  private boolean ttsReady;
+
+  /** Speech for the radio lines; the game calls window.AndroidTTS.speak(text, pitch, rate). */
+  public class TtsBridge {
+    @JavascriptInterface public void speak(String text, float pitch, float rate) {
+      if (!ttsReady) return; tts.setPitch(pitch); tts.setSpeechRate(rate); tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "radio");
+    }
+    @JavascriptInterface public void stop() { if (ttsReady) tts.stop(); }
+  }
 
   @Override protected void onCreate(Bundle state) {
     super.onCreate(state);
@@ -39,6 +52,8 @@ public class MainActivity extends Activity {
     s.setDomStorageEnabled(true);
     s.setMediaPlaybackRequiresUserGesture(false);
     s.setAllowFileAccess(false);
+    tts = new TextToSpeech(this, status -> { if (status == TextToSpeech.SUCCESS) { tts.setLanguage(Locale.US); ttsReady = true; } });
+    web.addJavascriptInterface(new TtsBridge(), "AndroidTTS");
     web.setWebViewClient(new WebViewClient() {
       // links outside the game (the update download) open in the phone's browser
       @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
@@ -72,5 +87,6 @@ public class MainActivity extends Activity {
   @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
   @Override protected void onPause() { web.onPause(); web.pauseTimers(); super.onPause(); }
   @Override protected void onResume() { super.onResume(); web.onResume(); web.resumeTimers(); }
+  @Override protected void onDestroy() { if (tts != null) tts.shutdown(); super.onDestroy(); }
   @Override public void onBackPressed() { moveTaskToBack(true); }
 }
