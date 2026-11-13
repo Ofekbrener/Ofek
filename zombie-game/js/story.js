@@ -13,11 +13,11 @@ function docFace() {
     r.setSize(S, S); r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.2;
     const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xdfffe8, 0x203028, 1.1));
     const k = new THREE.DirectionalLight(0xffffff, 1.7); k.position.set(1.5, 2, 3); sc.add(k); const g = new THREE.DirectionalLight(0x7dff8a, 1.2); g.position.set(-2, 1, -1); sc.add(g);
-    const m = THREE.SkeletonUtils.clone(MODELS[key].scene); m.traverse(o => { if (o.isMesh && WEAPON_MESHES.includes(o.name)) o.visible = false; });
+    const m = THREE.SkeletonUtils.clone(MODELS[key].scene); m.traverse(o => { if (o.isMesh && WEAPON_MESHES.includes(o.name)) o.visible = false; }); dressDoc(m, key.slice(11));
     const idle = MODELS[key].animations.find(a => a.name === 'Idle'); if (idle) { const mix = new THREE.AnimationMixer(m); mix.clipAction(idle).play(); mix.update(.3); }
     sc.add(m); m.updateMatrixWorld(true); let head = null; m.traverse(o => { if (o.isBone && o.name === 'Head') head = o; });
     const hp = head ? head.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1.5, 0);
-    const cam = new THREE.PerspectiveCamera(30, 1, .01, 20); cam.position.set(hp.x + .25, hp.y + .32, hp.z + 1.25); cam.lookAt(hp.x, hp.y + .26, hp.z);
+    const cam = new THREE.PerspectiveCamera(30, 1, .01, 20); cam.position.set(hp.x + .3, hp.y + .3, hp.z + 1.75); cam.lookAt(hp.x, hp.y + .16, hp.z);
     r.render(sc, cam); FACES[key] = r.domElement.toDataURL('image/png'); r.dispose();
     const im = document.querySelector('#radio .rface img[data-doc]'); if (im) im.src = FACES[key];
   }).catch(() => {});

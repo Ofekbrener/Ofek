@@ -59,6 +59,7 @@ function spawnZombie(type) {
   const BP = T.boss ? bossProfile() : null;
   const model = BP ? (BP.model === 'human' ? (MODELS[docModel()] ? docModel() : 'Characters_' + LOOK.char) : BP.model) : T.model;
   const rig = new Rig(model, {tint: BP ? BP.tint : T.tint, scale: BP ? BP.scale : scale}); if (BP) { rig.alias = BP.alias || null; rig.model.traverse(o => { if (WEAPON_MESHES.includes(o.name)) o.visible = false; }); }
+  if (BP && BP.model === 'human' && model === docModel()) dressDoc(rig.model, model.slice(11));
   const bossN = Math.max(1, Math.floor(G.wave / 5)), hpMul = T.boss ? BP.hp / T.hp * (G.wave > 25 ? 1 + (G.wave - 25) / 20 : 1) * (curArea().boss === 'zero' && G.wave <= 25 && storyFlag('ozEnding') === 'static' ? 1.3 : 1) : 1 + (G.wave - 1) * .08;
   const zb = {type, T, rig, x, z, vx: 0, vz: 0, y: -2, vy: 0, r: T.r * (T.boss ? 1 : scale), face: Math.atan2(-z, -x),
     hp: Math.ceil(T.hp * hpMul), maxHp: Math.ceil(T.hp * hpMul), speed: rnd(...T.speed) * (1 + G.wave * .025),

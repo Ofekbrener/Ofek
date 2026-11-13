@@ -86,8 +86,9 @@ public class MainActivity extends Activity {
   }
   @Override public void onWindowFocusChanged(boolean focus) { super.onWindowFocusChanged(focus); if (focus) hideBars(); }
   @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
-  @Override protected void onPause() { web.onPause(); web.pauseTimers(); super.onPause(); }
-  @Override protected void onResume() { super.onResume(); web.onResume(); web.resumeTimers(); }
+  // the game's Web Audio keeps playing in a paused WebView, so the game is told to go silent first
+  @Override protected void onPause() { web.evaluateJavascript("window.APP_PAUSE&&APP_PAUSE()", null); if (tts != null) tts.stop(); web.onPause(); web.pauseTimers(); super.onPause(); }
+  @Override protected void onResume() { super.onResume(); web.onResume(); web.resumeTimers(); web.evaluateJavascript("window.APP_RESUME&&APP_RESUME()", null); }
   @Override protected void onDestroy() { if (tts != null) tts.shutdown(); super.onDestroy(); }
   @Override public void onBackPressed() { moveTaskToBack(true); }
 }

@@ -13,7 +13,7 @@ const GS = {blades: [], dogs: [], drone: null, cd: {}, bottles: [], bladeHit: ne
 const gearLvl = id => UP.gear[id] || 0;
 function kitMesh(name) { let m = null; MODELS.Characters_Matt.scene.traverse(o => { if (o.isMesh && o.name === name) m = o; }); return m; }
 function nearestTo(x, z, maxD, skip) {
-  let best = null, bd = maxD; for (const zb of G.zombies) { if (zb.dying || zb.state === 'rise' || zb.dummy || (skip && skip.includes(zb))) continue; const d = Math.hypot(zb.x - x, zb.z - z); if (d < bd) { bd = d; best = zb; } } return best;
+  let best = null, bd = maxD; for (const zb of G.zombies) { if (zb.dying || zb.state === 'rise' || (zb.dummy && !SHOW.active) || (skip && skip.includes(zb))) continue; const d = Math.hypot(zb.x - x, zb.z - z); if (d < bd) { bd = d; best = zb; } } return best;
 }
 // rebuild the visible pieces after a level change or a resumed run
 function buildGear() {
@@ -88,6 +88,7 @@ function updateGear(dt) {
     const t = nearestTo(P.x, P.z, 10);
     if (t) { const m = new THREE.Mesh(new THREE.CylinderGeometry(.07, .09, .3, 8), new THREE.MeshStandardMaterial({color: 0x4a7a3a, transparent: true, opacity: .85, emissive: 0x331100})); m.castShadow = true; scene.add(m);
       GS.bottles.push({m, x0: P.x, z0: P.z, x1: t.x + t.vx * .5, z1: t.z + t.vz * .5, t: 0, lvl: lm}); AU.play('swingLight', {vol: .6, rate: .9}); }
+    else GS.cd.molotov = .2; // nobody in range: try again soon instead of waiting a full cooldown
   }
   for (const b of GS.bottles) {
     b.t += dt / .6; const k = Math.min(1, b.t); b.m.position.set(lerp(b.x0, b.x1, k), 1.2 + Math.sin(k * Math.PI) * 2.5, lerp(b.z0, b.z1, k)); b.m.rotation.z += dt * 14;

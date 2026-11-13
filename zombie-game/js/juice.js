@@ -112,7 +112,7 @@ function updateFX(dt) {
     if (!f.lit) { f.lit = true; const sc = new THREE.Mesh(SCORCH_GEO, SCORCH_MAT); sc.rotation.x = -Math.PI / 2; sc.position.set(f.x, .03, f.z); scene.add(sc); FX.decals.push({m: sc, grow: 1, t: 1}); burst(f.x, f.z, 6, ['#ff8a1a', '#ffcf3a'], 4, .14, .5, .2); }
     f.life -= dt;
     for (let i = 0; i < 2; i++) addPart({x: f.x + rnd(-.35, .35), y: rnd(.05, .4), z: f.z + rnd(-.35, .35), vx: rnd(-.3, .3), vz: rnd(-.3, .3), vy: rnd(1.5, 4), g: -2, life: rnd(.3, .6), max: .6, size: rnd(.1, .22), col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10', '#ff6a1a']), drag: .9, rx: 0, ry: 0});
-    for (const zb of G.zombies) if (!zb.dying && zb.state !== 'rise' && Math.hypot(zb.x - f.x, zb.z - f.z) < .8) zb.burn = Math.max(zb.burn, 3);
+    for (const zb of G.zombies) if (!zb.dying && zb.state !== 'rise' && Math.hypot(zb.x - f.x, zb.z - f.z) < .8) { if (SHOW.active && !(zb.burn > 0)) popText(zb.x, zb.z, 'ON FIRE', '#ff8a1a', 26, 2.6); zb.burn = Math.max(zb.burn, 3); }
   }
   FX.fires = FX.fires.filter(f => f.life > 0);
   // poison clouds: green haze, 1 damage per second to zombies inside, optional slow

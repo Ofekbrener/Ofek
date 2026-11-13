@@ -107,7 +107,8 @@ const BOSSES = {
     moves: ['charge', 'slam'], phases: [['charge', 'blink', 'slam', 'throw'], ['summon', 'blink', 'lanes', 'slam'], ['blink', 'charge', 'throw', 'lanes', 'rush', 'slam']]},
 };
 // Patient Zero is a human body: a survivor model the player did not pick
-const docModel = () => 'Characters_' + (LOOK.char === 'Matt' ? 'Shaun' : 'Matt');
+// Doc is always the Matt model, dressed by dressDoc() in a lab coat with grey hair and glasses
+const docModel = () => 'Characters_Matt';
 const areaIndex = wave => Math.floor((Math.max(1, wave) - 1) / 5) % AREAS.length;
 const storyFlag = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
 const curArea = () => AREAS[G.area || 0];

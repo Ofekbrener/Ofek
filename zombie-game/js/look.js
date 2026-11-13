@@ -102,3 +102,25 @@ function renderPortrait(rig) {
   r.render(sc, cam); const img = new Image(); img.src = r.domElement.toDataURL('image/png'); PORTRAIT.img = img; r.dispose();
   return img.src;
 }
+
+// ---------- Dr. Adler ----------
+// Doc wears a white lab coat over dark trousers, has grey hair and round glasses. Used for his radio face and for Patient Zero.
+const DOC_LOOK = {skin: '#e9c4a4', top: '#f2f2ec', hair: '#8e9094', bottom: '#2c3445', shoes: '#1e1e1e'};
+function dressDoc(model, char) {
+  if (model.userData.doc) return; model.userData.doc = true;
+  let tex = null;
+  model.traverse(o => { if (o.isSkinnedMesh) { tex = tex || lookTexture({char, colors: DOC_LOOK}, o.material.map); o.material = o.material.clone(); o.material.map = tex; o.material.needsUpdate = true; } });
+  let head = null; model.traverse(o => { if (o.isBone && o.name === 'Head') head = o; }); if (!head) return;
+  const mat = new THREE.MeshStandardMaterial({color: 0x15171c, metalness: .6, roughness: .35}), lens = new THREE.MeshStandardMaterial({color: 0xbfe6ff, transparent: true, opacity: .35, metalness: .2, roughness: .05});
+  const g = new THREE.Group();
+  for (const sx of [-1, 1]) { const rim = new THREE.Mesh(new THREE.TorusGeometry(.062, .013, 6, 18), mat); rim.position.x = sx * .075; g.add(rim);
+    const gl = new THREE.Mesh(new THREE.CircleGeometry(.058, 16), lens); gl.position.set(sx * .075, 0, .002); g.add(gl);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(.012, .012, .16), mat); arm.position.set(sx * .14, .01, -.08); g.add(arm); }
+  const br = new THREE.Mesh(new THREE.BoxGeometry(.05, .012, .012), mat); br.position.y = .02; g.add(br);
+  // place the glasses in front of the eyes, measured in the model's rest pose
+  model.updateMatrixWorld(true); const s = model.getWorldScale(new THREE.Vector3()).y;
+  const hp = head.getWorldPosition(new THREE.Vector3()), eye = hp.clone().add(new THREE.Vector3(0, DOC_EYE.y * s, DOC_EYE.z * s));
+  head.add(g); g.position.copy(head.worldToLocal(eye)); g.scale.setScalar(s / head.getWorldScale(new THREE.Vector3()).y);
+  const hq = head.getWorldQuaternion(new THREE.Quaternion()).invert(), mq = model.getWorldQuaternion(new THREE.Quaternion()); g.quaternion.copy(hq.multiply(mq));
+}
+const DOC_EYE = {y: .2, z: .26};

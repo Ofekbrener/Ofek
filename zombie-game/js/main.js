@@ -187,6 +187,14 @@ window.UPD_EVENT = function (ev, v) {
   if (ev === 'done') msg.textContent = 'Updated. Restarting…';
   if (ev === 'error') { msg.textContent = 'The update did not finish. Check your connection and try again.'; go.disabled = false; go.textContent = 'Try again'; }
 };
+// silence everything while the app is in the background (home button, app switcher, screen off); resume on return
+function appHidden(h) {
+  try { if (h) { if (AU.ctx && AU.ctx.state === 'running') AU.ctx.suspend(); VOICE.stop(); if (window.speechSynthesis) speechSynthesis.cancel(); }
+    else if (AU.ctx && AU.ctx.state === 'suspended') AU.ctx.resume(); } catch (e) {}
+}
+window.APP_PAUSE = () => appHidden(true); window.APP_RESUME = () => appHidden(false);
+document.addEventListener('visibilitychange', () => appHidden(document.hidden));
+window.addEventListener('pagehide', () => appHidden(true)); window.addEventListener('blur', () => { if (document.hidden) appHidden(true); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && (G.state === 'menu' || G.state === 'dead')) checkUpdate(); });
 let MENU_HTML = '';
 function showMenu() {
