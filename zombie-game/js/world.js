@@ -141,14 +141,16 @@ function updateRain(dt) {
 }
 
 // ---------- pickups ----------
-const PICK_GEO = {coin: new THREE.CylinderGeometry(.18, .18, .05, 16), heart: new THREE.OctahedronGeometry(.24), rage: new THREE.IcosahedronGeometry(.26)};
+const PICK_GEO = {coin: new THREE.CylinderGeometry(.18, .18, .05, 16), heart: new THREE.OctahedronGeometry(.24), rage: new THREE.IcosahedronGeometry(.26), gem: new THREE.OctahedronGeometry(.22)};
 const PICK_MAT = {coin: new THREE.MeshStandardMaterial({color: 0xffc83a, metalness: .9, roughness: .25, emissive: 0x3a2500}),
   heart: new THREE.MeshStandardMaterial({color: 0xff3048, emissive: 0x801020, roughness: .3}),
-  rage: new THREE.MeshStandardMaterial({color: 0xff7a1a, emissive: 0xc04000, roughness: .3})};
+  rage: new THREE.MeshStandardMaterial({color: 0xff7a1a, emissive: 0xc04000, roughness: .3}),
+  gem: new THREE.MeshStandardMaterial({color: 0x30e070, emissive: 0x0a8a3a, metalness: .3, roughness: .1})};
 function dropPickup(type, x, z) {
   const m = new THREE.Mesh(PICK_GEO[type], PICK_MAT[type]); m.castShadow = true; if (type === 'coin') m.rotation.x = Math.PI / 2;
   const a = rnd(0, 7), s = rnd(1.5, 3.5);
-  m.position.set(x, .6, z); scene.add(m); G.pickups.push({type, m, x, z, y: .6, vx: Math.cos(a) * s, vz: Math.sin(a) * s, vy: rnd(4, 6), t: 0, life: 14});
+  if (type === 'gem') { m.scale.set(1, 1.5, 1); const l = new THREE.PointLight(0x30ff80, 1.5, 3); m.add(l); AU.play('levelUp', {vol: .4, rate: 1.6}); }
+  m.position.set(x, .6, z); scene.add(m); G.pickups.push({type, m, x, z, y: .6, vx: Math.cos(a) * s, vz: Math.sin(a) * s, vy: rnd(4, 6), t: 0, life: type === 'gem' ? 30 : 14});
 }
 function updatePickups(dt) {
   const p = G.player;
@@ -160,6 +162,7 @@ function updatePickups(dt) {
     if (d < mag && k.t > .35) { const s = (mag - d) * 6 + 4; k.x += dx / d * s * dt; k.z += dz / d * s * dt; }
     if (d < .7 && k.t > .25) { collectPickup(k); k.life = -1; }
     k.m.position.set(k.x, k.y + Math.sin(k.t * 4) * .08, k.z); k.m.rotation.y += dt * 4;
+    if (k.type === 'gem' && Math.random() < .3) addPart({x: k.x + rnd(-.2, .2), y: k.y + rnd(0, .4), z: k.z + rnd(-.2, .2), vx: 0, vz: 0, vy: .8, g: 0, life: .5, max: .5, size: .05, col: '#b8ffd0', drag: 1, rx: 0, ry: 0});
     k.m.visible = k.life > 3 || Math.floor(k.life * 8) % 2 === 0;
   }
   for (const k of G.pickups) if (k.life <= 0) scene.remove(k.m);
@@ -167,7 +170,8 @@ function updatePickups(dt) {
 }
 function collectPickup(k) {
   const p = G.player; flyPickup(k.type, k.x, k.z);
-  if (k.type === 'coin') { G.coins++; G.score += 5; AU.play('coin', {vol: .5, rate: rnd(.95, 1.15), max: 4}); }
+  if (k.type === 'gem') { addGems(1); G.runGems = (G.runGems || 0) + 1; popText(p.x, p.z, '+1 EMERALD', '#30e070', 32, 2.8); AU.play('levelUp', {vol: .7, rate: 1.4}); HAPTIC.fx('card'); ring(p.x, p.z, 1.8, 0x30e070, .4); }
+  if (k.type === 'coin') { G.coins++; G.runCoins = (G.runCoins || 0) + 1; G.score += 5; AU.play('coin', {vol: .5, rate: rnd(.95, 1.15), max: 4}); }
   if (k.type === 'heart') { p.hp = Math.min(p.maxHp, p.hp + 1); AU.play('heart', {vol: .7}); HAPTIC.fx('heart'); popText(p.x, p.z, '+1 ♥', '#ff5a6a', 28); ring(p.x, p.z, 1.6, 0xff4060, .3); }
   if (k.type === 'rage') { POW.add(50); AU.play('rage', {vol: .8}); popText(p.x, p.z, '+50 FURY', '#ff7a1a', 36, 2.6); ring(p.x, p.z, 3, 0xff7a1a, .4); slowmo(.3); }
 }

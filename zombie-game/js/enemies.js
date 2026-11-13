@@ -285,7 +285,8 @@ function killZombie(zb, dir, o) {
   AU.play(pick(['bone', 'skull', 'gore']), {vol: .8, x: zb.x, z: zb.z, delay: .02});
   blood(zb.x, zb.z, T.boss ? 3 : 1.1); burst(zb.x, zb.z, 14, ['#3f9a35', '#2a7a2a', '#7a1f1f'], 7, .14, .8, 1);
   // drops
-  const nc = Math.floor(rnd(T.coins[0], T.coins[1] + 1)); for (let i = 0; i < nc; i++) dropPickup('coin', zb.x, zb.z);
+  const nc = Math.round(Math.floor(rnd(T.coins[0], T.coins[1] + 1)) * (1 + .25 * safeLv('scav'))); for (let i = 0; i < nc; i++) dropPickup('coin', zb.x, zb.z);
+  if (!zb.dummy) maybeDropGem(zb);
   if (Math.random() < (P.hp < P.maxHp ? .12 : .03)) dropPickup('heart', zb.x, zb.z);
   if (T.boss) { dropPickup('heart', zb.x, zb.z); dropPickup('heart', zb.x, zb.z); }
   POW.add(4);

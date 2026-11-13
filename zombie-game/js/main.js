@@ -57,26 +57,28 @@ const ui = document.getElementById('menu');
 const SAVE_KEY = 'ozCheckpoint';
 function saveCheckpoint() {
   const P = G.player; const {magnetPulse, ...up} = UP;
-  const cp = {wave: G.wave, endless: !!G.endless, weapon: P.weapon, maxHp: P.maxHp, coins: G.coins, score: G.score, kills: G.kills, reroll: DRAFT.rerollCost, up};
+  const cp = {wave: G.wave, endless: !!G.endless, weapon: P.weapon, maxHp: P.maxHp, score: G.score, kills: G.kills, reroll: DRAFT.rerollCost, up};
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(cp)); } catch (e) {}
 }
 function loadCheckpoint() { try { const c = JSON.parse(localStorage.getItem(SAVE_KEY)); return c && c.wave > 1 ? c : null; } catch (e) { return null; } }
 function clearCheckpoint() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
 function newRun(cp = null, opts = {}) {
+  HOME.on = false; homeStage(false); ui.className = 'overlay'; const sh = document.getElementById('shop'); if (sh) sh.hidden = true;
   TUT.abort(); document.getElementById('creator').hidden = true;
   AU.resume(); clearZombies(); clearPickups(); clearFX(); clearTrail(); resetUpgrades(); POW.reset(); clearGear();
   if (G.player && G.player.javelin) { scene.remove(G.player.javelin.g); G.player.javelin = null; }
 
   G.endless = !!(opts.endless || (cp && cp.endless));
-  Object.assign(G, {wave: G.endless && !cp ? 25 : 0, score: 0, coins: 0, kills: 0, combo: 0, hitstop: 0, trauma: 0, slowT: 0, timeScale: 1, flash: 0, hurtFlash: 0});
+  Object.assign(G, {wave: G.endless && !cp ? 25 : 0, score: 0, runCoins: 0, runGems: 0, kills: 0, combo: 0, hitstop: 0, trauma: 0, slowT: 0, timeScale: 1, flash: 0, hurtFlash: 0});
   DRAFT.rerollCost = 10;
   makePlayer(); G.cam.x = 0; G.cam.z = 2;
   if (cp) { // resume: same weapon, upgrades, coins and score, full hearts, the wave you died on
     Object.assign(UP, cp.up); equipWeapon(cp.weapon); G.player.maxHp = G.player.hp = cp.maxHp;
-    Object.assign(G, {wave: cp.wave - 1, coins: cp.coins, score: cp.score, kills: cp.kills}); DRAFT.rerollCost = cp.reroll;
+    Object.assign(G, {wave: cp.wave - 1, score: cp.score, kills: cp.kills}); DRAFT.rerollCost = cp.reroll;
     UP.el = Object.assign({fire: 0, frost: 0, storm: 0, poison: 0}, cp.up.el || {}); UP.gear = Object.assign({}, cp.up.gear || {}); UP.wlvl = cp.up.wlvl || 1;
     if (cp.weapon) { LOOK.weapon = LOOK.weapon; equipWeapon(cp.weapon); } buildGear();
-  } else clearCheckpoint();
+    G.player.revive = safeLv('wind');
+  } else { clearCheckpoint(); applySafehouse(); }
   ui.hidden = true; document.getElementById('draft').hidden = true; G.state = 'playing'; RADIO.clear();
   G.area = areaIndex(G.wave + 1); if (WORLD.built !== G.area) buildLayout(G.area); else resetBarrels();
   if (G.area === 4) ensureCharacter(docModel().slice(11)).catch(() => {});
@@ -117,8 +119,10 @@ function gameOver() {
   G.state = 'dead'; ui.hidden = false;
   let best = 0; try { best = +localStorage.getItem('ozBest') || 0; if (G.score > best) { localStorage.setItem('ozBest', G.score); } } catch (e) {}
   ui.innerHTML = `<h1>YOU FELL</h1><p class="big">Wave ${G.wave} · ${G.score} points · ${G.kills} kills</p>
-    <p>${G.score > best ? 'New best score!' : 'Best: ' + best}</p>${menuButtons('Play again')}`;
-  wireMenu();
+    <p>${G.score > best ? 'New best score!' : 'Best: ' + best}</p>
+    <p class="earn"><span><i class="ccoin"></i>+${G.runCoins || 0} coins kept</span>${G.runGems ? `<span><i class="cgem"></i>+${G.runGems} emeralds</span>` : ''}</p>${menuButtons('Play again')}
+    <button id="toHome" class="ghost">Home · spend your coins</button>`;
+  wireMenu(); saveMeta(); document.getElementById('toHome').onclick = showMenu;
 }
 // APK only: the build number comes from js/build.js (written by tools/prepare-android.sh).
 // One request per launch to the release; a newer build shows a download strip on the menu.
@@ -159,9 +163,13 @@ window.UPD_EVENT = function (ev, v) {
 };
 let MENU_HTML = '';
 function showMenu() {
-  G.state = 'menu'; ui.hidden = false; ui.innerHTML = MENU_HTML;
+  G.state = 'menu'; ui.hidden = false; HOME.on = false; saveMeta();
+  const P = G.player; if (P) { P.x = 0; P.z = 5; P.dead = false; P.rig.play('Idle', {fade: .2}); } G.cam.x = 0; G.cam.z = 5;
+  if (WORLD.built !== 0) buildLayout(0);
+  // first launch goes straight to the story, the survivor creator and training; after that, the home screen
+  if (!firstTime()) { ui.className = 'overlay homeui'; showHome(); return; }
+  ui.className = 'overlay'; ui.innerHTML = MENU_HTML;
   document.getElementById('go').outerHTML = menuButtons('Play'); wireMenu();
-  const P = G.player; if (P) { P.x = 0; P.z = 0; } G.cam.x = 0; G.cam.z = 0;
 }
 
 // ---------- loop ----------
@@ -179,7 +187,7 @@ function frame(ts) {
     if (dt > 0) { updatePlayer(dt); updateGear(dt); POW.update(dt); updateZombies(dt); updateWaves(dt); updateBarrels(dt); updatePickups(dt); }
     G.comboT -= dt; if (G.comboT <= 0) G.combo = 0;
   } else if ((G.state === 'draft' || G.state === 'travel') && G.player) { G.player.rig.play('Idle', {fade: .3}); G.player.rig.mixer.update(raw); for (const zb of G.zombies) zb.rig.mixer.update(raw); }
-  else if (G.state === 'menu' && G.player) { G.player.rig.mixer.update(raw); G.player.face += raw * .3; syncPlayer(); }
+  else if (G.state === 'menu' && G.player) { G.player.rig.mixer.update(raw); if (!HOME.on) G.player.face += raw * .3; else cosAura(G.player, raw); syncPlayer(); }
   else if (G.state === 'creator') updateCreator(raw);
   else if (G.state === 'intro') STORY.update(raw);
   else if (G.state === 'cutscene') TRAVEL.update(raw);
@@ -190,6 +198,7 @@ function frame(ts) {
   updateFX(dt || raw * .02); updateRain(raw);
   G.trauma = Math.max(0, G.trauma - raw * 1.6); G.flash = Math.max(0, G.flash - raw * 2); G.hurtFlash = Math.max(0, G.hurtFlash - raw * 2);
   if (G.player && G.state !== 'creator' && G.state !== 'intro' && G.state !== 'cutscene' && !MAP3D.on) updateCamera(raw);
+  if (G.state === 'menu' && HOME.on && G.player) homeCamera(raw);
   renderFX(); renderer.render(scene, camera); drawHUD(raw);
 }
 

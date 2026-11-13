@@ -158,7 +158,7 @@ function cardHTML(c, i) {
     <span class="rar"><i></i>${c.rarity}</span></button>`;
 }
 function openDraft() {
-  G.state = 'draft'; DRAFT.cards = rollCards(); AU.musicTo('music_calm'); AU.play('cardOpen', {vol: .8});
+  G.state = 'draft'; DRAFT.free = safeLv('dice'); DRAFT.cards = rollCards(); AU.musicTo('music_calm'); AU.play('cardOpen', {vol: .8});
   renderDraft(true);
 }
 function renderDraft(deal) {
@@ -171,7 +171,7 @@ function renderDraft(deal) {
       <div class="dnext">${next}</div></div>
     <p class="sub">Choose 1 upgrade</p>
     <div class="cards ${deal ? 'deal' : ''}">${DRAFT.cards.map(cardHTML).join('')}</div>
-    <button class="reroll" id="reroll" ${G.coins < DRAFT.rerollCost ? 'disabled' : ''}><span class="dice">⚄</span>Reroll <span class="coin"></span>${DRAFT.rerollCost}</button>
+    <button class="reroll" id="reroll" ${G.coins < DRAFT.rerollCost && !DRAFT.free ? 'disabled' : ''}><span class="dice">⚄</span>Reroll ${DRAFT.free ? '<b class="free">FREE</b>' : `<span class="coin"></span>${DRAFT.rerollCost}`}</button>
     ${buildBarHTML()}`;
   el.querySelectorAll('.card').forEach((b, i) => {
     b.onclick = () => pickCard(+b.dataset.i);
@@ -184,7 +184,7 @@ function renderDraft(deal) {
   setTimeout(() => { const f = document.getElementById('card0'); f && f.focus({preventScroll: true}); }, 500);
 }
 function reroll() {
-  if (G.coins < DRAFT.rerollCost) return; G.coins -= DRAFT.rerollCost; DRAFT.rerollCost += 10;
+  if (DRAFT.free) DRAFT.free = 0; else { if (G.coins < DRAFT.rerollCost) return; G.coins -= DRAFT.rerollCost; DRAFT.rerollCost += 10; }
   DRAFT.cards = rollCards(); AU.play('coin', {vol: .7}); AU.play('cardOpen', {vol: .6}); renderDraft(true);
 }
 function pickCard(i) {

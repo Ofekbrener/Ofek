@@ -37,19 +37,20 @@ function makePlayer() {
     weapon: 'Knife', wMesh: null, atk: null, queued: false, combo: 0, lastAtkEnd: -9, inv: 0, hurtT: 0, dashT: 0, dashCd: 0, stepD: 0,
     dead: false, deadT: 0, slam: false, landT: 0, spd: 0, killsForHeal: 0, javelin: null, stormN: 0, twist: 0, lean: 0, poseW: 0, poseKey: null};
   P.wLight = new THREE.PointLight(0xff6a1a, 0, 4, 2);
-  equipWeapon(WEAPONS[LOOK.weapon] ? LOOK.weapon : 'Knife'); rig.play('Idle');
+  equipWeapon(WEAPONS[LOOK.weapon] ? LOOK.weapon : 'Knife'); rig.play('Idle'); applyCosmetics(rig);
   return P;
 }
 function equipWeapon(name) {
   const P = G.player; P.weapon = name;
   P.rig.model.traverse(o => { if (WEAPON_MESHES.includes(o.name)) { o.visible = o.name === name; if (o.name === name) P.wMesh = o; } });
   if (P.wMesh) { const e = weaponEnds(P.wMesh, .5); P.wMesh.add(P.wLight); P.wLight.position.copy(e.tip).lerp(e.grip, .3); }
+  skinWeapon();
   clearTrail();
 }
 const weapon = () => WEAPONS[G.player.weapon];
 const atkSpeed = () => UP.atkSpeed * POW.atkSpeed();
 // with elements active, the trail cycles through their colors and mixes their particles
-const trailStyle = () => { const els = elActive(); if (!els.length) return weapon().trail; const e = ELEMENTS[els[Math.floor(G.time * 2.5) % els.length]]; return {col: e.col, fx: ELEMENTS[pick(els)].fx}; };
+const trailStyle = () => { const els = elActive(); if (!els.length) { const tc = cosTrailCol(); return tc ? {col: tc, fx: weapon().trail.fx} : weapon().trail; } const e = ELEMENTS[els[Math.floor(G.time * 2.5) % els.length]]; return {col: e.col, fx: ELEMENTS[pick(els)].fx}; };
 const wDmg = () => weapon().dmg + UP.dmg + (UP.wlvl - 1);
 const wRange = () => weapon().range * UP.range * (UP.wlvl >= 3 ? 1.15 : 1) * (POW.is('giant') ? 1.25 : 1);
 
@@ -245,6 +246,11 @@ function hurtPlayer(dmg, fx, fz) {
   AU.play('hitHardest', {vol: 1, rate: .9}); AU.play('pHurt', {vol: .9, bus: 'voice', max: 1}); AU.duck(.3, .4);
   if (P.atk) { P.atk = null; P.rig.body.scale.x = 1; P.rig.body.rotation.y = 0; }
   HAPTIC.fx(P.hp <= 0 ? 'death' : 'hurt');
+  if (P.hp <= 0 && P.revive > 0) { // Second Wind from the Safehouse
+    P.revive--; P.hp = 2; P.inv = 3; slowmo(1); G.flash = .6; ring(P.x, P.z, 4, 0xffe14a, .6); boom(P.x, P.z, 0xffe14a, 8); popText(P.x, P.z, 'SECOND WIND', '#ffe14a', 42, 3); AU.play('levelUp', {vol: 1}); HAPTIC.fx('boss');
+    for (const zb of G.zombies) if (!zb.dying && !zb.T.boss && Math.hypot(zb.x - P.x, zb.z - P.z) < 5) { zb.vx += (zb.x - P.x) * 3; zb.vz += (zb.z - P.z) * 3; zb.stun = 1; }
+    return true;
+  }
   if (P.hp <= 0) { P.dead = true; P.deadT = 0; P.rig.play('Death', {loop: false, restart: true, fade: .08}); slowmo(1.2); AU.play('pDeath', {bus: 'voice'}); AU.play('lose', {vol: .8, delay: .6}); AU.musicTo('music_calm', 2); setTimeout(gameOver, 2200); }
   else P.rig.play('HitReact', {loop: false, restart: true, fade: .05});
   return true;
@@ -277,6 +283,7 @@ function updatePlayer(dt) {
   inArena(P, .45); collide(P, .45);
   P.spd = Math.hypot(P.vx, P.vz);
   if (ml > .2 && !P.atk) P.face = Math.atan2(mv.z, mv.x);
+  cosAura(P, dt);
   if (P.dashT > 0 && Math.random() < .8) addPart({x: P.x, y: .9, z: P.z, vx: 0, vz: 0, vy: 0, g: 0, life: .25, max: .25, size: .35, col: '#7f8fb8', drag: 1, rx: 0, ry: 0});
   if (P.air) { P.y += P.vy * dt; P.vy -= 24 * dt; if (P.y <= 0) land(); else if (rig.curName === 'Jump' && rig.cur.time >= rig.dur('Jump') * .95 && !P.slam) rig.play('Jump_Idle', {fade: .08}); }
   // attack timeline in clip time: slow wind-up (0.6x) -> snap through the strike (1.7x) -> recovery -> chain

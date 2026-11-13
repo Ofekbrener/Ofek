@@ -16,7 +16,7 @@ const FONT = s => `${s}px Oswald, Impact, system-ui, sans-serif`;
 
 function drawHUD(dt) {
   hx.setTransform(DPR, 0, 0, DPR, 0, 0); hx.clearRect(0, 0, W, H);
-  const P = G.player, t = G.time; if (!P || G.state === 'creator' || G.state === 'intro' || G.state === 'cutscene' || MAP3D.on) return;
+  const P = G.player, t = G.time; if (!P || HOME.on || G.state === 'creator' || G.state === 'intro' || G.state === 'cutscene' || MAP3D.on) return;
   // floating text in the world
   for (const tx of FX.texts) {
     const [x, y, ok] = toScreen(tx.x, tx.y, tx.z); if (!ok) continue;
@@ -42,6 +42,7 @@ function drawHUD(dt) {
   const hsc = FLY.slotPop('hearts', L + 100, T + 14), csc = FLY.slotPop('coins', L + 76, T + 44, 12);
   hx.save(); hx.translate(L + 66, T + 22); hx.scale(hsc, hsc); stroked(hs, 0, 0, FONT(24), '#ff4a5a', 4, 'left'); hx.restore();
   hx.save(); hx.translate(L + 66, T + 50); hx.scale(csc, csc); stroked('● ' + G.coins, 0, 0, FONT(18), '#ffc83a', 4, 'left'); hx.restore();
+  const gsc = FLY.slotPop('gems', L + 150, T + 44, 12); hx.save(); hx.translate(L + 138, T + 50); hx.scale(gsc, gsc); stroked('◆ ' + META.gems, 0, 0, FONT(18), '#30e070', 4, 'left'); hx.restore();
   // FURY meter: fills from hits and kills, fires a power-up when full
   { const bx = L, by = T + 66, bw = 150, bh = 9, k = POW.active ? clamp(POW.t / POWERS[POW.active].dur, 0, 1) : POW.fury / 100;
     hx.fillStyle = 'rgba(0,0,0,.55)'; hx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);

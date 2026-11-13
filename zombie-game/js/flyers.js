@@ -5,7 +5,7 @@ const FLY = {list: [], bump: {}};
 // slot -> screen point, read every frame so moving targets work
 const HUD_SLOT = {
   player: () => { const P = G.player, [x, y] = toScreen(P.x, 1.3 * (POW.scale || 1), P.z); return {x, y}; },
-  coins: () => ({x: 90, y: 58}), hearts: () => ({x: 120, y: 30}), fury: () => ({x: 90, y: 84}),
+  coins: () => ({x: 90, y: 58}), gems: () => ({x: 160, y: 58}), hearts: () => ({x: 120, y: 30}), fury: () => ({x: 90, y: 84}),
   weapon: () => ({x: 34, y: H - 38}),
   gear: i => () => ({x: 22 + i * 40, y: H - 92}), el: i => () => ({x: 70 + i * 16, y: H - 52}),
 };
@@ -59,5 +59,6 @@ function flyPickup(type, wx, wz) {
   const [x, y, ok] = toScreen(wx, .6, wz); if (!ok) return;
   if (type === 'coin') flyTo('<b class="fcoin"></b>', {x, y}, HUD_SLOT.coins, {dur: .45, arc: 40, size: 22, endScale: .8, spin: 0, col: '#ffc83a', trail: false, onArrive: () => { FLY.bump.coins = G.time; }});
   if (type === 'heart') flyTo('<b class="fheart">♥</b>', {x, y}, HUD_SLOT.hearts, {dur: .6, arc: 70, size: 34, endScale: .7, spin: 0, col: '#ff4a5a', onArrive: () => { FLY.bump.hearts = G.time; AU.play('heart', {vol: .4, rate: 1.3}); }});
+  if (type === 'gem') flyTo('<b class="fgem"></b>', {x, y}, HUD_SLOT.gems, {dur: .8, arc: 90, size: 30, endScale: .7, spin: 1, col: '#30e070', onArrive: () => { FLY.bump.gems = G.time; }});
   if (type === 'rage') flyTo('<b class="frage">▲</b>', {x, y}, HUD_SLOT.fury, {dur: .55, arc: 60, size: 30, endScale: .7, spin: 1, col: '#ff7a1a', onArrive: () => { FLY.bump.fury = G.time; }});
 }
