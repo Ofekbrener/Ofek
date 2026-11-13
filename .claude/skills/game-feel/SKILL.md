@@ -123,3 +123,7 @@ Single-file canvas example: see `example-arena.html` next to this file for a ful
 - A swing nobody can see is no swing. Draw a ribbon trail between the weapon's base and tip for the active frames, color it per weapon, and emit particles from the tip (embers, sparks, splinters, notes, frost).
 - Clips that only move the arm read small from a top-down camera. Layer a torso twist on top: turn away during the wind-up, whip through on the strike. Play the wind-up at 0.6x and the strike at 1.7x.
 - Each weapon needs its own verb, not only its own numbers: a status effect on hit (burn, bleed stacks, stun) and a 4th-hit finisher (flurry, thrown javelin, home run, spinning grind, fire line, cone shockwave).
+- Upgrades should build on what the player already has. Swapping the main weapon every draft erases mastery; weapon levels, stacking elements and auto-attacking gear keep the run growing.
+- Give enemies attack tokens: at most 2 or 3 swing at once while the rest crowd. A crowd stays scary without stacking unavoidable damage.
+- Fill a meter from hits and kills and fire a short power-up when it is full. Sell each one with a slow-motion start, a banner, a screen-edge glow, an aura, a timer ring under the feet and its own sound.
+- Balance with a bot: a scripted player run through `simulate()` across 5 seeds tells you which wave kills a simple player, before and after a change.

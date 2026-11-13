@@ -10,6 +10,8 @@ HUD.layout = () => { const b = HUD.btn, R = W - 24, B = H - 24; b.atk.x = R - 50
 const _pv = new THREE.Vector3();
 function toScreen(x, y, z) { _pv.set(x, y, z).project(camera); return [(_pv.x + 1) / 2 * W, (1 - _pv.y) / 2 * H, _pv.z < 1]; }
 function stroked(txt, x, y, font, fill, lw = 5, align = 'center') { hx.font = font; hx.textAlign = align; hx.lineWidth = lw; hx.strokeStyle = '#000'; hx.lineJoin = 'round'; hx.strokeText(txt, x, y); hx.fillStyle = fill; hx.fillText(txt, x, y); }
+const GEAR_IMGS = {};
+function gearImg(id) { if (!GEAR_IMGS[id]) { const i = new Image(); i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(emblem(GEAR[id].icon, 'gear').replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')); GEAR_IMGS[id] = i; } return GEAR_IMGS[id]; }
 const FONT = s => `${s}px Oswald, Impact, system-ui, sans-serif`;
 
 function drawHUD(dt) {
@@ -25,7 +27,13 @@ function drawHUD(dt) {
   if (G.flash > 0) { hx.fillStyle = `rgba(255,255,255,${G.flash * .45})`; hx.fillRect(0, 0, W, H); }
   if (G.hurtFlash > 0) { hx.fillStyle = `rgba(200,20,20,${G.hurtFlash * .45})`; hx.fillRect(0, 0, W, H); }
   if (P.hp <= 1 && !P.dead) { const v = hx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7); v.addColorStop(0, 'rgba(255,0,0,0)'); v.addColorStop(1, `rgba(255,0,0,${.28 + .12 * Math.sin(t * 6)})`); hx.fillStyle = v; hx.fillRect(0, 0, W, H); }
-  if (P.rage > 0) { hx.strokeStyle = `rgba(255,120,20,${.4 + .2 * Math.sin(t * 10)})`; hx.lineWidth = 10; hx.strokeRect(5, 5, W - 10, H - 10); }
+  // active power-up: colored glow on the screen edge (and a blue tint for TIME WARP)
+  if (POW.active) {
+    const c = POWERS[POW.active].css, a = .35 + .15 * Math.sin(t * 9), gw = Math.min(W, H) * .12;
+    for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, 0, gw, 0, 0, W, gw], [0, H, 0, H - gw, 0, H - gw, W, gw], [0, 0, gw, 0, 0, 0, gw, H], [W, 0, W - gw, 0, W - gw, 0, gw, H]]) {
+      const g = hx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`); hx.fillStyle = g; hx.fillRect(rx, ry, rw, rh); }
+    if (POW.is('warp')) { hx.fillStyle = 'rgba(40,70,200,.12)'; hx.fillRect(0, 0, W, H); }
+  }
   // portrait, hearts, coins
   const L = 16, T = 14;
   const pi = PORTRAIT.img; hx.save(); hx.beginPath(); hx.arc(L + 28, T + 28, 28, 0, 7); const bg = hx.createRadialGradient(L + 28, T + 20, 4, L + 28, T + 28, 30); bg.addColorStop(0, '#3a3f58'); bg.addColorStop(1, '#14161f'); hx.fillStyle = bg; hx.fill(); hx.clip(); if (pi && pi.complete && pi.naturalWidth) hx.drawImage(pi, L - 4, T - 4, 64, 64); hx.restore();
@@ -33,6 +41,12 @@ function drawHUD(dt) {
   let hs = ''; for (let i = 0; i < P.maxHp; i++) hs += i < P.hp ? '♥' : '♡';
   stroked(hs, L + 66, T + 22, FONT(24), '#ff4a5a', 4, 'left');
   stroked('● ' + G.coins, L + 66, T + 50, FONT(18), '#ffc83a', 4, 'left');
+  // FURY meter: fills from hits and kills, fires a power-up when full
+  { const bx = L, by = T + 66, bw = 150, bh = 9, k = POW.active ? clamp(POW.t / POWERS[POW.active].dur, 0, 1) : POW.fury / 100;
+    hx.fillStyle = 'rgba(0,0,0,.55)'; hx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
+    const col = POW.active ? '#' + new THREE.Color(POWERS[POW.active].col).getHexString() : POW.fury > 85 ? `hsl(${20 + 20 * Math.sin(t * 12)},100%,55%)` : '#ff7a1a';
+    hx.fillStyle = col; hx.fillRect(bx, by, bw * k, bh);
+    stroked(POW.active ? POWERS[POW.active].name + ' ' + Math.ceil(POW.t) + 's' : 'FURY', bx + bw + 8, by + 9, FONT(13), POW.active ? col : '#ffb070', 3, 'left'); }
   // score, wave, remaining
   stroked(String(G.score), W - 16, 38, FONT(30), '#ffffff', 5, 'right');
   const left = WAVE.total - WAVE.killed;
@@ -40,7 +54,14 @@ function drawHUD(dt) {
   if (G.combo > 2) { const s = 1 + Math.max(0, G.comboT - 1.7) * 3; hx.save(); hx.translate(W - 16, 104); hx.scale(s, s); stroked('x' + G.combo, 0, 0, FONT(26 + Math.min(G.combo, 30) * .7), '#ffcc33', 5, 'right'); hx.restore(); }
   // weapon + upgrade badges
   const w = weapon(), wi = WEAPON_IMG[P.weapon]; if (wi && wi.complete) hx.drawImage(wi, 6, H - 66, 56, 56);
-  stroked((UP.infuse ? INFUSE[UP.infuse].name + ' ' : '') + w.name, 62, H - 26, FONT(20), '#' + new THREE.Color(w.col).getHexString(), 4, 'left');
+  // element dots and gear icons with cooldown rings above the weapon name
+  elActive().forEach((e, i) => { hx.fillStyle = '#' + new THREE.Color(ELEMENTS[e].col).getHexString(); hx.beginPath(); hx.arc(70 + i * 16, H - 52, 6, 0, 7); hx.fill(); hx.strokeStyle = '#000'; hx.lineWidth = 2; hx.stroke(); stroked(String(UP.el[e]), 70 + i * 16, H - 48, FONT(9), '#000', 0); });
+  Object.keys(UP.gear).forEach((g, i) => { const x = 22 + i * 40, y = H - 92, img = gearImg(g);
+    hx.fillStyle = 'rgba(0,0,0,.6)'; hx.beginPath(); hx.arc(x, y, 17, 0, 7); hx.fill(); if (img.complete) hx.drawImage(img, x - 13, y - 13, 26, 26);
+    const cdMax = {molotov: 4 - .4 * (gearLvl(g) - 1), tesla: 2.5 - .2 * (gearLvl(g) - 1), pulse: 5 - .3 * (gearLvl(g) - 1)}[g];
+    if (cdMax && GS.cd[g] !== undefined) { hx.strokeStyle = '#a8fff0'; hx.lineWidth = 3; hx.beginPath(); hx.arc(x, y, 17, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - clamp(GS.cd[g] / cdMax, 0, 1))); hx.stroke(); }
+    stroked(String(gearLvl(g)), x + 13, y + 15, FONT(12), '#a8fff0', 3); });
+  stroked(w.name + (UP.wlvl > 1 ? ' Lv ' + UP.wlvl : ''), 62, H - 26, FONT(20), '#' + new THREE.Color(w.col).getHexString(), 4, 'left');
     
   // boss bar
   const B = WAVE.boss; if (B && !B.dying) {

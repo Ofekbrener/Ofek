@@ -22,7 +22,6 @@ const WEAPONS = {
     combo: ['Slash', 'Punch', 'Slash', 'PowerChord'], fin: 'POWER CHORD', finText: 'a 5.5 m shockwave that knocks everyone down', swing: 'swingWide', hit: ['guitarHit', 'hitWood'],
     col: 0xd38cff, trail: {col: 0xc070ff, width: 1.15, base: .3, fx: 'notes'}, desc: 'Every hit stuns for 1 s.'},
 };
-const INFUSE = {fire: {col: 0xff6a1a, fx: 'fire', name: 'FIRE'}, frost: {col: 0x8fe8ff, fx: 'frost', name: 'FROST'}, storm: {col: 0xbfe0ff, fx: 'storm', name: 'STORM'}};
 // finisher -> clip, speed multiplier, repeats, spin turns
 const FIN = {Flurry: {clip: 'Stab', spd: 2.3, rep: 5}, Javelin: {clip: 'Punch', spd: 1}, HomeRun: {clip: 'Slash', spd: .75},
   Grinder: {clip: 'Slash', spd: .55, spin: 2, ticks: 6}, FireLine: {clip: 'Slash', spd: .7}, PowerChord: {clip: 'Slash', spd: .8}};
@@ -35,7 +34,7 @@ function makePlayer() {
   const rig = new Rig('Characters_' + (MODELS['Characters_' + LOOK.char] ? LOOK.char : 'Matt'));
   applyLook(rig, LOOK);
   const P = G.player = {x: 0, z: 2, vx: 0, vz: 0, y: 0, vy: 0, air: false, face: -Math.PI / 2, hp: 5, maxHp: 5, rig,
-    weapon: 'Knife', wMesh: null, atk: null, queued: false, combo: 0, lastAtkEnd: -9, inv: 0, hurtT: 0, rage: 0, dashT: 0, dashCd: 0, stepD: 0,
+    weapon: 'Knife', wMesh: null, atk: null, queued: false, combo: 0, lastAtkEnd: -9, inv: 0, hurtT: 0, dashT: 0, dashCd: 0, stepD: 0,
     dead: false, deadT: 0, slam: false, landT: 0, spd: 0, killsForHeal: 0, javelin: null, stormN: 0, twist: 0, lean: 0};
   P.wLight = new THREE.PointLight(0xff6a1a, 0, 4, 2);
   equipWeapon(WEAPONS[LOOK.weapon] ? LOOK.weapon : 'Knife'); rig.play('Idle');
@@ -48,8 +47,11 @@ function equipWeapon(name) {
   clearTrail();
 }
 const weapon = () => WEAPONS[G.player.weapon];
-const atkSpeed = () => UP.atkSpeed * (G.player.rage > 0 ? 1.3 : 1);
-const trailStyle = () => { const w = weapon(), inf = UP.infuse && INFUSE[UP.infuse]; return inf ? {col: inf.col, fx: inf.fx} : w.trail; };
+const atkSpeed = () => UP.atkSpeed * POW.atkSpeed();
+// with elements active, the trail cycles through their colors and mixes their particles
+const trailStyle = () => { const els = elActive(); if (!els.length) return weapon().trail; const e = ELEMENTS[els[Math.floor(G.time * 2.5) % els.length]]; return {col: e.col, fx: ELEMENTS[pick(els)].fx}; };
+const wDmg = () => weapon().dmg + UP.dmg + (UP.wlvl - 1);
+const wRange = () => weapon().range * UP.range * (UP.wlvl >= 3 ? 1.15 : 1) * (POW.is('giant') ? 1.25 : 1);
 
 function nearestZombie(maxD) {
   let best = null, bd = maxD; const P = G.player;
@@ -62,7 +64,8 @@ function startAttack() {
   if (P.hurtT > 0 || P.javelin) return;
   if (P.air) { if (!P.slam) { P.slam = true; P.vy = -20; P.rig.play('Slash', {loop: false, restart: true, speed: 1.6, fade: .05}); AU.play('swingHeavy', {rate: .8}); } return; }
   const w = weapon(); if (G.time - P.lastAtkEnd > .6) P.combo = 0;
-  const kind = w.combo[P.combo % w.combo.length]; P.combo++;
+  // FRENZY: the finisher comes every 3rd hit
+  const kind = POW.is('frenzy') && P.combo % 3 === 2 ? w.combo[3] : w.combo[P.combo % w.combo.length]; P.combo++;
   // aim at the nearest zombie, or at a barrel when one is closer and within reach
   let t = nearestZombie(5.5); const td = t ? Math.hypot(t.x - P.x, t.z - P.z) : 1e9;
   for (const br of G.barrels) { if (br.dead) continue; const d = Math.hypot(br.x - P.x, br.z - P.z); if (d < 3 && d < td) { t = br; break; } }
@@ -74,7 +77,7 @@ function startAttack() {
   P.rig.play(clip, {loop: false, restart: true, speed: base * .75, fade: .1});
   const clipDur = P.rig.dur(clip);
   P.atk = {kind, clip, ct: 0, clipDur, hitAt: CLIP_HIT[clip] * clipDur, base, hit: false, swung: false, dir, fin: F || null,
-    rep: F && F.rep ? F.rep : 1, ticks: F && F.ticks ? F.ticks : 0, tickN: 0, spin: F && F.spin ? F.spin : 0};
+    rep: F && F.rep ? F.rep + (UP.wlvl >= 5 ? 2 : 0) : 1, ticks: F && F.ticks ? F.ticks + (UP.wlvl >= 5 ? 3 : 0) : 0, tickN: 0, spin: F && F.spin ? F.spin : 0};
   P.face = dir; P.queued = false; P.vx *= .4; P.vz *= .4;
   if (F) { AU.play('pEffort', {vol: .7, bus: 'voice', max: 1}); popText(P.x, P.z, w.fin + '!', '#' + new THREE.Color(w.col).getHexString(), 34, 3.2); }
   else if (Math.random() < .3) AU.play('pEffort', {vol: .5, bus: 'voice', max: 1});
@@ -87,12 +90,12 @@ function strike(a) {
   const P = G.player, w = weapon(), F = a.kind;
   const lunge = (a.kind === 'Stab' ? 1.3 : 1) * w.lunge; P.vx += Math.cos(a.dir) * lunge; P.vz += Math.sin(a.dir) * lunge;
   G.cam.kx += Math.cos(a.dir) * .3; G.cam.kz += Math.sin(a.dir) * .3; G.cam.roll += (P.rig.body.scale.x < 0 ? -1 : 1) * (w.cls === 'heavy' || a.fin ? .05 : .02);
-  const dmg = w.dmg + UP.dmg + (P.rage > 0 ? 1 : 0);
+  const dmg = wDmg();
   if (a.fin) TUT.event('finisher');
   if (F === 'Javelin') return throwJavelin(a.dir);
   if (F === 'HomeRun') return homeRun(a.dir, dmg);
   if (F === 'PowerChord') return powerChord(a.dir, dmg);
-  const range = w.range * UP.range * (a.kind === 'Stab' ? 1.15 : 1) * (F === 'Flurry' ? 1.1 : 1);
+  const range = wRange() * (a.kind === 'Stab' ? 1.15 : 1) * (F === 'Flurry' ? 1.1 : 1);
   const arc = a.kind === 'Stab' || F === 'Flurry' ? Math.min(.6, w.arc) : w.arc;
   hitArea(P.x, P.z, a.dir, range, arc, dmg + (F ? 1 : 0), {kind: a.kind, finisher: !!a.fin, w});
   if (F === 'FireLine') fireLine(P.x, P.z, a.dir);
@@ -106,7 +109,7 @@ function hitArea(x, z, dir, range, arc, dmg, o) {
     if (d > range + zb.r) continue;
     if (Math.abs(angDiff(dir, toZ)) > arc && d > zb.r + .3) continue;
     const behind = w.cls === 'blade' && Math.abs(angDiff(zb.face, toZ)) < 1.2; // zombie faces away from you
-    let dd = dmg; const crit = Math.random() < UP.crit + (behind ? .5 : 0); if (crit) dd *= 2;
+    let dd = Math.round(dmg * POW.dmgMul()); const crit = Math.random() < UP.crit + (behind ? .5 : 0); if (crit) dd *= 2;
     damageZombie(zb, toZ, dd, {w, kind: o.kind, finisher: o.finisher, crit, slam: o.slam, kb: o.kb});
     if (!zb.dying) onWeaponHit(zb, w, toZ);
     hits++;
@@ -114,14 +117,14 @@ function hitArea(x, z, dir, range, arc, dmg, o) {
   for (const b of G.barrels) if (!b.dead && Math.hypot(b.x - x, b.z - z) < range + .4 && (Math.abs(angDiff(dir, Math.atan2(b.z - z, b.x - x))) < arc || o.slam)) hitBarrel(b);
   const kills = G.kills - kills0;
   if (hits) {
-    TUT.event('hit');
+    TUT.event('hit'); POW.onHits(hits); POW.onSwingHit(hits);
     HAPTIC.fx(kills >= 2 ? 'multiKill' : kills ? 'kill' : 'hit');
     const heavy = w.cls === 'heavy' || o.finisher || o.slam;
     if (!o.light) { hitstop((kills ? .11 + Math.min(kills, 4) * .025 : .06) * (heavy ? 1.3 : 1)); shake((kills ? .4 : .2) + (heavy ? .15 : 0)); }
     AU.play(w.hit[0], {vol: o.light ? .6 : 1, rate: heavy ? .85 : 1, dur: .6, max: 4});
     if (!o.light) AU.play(w.hit[1], {vol: .7, dur: .6, delay: .02});
     AU.duck(kills ? .45 : .7, .2);
-    if (kills >= 2) { slowmo(.3 + .1 * kills); popText(x, z, kills + 'x KILL!', '#ff4fd8', 38 + kills * 6, 3); AU.play('levelUp', {vol: .5}); }
+    if (kills >= 2) { POW.add(kills * 3); slowmo(.3 + .1 * kills); popText(x, z, kills + 'x KILL!', '#ff4fd8', 38 + kills * 6, 3); AU.play('levelUp', {vol: .5}); }
   }
   return hits;
 }
@@ -132,16 +135,23 @@ function onWeaponHit(zb, w, dir) {
   if (w.name === 'GUITAR') { zb.stun = Math.max(zb.stun, 1); notes(zb.x, zb.z, 6); }
   if (w.name === 'BARBED BAT') burst(zb.x, zb.z, 8, ['#8a5a2a', '#c08850', '#5a3818'], 7, .1, .6, 1.1);
   if (w.cls === 'blade') sparks(zb.x, zb.z, dir, 6, '#ffffff');
-  const inf = UP.infuse;
-  if (inf === 'fire') zb.burn = 3;
-  if (inf === 'frost') { zb.slow = 2.2; burst(zb.x, zb.z, 8, ['#cff6ff', '#8fe8ff', '#ffffff'], 4, .1, .6, 1.2); }
-  if (inf === 'storm') {
-    const P = G.player; P.stormN++;
-    if (P.stormN % 3 === 0) {
-      let n = 0; for (const o of G.zombies) { if (o === zb || o.dying || o.state === 'rise' || n >= 2) continue; if (Math.hypot(o.x - zb.x, o.z - zb.z) < 6) { bolt(zb.x, zb.z, o.x, o.z); damageZombie(o, Math.atan2(o.z - zb.z, o.x - zb.x), 1 + UP.dmg, {w, kind: 'storm'}); n++; } }
+  applyElements(zb, w);
+}
+// stacking elements: each one adds its own effect, scaled by its level
+let lastCloud = 0;
+function applyElements(zb, w) {
+  const E = UP.el, P = G.player;
+  if (E.fire) { zb.burn = 3; zb.burnDmg = E.fire >= 2 ? 2 : 1; zb.spreadFire = E.fire >= 3; }
+  if (E.frost) { zb.slow = 2.2; zb.slowF = E.frost >= 2 ? .35 : .5; zb.shatter = E.frost >= 2; zb.shatterHurt = E.frost >= 3; burst(zb.x, zb.z, 6, ['#cff6ff', '#8fe8ff', '#ffffff'], 4, .1, .6, 1.2); }
+  if (E.storm) {
+    P.stormN++;
+    if (P.stormN % (E.storm >= 2 ? 2 : 3) === 0) {
+      let n = 0; const max = E.storm >= 3 ? 4 : 2;
+      for (const o of G.zombies) { if (o === zb || o.dying || o.state === 'rise' || n >= max) continue; if (Math.hypot(o.x - zb.x, o.z - zb.z) < 6) { bolt(zb.x, zb.z, o.x, o.z); damageZombie(o, Math.atan2(o.z - zb.z, o.x - zb.x), 1 + UP.dmg, {w, kind: 'storm'}); n++; } }
       if (n) { AU.play('hitMetal', {vol: .5, rate: 1.6, dur: .3}); flashLight(zb.x, zb.z, 0xbfe0ff, 5); }
     }
   }
+  if (E.poison && G.time - lastCloud > .35) { lastCloud = G.time; FX.clouds.push({x: zb.x, z: zb.z, r: E.poison >= 2 ? 2.2 : 1.3, life: 3, slow: E.poison >= 3, tick: 0}); AU.play('gore', {vol: .25, rate: 1.6, dur: .3, max: 2}); }
 }
 
 // ---------- finishers ----------
@@ -164,7 +174,7 @@ function updateJavelin(dt) {
   for (const zb of G.zombies) {
     if (zb.dying || zb.state === 'rise' || J.hit.has(zb)) continue;
     if (Math.hypot(zb.x - J.x, zb.z - J.z) < zb.r + .5) {
-      J.hit.add(zb); damageZombie(zb, J.dir, w.dmg + UP.dmg + 1, {w, kind: 'Javelin', finisher: true});
+      J.hit.add(zb); damageZombie(zb, J.dir, wDmg() + 1 + (UP.wlvl >= 5 ? 2 : 0), {w, kind: 'Javelin', finisher: true});
       if (!zb.dying) onWeaponHit(zb, w, J.dir);
       hitstop(.04); shake(.15); AU.play('hitFlesh', {vol: .9, max: 4}); sparks(zb.x, zb.z, J.dir, 8, '#bff0ff'); HAPTIC.fx('hit');
     }
@@ -186,7 +196,7 @@ function homeRun(dir, dmg) {
   }
 }
 function powerChord(dir, dmg) {
-  const P = G.player, w = weapon(), R = 5.5 * UP.range, arc = .8;
+  const P = G.player, w = weapon(), R = (UP.wlvl >= 5 ? 7 : 5.5) * UP.range, arc = .8;
   for (let i = 0; i < 3; i++) setTimeout(() => arcWave(P.x, P.z, dir, R * (.55 + i * .25), arc, 0xc070ff, .35), i * 70);
   AU.play('guitarHit', {vol: 1, rate: .8, dur: 1.4}); AU.play('explosion', {vol: .4, rate: 1.5}); notes(P.x, P.z, 18);
   hitArea(P.x, P.z, dir, R, arc, dmg + 1, {kind: 'PowerChord', finisher: true, w, kb: 12});
@@ -194,7 +204,7 @@ function powerChord(dir, dmg) {
   shake(.5); boom(P.x + Math.cos(dir) * 2, P.z + Math.sin(dir) * 2, 0xc070ff, 7); HAPTIC.fx('slam');
 }
 function fireLine(x, z, dir) {
-  for (let i = 1; i <= 9; i++) { const d = i * .7; FX.fires.push({x: x + Math.cos(dir) * d, z: z + Math.sin(dir) * d, life: 3 + i * .04, delay: i * .035}); }
+  for (let i = 1, n = UP.wlvl >= 5 ? 14 : 9; i <= n; i++) { const d = i * .7; FX.fires.push({x: x + Math.cos(dir) * d, z: z + Math.sin(dir) * d, life: 3 + i * .04, delay: i * .035}); }
   AU.play('rage', {vol: .9, rate: .6}); AU.play('explosion', {vol: .5, rate: 1.2}); boom(x + Math.cos(dir) * 3, z + Math.sin(dir) * 3, 0xff6a1a, 8); shake(.4);
 }
 
@@ -209,8 +219,8 @@ function land() {
     P.slam = false; const R = 3.2 * UP.slam, w = weapon(), st = trailStyle();
     ring(P.x, P.z, R, st.col, .4); ring(P.x, P.z, R * .55, 0xffffff, .25); shake(.5); boom(P.x, P.z, st.col, 6);
     burst(P.x, P.z, 30, ['#6b6470', '#4a3b2c', '#ffffff'], 9, .2, .7, .1); AU.play('hitHardest', {vol: 1, rate: .7}); AU.play('explosion', {vol: .5, rate: 1.4});
-    hitArea(P.x, P.z, 0, R, 9, w.dmg + UP.dmg + 1, {kind: 'Slam', slam: true, finisher: true, w}); hitstop(.09); TUT.event('slam');
-    if (w.name === 'FIRE AXE' || UP.infuse === 'fire') for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; FX.fires.push({x: P.x + Math.cos(a) * R * .6, z: P.z + Math.sin(a) * R * .6, life: 2.5, delay: 0}); }
+    hitArea(P.x, P.z, 0, R, 9, wDmg() + 1, {kind: 'Slam', slam: true, finisher: true, w}); hitstop(.09); TUT.event('slam');
+    if (w.name === 'FIRE AXE' || UP.el.fire) for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; FX.fires.push({x: P.x + Math.cos(a) * R * .6, z: P.z + Math.sin(a) * R * .6, life: 2.5, delay: 0}); }
   }
 }
 function dash() {
@@ -220,8 +230,8 @@ function dash() {
   AU.play('swingWide', {vol: .8, rate: 1.2}); dust(P.x, P.z, 10);
 }
 function hurtPlayer(dmg, fx, fz) {
-  const P = G.player; if (P.inv > 0 || P.dead || G.state !== 'playing') return false;
-  P.hp -= dmg; P.inv = 1.1; P.hurtT = .3; G.hurtFlash = .5; shake(.65); hitstop(.12); G.combo = 0;
+  const P = G.player; if (P.inv > 0 || P.dead || G.state !== 'playing' || POW.safe()) return false;
+  P.hp -= dmg; POW.onHurt(); P.inv = 1.4; P.hurtT = .3; G.hurtFlash = .5; shake(.65); hitstop(.12); G.combo = 0;
   const d = Math.hypot(P.x - fx, P.z - fz) || 1; P.vx = (P.x - fx) / d * 12; P.vz = (P.z - fz) / d * 12;
   burst(P.x, P.z, 18, ['#c02020', '#ff3b3b'], 7, .12, .7); popText(P.x, P.z, 'OUCH!', '#ff5050', 32, 2.6);
   AU.play('hitHardest', {vol: 1, rate: .9}); AU.play('pHurt', {vol: .9, bus: 'voice', max: 1}); AU.duck(.3, .4);
@@ -246,11 +256,11 @@ function trailFX(fx, tip, base) {
 
 function updatePlayer(dt) {
   const P = G.player, rig = P.rig;
-  P.inv -= dt; P.hurtT -= dt; P.dashT -= dt; P.dashCd -= dt; P.landT -= dt; if (P.rage > 0) P.rage -= dt;
+  P.inv -= dt; P.hurtT -= dt; P.dashT -= dt; P.dashCd -= dt; P.landT -= dt;
   updateJavelin(dt);
   if (P.dead) { P.deadT += dt; rig.mixer.update(dt); syncPlayer(); return; }
   const mv = INPUT.move(), ml = Math.min(1, Math.hypot(mv.x, mv.z));
-  const top = 6.4 * UP.move * (P.rage > 0 ? 1.2 : 1) * (P.atk ? .3 : 1) * (P.hurtT > 0 ? .2 : 1);
+  const top = 6.4 * UP.move * (POW.active ? 1.15 : 1) * (P.atk ? .3 : 1) * (P.hurtT > 0 ? .2 : 1);
   if (P.dashT <= 0) {
     const tx = mv.x * top, tz = mv.z * top, k = damp(P.air ? .05 : .0005, dt);
     P.vx = lerp(P.vx, tx, k); P.vz = lerp(P.vz, tz, k);
@@ -305,9 +315,10 @@ function syncPlayer() {
   const P = G.player, rig = P.rig;
   rig.root.position.set(P.x, P.y, P.z); rig.root.rotation.y = yawFor(P.face);
   rig.root.visible = !(P.inv > 0 && !P.dead && P.hurtT <= 0 && Math.floor(P.inv * 18) % 2);
-  if (P.hurtT > 0) rig.flash(.6, 1, .1, .1); else if (P.rage > 0) rig.flash(.25 + .15 * Math.sin(G.time * 12), 1, .4, 0); else rig.flash(0);
+  if (P.hurtT > 0) rig.flash(.6, 1, .1, .1); else if (POW.active) { const c = new THREE.Color(POWERS[POW.active].col); rig.flash(.22 + .12 * Math.sin(G.time * 12), c.r, c.g, c.b); } else rig.flash(0);
   // weapon glow: the fire axe always burns; an infusion tints any weapon
-  const w = weapon(), inf = UP.infuse && INFUSE[UP.infuse], gc = inf ? inf.col : w.glow;
-  if (P.wMesh && gc) { const c = COL('#' + new THREE.Color(gc).getHexString()), f = .7 + .3 * Math.sin(G.time * 23) * Math.sin(G.time * 7); P.wMesh.material.emissive.copy(c).multiplyScalar(.55 * f); P.wLight.color.copy(c); P.wLight.intensity = 1.6 * f; }
+  // weapon glow: fire axe always burns, elements cycle their colors, brighter per weapon level
+  const w = weapon(), els = elActive(), gc = els.length ? ELEMENTS[els[Math.floor(G.time * 2.5) % els.length]].col : w.glow || (UP.wlvl > 1 ? w.col : 0);
+  if (P.wMesh && gc) { const c = COL('#' + new THREE.Color(gc).getHexString()), f = .7 + .3 * Math.sin(G.time * 23) * Math.sin(G.time * 7); const lv = .4 + .15 * UP.wlvl; P.wMesh.material.emissive.copy(c).multiplyScalar(lv * f); P.wLight.color.copy(c); P.wLight.intensity = (.8 + .4 * UP.wlvl) * f; }
   else P.wLight.intensity = 0;
 }

@@ -21,8 +21,9 @@ function saveLook() { try { localStorage.setItem('ozLook', JSON.stringify(LOOK))
 
 // load a survivor model on demand (only Matt ships with the first load)
 const charLoading = {};
-function ensureCharacter(id) {
-  const n = 'Characters_' + id; if (MODELS[n]) return Promise.resolve();
+function ensureCharacter(id) { return ensureModel('Characters_' + id); }
+function ensureModel(n) {
+  if (MODELS[n]) return Promise.resolve();
   if (!charLoading[n]) charLoading[n] = (async () => {
     const txt = await (await fetch('assets/models/' + n + '.json')).text();
     MODELS[n] = await new Promise((res, rej) => new THREE.GLTFLoader().parse(txt, '', res, rej));

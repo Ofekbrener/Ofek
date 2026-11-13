@@ -62,6 +62,8 @@ const SFX_FAMILIES = {
   lose: FAM('MUSCStngr_LossOrchestral_OS', 3),
   bossIntro: FAM('DSGNDron_DroneCreepy_OS', 2),
   chains: FAM('CHAINMvmt_ChainsCreepy_OS', 2),
+  shell: FAM('BLLTShel_ShellCasingConcrete_OS', 3),
+  bark: ['ANMLDog_DogBark_OS_01', 'ANMLDog_DogBark_OS_02', 'ANMLDog_DogAttention_OS_01'],
 };
 const MUSIC_FILES = ['music_combat', 'music_boss', 'music_calm', 'RAIN_CityRain_LOOP_01'];
 

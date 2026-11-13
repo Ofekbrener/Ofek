@@ -11,7 +11,7 @@ const WAVE = {queue: [], spawnT: 0, alive: 0, total: 0, killed: 0, boss: null, a
 
 function makeWave(n) {
   const list = [], boss = n % 5 === 0;
-  const count = Math.round((boss ? 4 + n : 6 + n * 3) * (UP.horde ? 1.3 : 1));
+  const count = boss ? 0 : Math.round((n <= 5 ? 5 + n * 2 : 6 + n * 3) * (UP.horde ? 1.3 : 1));
   for (let i = 0; i < count; i++) {
     const r = Math.random(); let t = 'walker';
     if (n >= 2 && r < .22 + n * .015) t = 'runner';
@@ -19,12 +19,22 @@ function makeWave(n) {
     else if (n >= 4 && r < .48 + n * .015) t = 'grabber';
     list.push(t);
   }
-  if (boss) list.splice(2, 0, 'boss');
+  if (boss) list.push('walker', 'walker', 'boss', 'walker'); // the boss arrives with a small escort
   return list;
 }
+// attack tokens: at most 2 zombies (3 from wave 6) swing at you at the same moment; the rest crowd and wait
+const attackersNow = () => G.zombies.filter(z => !z.dying && (z.state === 'attack' || z.state === 'windup' || z.state === 'lunge' || z.state === 'pounce')).length;
+const maxAttackers = () => G.wave >= 6 ? 3 : 2;
+const zDmg = zb => zb.type === 'tank' && G.wave < 7 ? 1 : zb.T.dmg;
+const bossN = () => Math.max(1, Math.floor(G.wave / 5));
+const bossDmg = () => bossN() === 1 ? 1 : 2;
+const bossTele = () => bossN() === 1 ? 1.3 : .95;
 function startWave() {
   G.wave++; saveCheckpoint(); WAVE.queue = makeWave(G.wave); WAVE.total = WAVE.queue.length; WAVE.killed = 0; WAVE.spawnT = 1.2; WAVE.active = true; WAVE.boss = null;
   HUD.banner('WAVE ' + G.wave, G.wave % 5 === 0 ? 'BOSS INCOMING' : WAVE.total + ' zombies', G.wave % 5 === 0 ? '#ff4f4f' : '#ffcc33');
+  if (G.wave % 5 === 0) { const P = G.player; P.hp = P.maxHp; popText(P.x, P.z, 'FULL HEAL', '#7dff8a', 34, 3); AU.play('heart', {vol: .8}); }
+  POW.lastStand = false;
+  if (G.wave > 1 && G.wave % 5 !== 0) { const P = G.player; if (P.hp < P.maxHp) { P.hp++; popText(P.x, P.z, '+1 ♥', '#ff5a6a', 26, 2.8); } } // a heart back every wave
   AU.play('waveStart', {vol: .8}); AU.musicTo(G.wave % 5 === 0 ? 'music_boss' : 'music_combat');
   setTimeout(() => AU.play('zGroan', {vol: .7, rate: .9}), 600);
 }
@@ -33,7 +43,7 @@ function spawnZombie(type) {
   const x = sp[0] + rnd(-3, 3), z = sp[1] + rnd(-3, 3);
   const scale = (T.scale || 1) * (T.boss ? 1 : rnd(.93, 1.07));
   const rig = new Rig(T.model, {tint: T.tint, scale});
-  const hpMul = 1 + (G.wave - 1) * .13;
+  const bossN = Math.max(1, Math.floor(G.wave / 5)), hpMul = T.boss ? (30 / T.hp) * (1 + .4 * (bossN - 1)) : 1 + (G.wave - 1) * .08;
   const zb = {type, T, rig, x, z, vx: 0, vz: 0, y: -2, vy: 0, r: T.r * (T.boss ? 1 : scale), face: Math.atan2(-z, -x),
     hp: Math.ceil(T.hp * hpMul), maxHp: Math.ceil(T.hp * hpMul), speed: rnd(...T.speed) * (1 + G.wave * .025),
     state: 'rise', st: 0, cd: rnd(.5, 1.2), flash: 0, stun: 0, burn: 0, bleed: 0, dying: null, wob: rnd(0, 7), groanT: rnd(2, 8)};
@@ -64,8 +74,9 @@ function updateZombie(zb, dt) {
   } else {
     // damage over time
     // status effects: burn and bleed tick once per second, frost slows, stun shows stars
-    if (zb.burn > 0) { zb.burn -= dt; zb.burnT = (zb.burnT ?? 1) - dt; if (Math.random() < .6) addPart({x: zb.x + rnd(-.3, .3), y: rnd(.4, 1.7), z: zb.z + rnd(-.3, .3), vx: 0, vz: 0, vy: rnd(2, 4), g: -2, life: .45, max: .45, size: rnd(.1, .18), col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10']), drag: .9, rx: 0, ry: 0}); if (zb.burnT <= 0) { zb.burnT = 1; damageZombie(zb, zb.face + Math.PI, 1, {dot: 'burn'}); } }
+    if (zb.burn > 0) { zb.burn -= dt; zb.burnT = (zb.burnT ?? 1) - dt; if (Math.random() < .6) addPart({x: zb.x + rnd(-.3, .3), y: rnd(.4, 1.7), z: zb.z + rnd(-.3, .3), vx: 0, vz: 0, vy: rnd(2, 4), g: -2, life: .45, max: .45, size: rnd(.1, .18), col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10']), drag: .9, rx: 0, ry: 0}); if (zb.burnT <= 0) { zb.burnT = 1; damageZombie(zb, zb.face + Math.PI, zb.burnDmg || 1, {dot: 'burn'}); } }
     if (zb.bleed > 0 && !zb.dying) { zb.bleed -= dt; zb.bleedT = (zb.bleedT ?? 1) - dt; if (Math.random() < .25 * zb.bleedN) addPart({x: zb.x + rnd(-.25, .25), y: rnd(.6, 1.4), z: zb.z + rnd(-.25, .25), vx: 0, vz: 0, vy: -1, g: 14, life: .5, max: .5, size: .07, col: '#b01818', drag: 1, rx: 0, ry: 0}); if (zb.bleedT <= 0) { zb.bleedT = 1; damageZombie(zb, zb.face + Math.PI, zb.bleedN || 1, {dot: 'bleed'}); } if (zb.bleed <= 0) zb.bleedN = 0; }
+    if (zb.inCloud > 0) zb.inCloud -= dt;
     if (zb.slow > 0) { zb.slow -= dt; if (Math.random() < .3) addPart({x: zb.x + rnd(-.3, .3), y: rnd(.3, 1.8), z: zb.z + rnd(-.3, .3), vx: 0, vz: 0, vy: -.4, g: 0, life: .4, max: .4, size: .06, col: '#cff6ff', drag: 1, rx: 0, ry: 0}); }
     if (zb.stun > .25 && Math.random() < .5) { const a = G.time * 8 + Math.random() * 6; addPart({x: zb.x + Math.cos(a) * .35, y: 2 * (zb.T.scale || 1), z: zb.z + Math.sin(a) * .35, vx: -Math.sin(a), vz: Math.cos(a), vy: 0, g: 0, life: .3, max: .3, size: .07, col: '#ffe14a', drag: 1, rx: 0, ry: 0}); }
     if (zb.air) { zb.y += zb.vy * dt; zb.vy -= 22 * dt; zb.rig.body.rotation.x += 10 * dt; if (zb.y <= 0) { zb.y = 0; zb.air = false; zb.rig.body.rotation.x = 0; dust(zb.x, zb.z, 12); shake(.2); AU.play('land', {vol: .6, x: zb.x, z: zb.z}); if (zb.homerun) homerunLand(zb); } }
@@ -77,10 +88,13 @@ function updateZombie(zb, dt) {
     else if (T.boss) bossAI(zb, dt, d, toP);
     else if (zb.state === 'chase') {
       zb.face += angDiff(zb.face, toP) * damp(.02, dt);
-      const sp = zb.speed * (P.dead ? .3 : 1) * (zb.slow > 0 ? .5 : 1);
+      // unstick: a zombie that barely moved for 1 s while chasing walks sideways around the obstacle
+      zb.stuckT = (zb.stuckT ?? 1) - dt; if (zb.stuckT <= 0) { zb.stuckT = 1; if (zb.lx !== undefined && Math.hypot(zb.x - zb.lx, zb.z - zb.lz) < .35 && d > 2) { zb.side = 1.2; zb.sideDir = Math.random() < .5 ? 1 : -1; } zb.lx = zb.x; zb.lz = zb.z; }
+      if (zb.side > 0) { zb.side -= dt; zb.face = toP + zb.sideDir * 1.4; }
+      const sp = zb.speed * (P.dead ? .3 : 1) * (zb.slow > 0 ? zb.slowF || .5 : 1) * (zb.inCloud > 0 ? .7 : 1);
       zb.vx = lerp(zb.vx, Math.cos(zb.face) * sp, damp(.01, dt)); zb.vz = lerp(zb.vz, Math.sin(zb.face) * sp, damp(.01, dt));
       if (rig.curName !== T.move) rig.play(T.move, {fade: .2, speed: T.move === 'Run' ? 1.1 : zb.speed / 1.6});
-      if (!P.dead && zb.cd <= 0) {
+      if (!P.dead && zb.cd <= 0 && attackersNow() < maxAttackers()) {
         if (T.lunge && d > 2.6 && d < 5.5) { zb.state = 'windup'; zb.st = 0; rig.play('Idle', {fade: .1}); AU.play('zAttack', {vol: .6, rate: T.voice, x: zb.x, z: zb.z, bus: 'voice'}); }
         else if (T.pounce && d < T.range) { zb.state = 'pounce'; zb.st = 0; zb.hitDone = false; rig.play('Jump', {loop: false, restart: true, fade: .05}); zb.vx = Math.cos(toP) * 9; zb.vz = Math.sin(toP) * 9; zb.vy = 4.5; AU.play('zAttack', {vol: .6, rate: 1.4, x: zb.x, z: zb.z, bus: 'voice'}); }
         else if (!T.pounce && d < T.range + .2) { zb.state = 'attack'; zb.st = 0; zb.hitDone = false; zb.vx *= .2; zb.vz *= .2; rig.play(T.attack, {loop: false, restart: true, fade: .08, speed: .95}); AU.play('zAttack', {vol: .55, rate: T.voice * rnd(.9, 1.1), x: zb.x, z: zb.z, bus: 'voice', max: 2}); }
@@ -88,14 +102,14 @@ function updateZombie(zb, dt) {
     } else if (zb.state === 'attack') { // authored swing; damage lands mid-clip if the player is still in reach and in front
       zb.face += angDiff(zb.face, toP) * damp(.2, dt); zb.vx *= .9; zb.vz *= .9;
       const dur = rig.dur(T.attack) / .95;
-      if (!zb.hitDone && zb.st > dur * .45) { zb.hitDone = true; if (d < T.range + .5 && Math.abs(angDiff(zb.face, toP)) < 1.1 && P.y < .8) { if (hurtPlayer(T.dmg, zb.x, zb.z) && UP.thorns) damageZombie(zb, toP + Math.PI, 2, {thorns: true}); } }
+      if (!zb.hitDone && zb.st > dur * .45) { zb.hitDone = true; if (d < T.range + .3 && Math.abs(angDiff(zb.face, toP)) < 1 && P.y < .8) { if (hurtPlayer(zDmg(zb), zb.x, zb.z) && UP.thorns) damageZombie(zb, toP + Math.PI, 2, {thorns: true}); } }
       if (zb.st > dur) { zb.state = 'chase'; zb.cd = rnd(.6, 1.1); }
     } else if (zb.state === 'windup') { // grabber: shakes, then lunges
       zb.face = toP; zb.vx *= .8; zb.vz *= .8; zb.flash = Math.sin(zb.st * 40) > .3 ? .05 : 0;
       if (zb.st > .5) { zb.state = 'lunge'; zb.st = 0; zb.hitDone = false; rig.play('Run_Attack', {fade: .05, speed: 1.4}); zb.vx = Math.cos(zb.face) * 11; zb.vz = Math.sin(zb.face) * 11; }
     } else if (zb.state === 'lunge' || zb.state === 'pounce') {
       if (zb.state === 'pounce') { zb.y += zb.vy * dt; zb.vy -= 20 * dt; if (zb.y < 0) zb.y = 0; }
-      if (!zb.hitDone && d < zb.r + .6 && P.y < .9) { zb.hitDone = true; hurtPlayer(T.dmg, zb.x, zb.z); }
+      if (!zb.hitDone && d < zb.r + .6 && P.y < .9) { zb.hitDone = true; hurtPlayer(zDmg(zb), zb.x, zb.z); }
       if (zb.st > (zb.state === 'pounce' ? .45 : .5)) { zb.state = 'chase'; zb.cd = rnd(1, 1.6); zb.y = 0; zb.vx *= .3; zb.vz *= .3; }
     }
   }
@@ -126,7 +140,8 @@ function bossAI(zb, dt, d, toP) {
     if (rig.curName !== 'Walk') rig.play('Walk', {fade: .2, speed: .8});
     zb.bossCd -= dt;
     if (zb.bossCd <= 0 && !P.dead) {
-      const moves = ['charge', 'slam', 'summon'].filter(m => m !== zb.lastMove && !(m === 'slam' && d > 9));
+      const runners = G.zombies.filter(z => z.type === 'runner' && !z.dying).length;
+      const moves = ['charge', 'slam', 'summon'].filter(m => m !== zb.lastMove && !(m === 'slam' && d > 9) && !(m === 'summon' && runners >= 4));
       const m = d < 4 ? 'slam' : pick(moves); zb.lastMove = m; zb.state = m + 'Tele'; zb.st = 0; zb.vx = zb.vz = 0; zb.tele = true;
       if (m === 'charge') { zb.chargeDir = toP; zb.teleMesh = new THREE.Mesh(new THREE.PlaneGeometry(14, 2.6), teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; scene.add(zb.teleMesh); rig.play('Idle_Attack', {fade: .1}); AU.play('bossEffort', {vol: 1, bus: 'voice'}); }
       if (m === 'slam') { zb.slamX = P.x; zb.slamZ = P.z; zb.teleMesh = new THREE.Mesh(new THREE.CircleGeometry(4, 40), teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; zb.teleMesh.position.set(P.x, .04, P.z); scene.add(zb.teleMesh); rig.play('Jump', {loop: false, restart: true, fade: .1, speed: .5}); AU.play('bossEffort', {vol: 1, bus: 'voice', rate: .9}); }
@@ -136,11 +151,11 @@ function bossAI(zb, dt, d, toP) {
     zb.chargeDir += angDiff(zb.chargeDir, toP) * damp(.1, dt);
     zb.face = zb.chargeDir; const L = 7; zb.teleMesh.position.set(zb.x + Math.cos(zb.chargeDir) * L, .04, zb.z + Math.sin(zb.chargeDir) * L); zb.teleMesh.rotation.z = -zb.chargeDir;
     teleMat.opacity = .25 + .2 * Math.sin(zb.st * 25);
-    if (zb.st > .95) { scene.remove(zb.teleMesh); zb.tele = false; zb.state = 'charge'; zb.st = 0; zb.hitDone = false; rig.play('Run_Arms', {fade: .05, speed: 1.4}); }
+    if (zb.st > bossTele()) { scene.remove(zb.teleMesh); zb.tele = false; zb.state = 'charge'; zb.st = 0; zb.hitDone = false; rig.play('Run_Arms', {fade: .05, speed: 1.4}); }
   } else if (zb.state === 'charge') {
     zb.vx = Math.cos(zb.chargeDir) * 13; zb.vz = Math.sin(zb.chargeDir) * 13;
     if (Math.random() < .6) dust(zb.x, zb.z, 2);
-    if (!zb.hitDone && d < zb.r + .7) { zb.hitDone = true; hurtPlayer(2, zb.x, zb.z); }
+    if (!zb.hitDone && d < zb.r + .7) { zb.hitDone = true; hurtPlayer(bossDmg(), zb.x, zb.z); }
     const bx = zb.x, bz = zb.z; collide(zb, zb.r);
     const blocked = Math.abs(bx - zb.x) + Math.abs(bz - zb.z) > .01 || Math.abs(zb.x) > G.arena - zb.r - .1 || Math.abs(zb.z) > G.arena - zb.r - .1;
     if (zb.st > 1.15 || blocked) { // crashes into a wall: stunned and open
@@ -149,17 +164,18 @@ function bossAI(zb, dt, d, toP) {
     }
   } else if (zb.state === 'stunned') { zb.vx *= .9; zb.vz *= .9; if (zb.st > 1.4) { zb.state = 'chase'; zb.bossCd = rnd(1.5, 2.5); } }
   else if (zb.state === 'slamTele') {
-    teleMat.opacity = .2 + .25 * (zb.st / 1.1); zb.teleMesh.scale.setScalar(.3 + .7 * Math.min(1, zb.st / 1.1));
-    const k = clamp(zb.st / 1.1, 0, 1); zb.x = lerp(zb.x, zb.slamX, k * .08); zb.z = lerp(zb.z, zb.slamZ, k * .08); zb.y = Math.sin(k * Math.PI) * 3.2;
-    if (zb.st > 1.1) {
+    const slamT = bossN() === 1 ? 1.3 : 1.1;
+    teleMat.opacity = .2 + .25 * (zb.st / slamT); zb.teleMesh.scale.setScalar(.3 + .7 * Math.min(1, zb.st / slamT));
+    const k = clamp(zb.st / slamT, 0, 1); zb.x = lerp(zb.x, zb.slamX, k * .08); zb.z = lerp(zb.z, zb.slamZ, k * .08); zb.y = Math.sin(k * Math.PI) * 3.2;
+    if (zb.st > slamT) {
       scene.remove(zb.teleMesh); zb.tele = false; zb.y = 0; zb.state = 'recover'; zb.st = 0; rig.play('Punch', {loop: false, restart: true, fade: .05});
       ring(zb.slamX, zb.slamZ, 4.2, 0xff5040, .4); ring(zb.slamX, zb.slamZ, 2.4, 0xffffff, .25); shake(.8); hitstop(.08); boom(zb.slamX, zb.slamZ, 0xff5030, 8);
       burst(zb.slamX, zb.slamZ, 40, ['#6b6470', '#4a3b2c', '#3b2f24'], 10, .25, .9, .1); AU.play('explosion', {vol: 1}); AU.play('hitHardest', {vol: 1, rate: .6});
       HAPTIC.fx('bossSlam', Math.hypot(P.x - zb.slamX, P.z - zb.slamZ) < 6 ? 1 : .5);
-      if (Math.hypot(P.x - zb.slamX, P.z - zb.slamZ) < 4 && P.y < 1) hurtPlayer(2, zb.slamX, zb.slamZ);
+      if (Math.hypot(P.x - zb.slamX, P.z - zb.slamZ) < 4 && P.y < 1) hurtPlayer(bossDmg(), zb.slamX, zb.slamZ);
     }
   } else if (zb.state === 'summonTele') {
-    if (zb.st > 1.0) { for (let i = 0; i < 3 + Math.floor(G.wave / 5); i++) WAVE.queue.unshift('runner'); WAVE.total += 3 + Math.floor(G.wave / 5); WAVE.spawnT = 0; zb.state = 'recover'; zb.st = 0; AU.play('chains', {vol: .9}); }
+    if (zb.st > 1.0) { const nS = G.wave <= 5 ? 2 : 3 + Math.floor(G.wave / 5); for (let i = 0; i < nS; i++) WAVE.queue.unshift('runner'); WAVE.total += nS; WAVE.spawnT = 0; zb.state = 'recover'; zb.st = 0; AU.play('chains', {vol: .9}); }
   } else if (zb.state === 'recover') { zb.vx *= .85; zb.vz *= .85; if (zb.st > .9) { zb.state = 'chase'; zb.bossCd = rnd(2, 3.2) * Math.max(.55, zb.hp / zb.maxHp + .2); } }
 }
 
@@ -187,7 +203,7 @@ function chooseDeath(zb, o) {
   const w = o.w || weapon(), r = Math.random();
   if (zb.T.boss) return 'boss';
   if (zb.T.explode) return 'swell';
-  if (zb.slow > 0) return 'shatter';
+  if (zb.slow > 0 && zb.shatter) return 'shatter';
   if (o.dot === 'burn' || (zb.burn > 0 && r < .5)) return 'burn';
   if (o.blast) return r < .5 ? 'gib' : 'launch';
   if (o.finisher || o.slam) return r < .6 ? 'launch' : 'gib';
@@ -206,7 +222,10 @@ function killZombie(zb, dir, o) {
   blood(zb.x, zb.z, T.boss ? 3 : 1.1); burst(zb.x, zb.z, 14, ['#3f9a35', '#2a7a2a', '#7a1f1f'], 7, .14, .8, 1);
   // drops
   const nc = Math.floor(rnd(T.coins[0], T.coins[1] + 1)); for (let i = 0; i < nc; i++) dropPickup('coin', zb.x, zb.z);
-  if (Math.random() < (P.hp < P.maxHp ? .07 : .02) + (T.boss ? 1 : 0)) dropPickup('heart', zb.x, zb.z);
+  if (Math.random() < (P.hp < P.maxHp ? .12 : .03)) dropPickup('heart', zb.x, zb.z);
+  if (T.boss) { dropPickup('heart', zb.x, zb.z); dropPickup('heart', zb.x, zb.z); }
+  POW.add(4);
+  if (zb.spreadFire && zb.burn > 0) for (const o of G.zombies) if (o !== zb && !o.dying && Math.hypot(o.x - zb.x, o.z - zb.z) < 2.5) { o.burn = 3; o.burnDmg = zb.burnDmg; o.spreadFire = true; burst(o.x, o.z, 6, ['#ff8a1a', '#ffcf3a'], 4, .1, .4, 1); }
   if (Math.random() < .025 + (T.boss ? 1 : 0)) dropPickup('rage', zb.x, zb.z);
   if (UP.lifesteal) { P.killsForHeal++; if (P.killsForHeal >= 12) { P.killsForHeal = 0; P.hp = Math.min(P.maxHp, P.hp + 1); popText(P.x, P.z, '+1 ♥', '#ff5a6a', 26); AU.play('heart', {vol: .5}); } }
   if (UP.explosive && Math.random() < .15 && !T.explode) setTimeout(() => explodeAt(zb.x, zb.z, 2.6, 3, 0, 'kill'), 120);
@@ -265,7 +284,8 @@ function updateDying(zb, dt) {
   if (d.t >= life) zb.gone = true;
 }
 function updateZombies(dt) {
-  for (const zb of G.zombies) updateZombie(zb, dt);
+  const zt = dt * POW.zombieTime(); // TIME WARP slows the horde
+  for (const zb of G.zombies) updateZombie(zb, zt);
   for (const zb of G.zombies) if (zb.gone) { zb.rig.dispose(); if (zb.teleMesh) scene.remove(zb.teleMesh); }
   G.zombies = G.zombies.filter(z => !z.gone);
 }
@@ -283,4 +303,5 @@ function shatterZombie(zb, dir) {
   for (let i = 0; i < 9; i++) { const s = rnd(.1, .26), m = new THREE.Mesh(new THREE.OctahedronGeometry(s), ice); m.castShadow = true; const a = dir + rnd(-1.4, 1.4), sp = rnd(2, 7); gib(zb.x, zb.z, m, Math.cos(a) * sp, Math.sin(a) * sp, rnd(3, 8), rnd(1.2, 2)); }
   burst(zb.x, zb.z, 30, ['#ffffff', '#cff6ff', '#8fe8ff'], 8, .12, .8, 1); ring(zb.x, zb.z, 2, 0x8fe8ff, .3);
   AU.play('glass', {vol: 1, x: zb.x, z: zb.z, rate: rnd(.9, 1.2)}); hitstop(.05);
+  if (zb.shatterHurt) { ring(zb.x, zb.z, 2.8, 0xcff6ff, .3); for (const o of G.zombies) if (o !== zb && !o.dying && o.state !== 'rise' && Math.hypot(o.x - zb.x, o.z - zb.z) < 2.8) { damageZombie(o, Math.atan2(o.z - zb.z, o.x - zb.x), 2 + UP.dmg, {w: weapon(), kind: 'shatter'}); o.slow = 2; o.slowF = .35; } }
 }

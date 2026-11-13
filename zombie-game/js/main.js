@@ -64,7 +64,7 @@ function loadCheckpoint() { try { const c = JSON.parse(localStorage.getItem(SAVE
 function clearCheckpoint() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
 function newRun(cp = null, opts = {}) {
   TUT.abort(); document.getElementById('creator').hidden = true;
-  AU.resume(); clearZombies(); clearPickups(); clearFX(); clearTrail(); resetUpgrades();
+  AU.resume(); clearZombies(); clearPickups(); clearFX(); clearTrail(); resetUpgrades(); POW.reset(); clearGear();
   if (G.player && G.player.javelin) { scene.remove(G.player.javelin.g); G.player.javelin = null; }
   for (const b of G.barrels) { scene.remove(b.m); } G.barrels = []; for (const [x, z] of [[-6, -3], [6.5, 3.5], [-3, 9.5], [3.5, -10], [-12, 4], [12, -3]]) addBarrel(x, z);
   Object.assign(G, {wave: 0, score: 0, coins: 0, kills: 0, combo: 0, hitstop: 0, trauma: 0, slowT: 0, timeScale: 1, flash: 0, hurtFlash: 0});
@@ -73,6 +73,8 @@ function newRun(cp = null, opts = {}) {
   if (cp) { // resume: same weapon, upgrades, coins and score, full hearts, the wave you died on
     Object.assign(UP, cp.up); equipWeapon(cp.weapon); G.player.maxHp = G.player.hp = cp.maxHp;
     Object.assign(G, {wave: cp.wave - 1, coins: cp.coins, score: cp.score, kills: cp.kills}); DRAFT.rerollCost = cp.reroll;
+    UP.el = Object.assign({fire: 0, frost: 0, storm: 0, poison: 0}, cp.up.el || {}); UP.gear = Object.assign({}, cp.up.gear || {}); UP.wlvl = cp.up.wlvl || 1;
+    if (cp.weapon) { LOOK.weapon = LOOK.weapon; equipWeapon(cp.weapon); } buildGear();
   } else clearCheckpoint();
   ui.hidden = true; document.getElementById('draft').hidden = true; G.state = 'playing';
   AU.ambience(true);
@@ -126,7 +128,7 @@ function frame(ts) {
   if (G.slowT > 0) { G.slowT -= raw; G.timeScale = lerp(G.timeScale, .25, .2); } else G.timeScale = lerp(G.timeScale, 1, .1);
   dt *= G.timeScale;
   if (G.state === 'playing' || G.state === 'dead') {
-    if (dt > 0) { updatePlayer(dt); updateZombies(dt); updateWaves(dt); updateBarrels(dt); updatePickups(dt); }
+    if (dt > 0) { updatePlayer(dt); updateGear(dt); POW.update(dt); updateZombies(dt); updateWaves(dt); updateBarrels(dt); updatePickups(dt); }
     G.comboT -= dt; if (G.comboT <= 0) G.combo = 0;
   } else if (G.state === 'draft' && G.player) { G.player.rig.play('Idle', {fade: .3}); G.player.rig.mixer.update(raw); for (const zb of G.zombies) zb.rig.mixer.update(raw); }
   else if (G.state === 'menu' && G.player) { G.player.rig.mixer.update(raw); G.player.face += raw * .3; syncPlayer(); }
@@ -146,7 +148,7 @@ window.simulate = function (secs, step = 1 / 60) {
     if (G.hitstop > 0) { G.hitstop -= step; dt = 0; }
     if (G.slowT > 0) { G.slowT -= step; G.timeScale = lerp(G.timeScale, .25, .2); } else G.timeScale = lerp(G.timeScale, 1, .1);
     dt *= G.timeScale;
-    if ((G.state === 'playing' || G.state === 'dead') && dt > 0) { updatePlayer(dt); updateZombies(dt); updateWaves(dt); updateBarrels(dt); updatePickups(dt); }
+    if ((G.state === 'playing' || G.state === 'dead') && dt > 0) { updatePlayer(dt); updateGear(dt); POW.update(dt); updateZombies(dt); updateWaves(dt); updateBarrels(dt); updatePickups(dt); }
     if (G.state === 'playing') TUT.update(step);
     G.comboT -= dt; if (G.comboT <= 0) G.combo = 0;
     updateFX(dt || step * .02);

@@ -1,7 +1,7 @@
 // Juice: hitstop, screen shake, particles, blood decals, shockwave rings, floating text, light flashes, lightning.
 // Units are meters. See .claude/skills/game-feel/SKILL.md for the numbers and why.
 'use strict';
-const FX = {parts: [], rings: [], texts: [], bolts: [], decals: [], gibs: [], fires: []};
+const FX = {parts: [], rings: [], texts: [], bolts: [], decals: [], gibs: [], fires: [], clouds: []};
 const MAXP = 1200, dummy = new THREE.Object3D(), colCache = {};
 const COL = c => colCache[c] || (colCache[c] = new THREE.Color(c));
 const partMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({color: 0xffffff}), MAXP);
@@ -98,6 +98,14 @@ function updateFX(dt) {
     for (const zb of G.zombies) if (!zb.dying && zb.state !== 'rise' && Math.hypot(zb.x - f.x, zb.z - f.z) < .8) zb.burn = Math.max(zb.burn, 3);
   }
   FX.fires = FX.fires.filter(f => f.life > 0);
+  // poison clouds: green haze, 1 damage per second to zombies inside, optional slow
+  for (const c of FX.clouds) {
+    c.life -= dt; c.tick -= dt;
+    for (let i = 0; i < 2; i++) { const a = rnd(0, 7), r = rnd(0, c.r); addPart({x: c.x + Math.cos(a) * r, y: rnd(.1, 1), z: c.z + Math.sin(a) * r, vx: rnd(-.2, .2), vz: rnd(-.2, .2), vy: rnd(.2, .6), g: 0, life: .9, max: .9, size: rnd(.15, .3), col: pick(['#7adf3a', '#4aa020', '#a8ff5a']), drag: .98, rx: 0, ry: 0}); }
+    for (const zb of G.zombies) if (!zb.dying && zb.state !== 'rise' && Math.hypot(zb.x - c.x, zb.z - c.z) < c.r) { if (c.slow) zb.inCloud = .3; if (c.tick <= 0) damageZombie(zb, 0, 1, {dot: 'poison'}); }
+    if (c.tick <= 0) c.tick = 1;
+  }
+  FX.clouds = FX.clouds.filter(c => c.life > 0);
   if (FX.fires.length) { const f = FX.fires[Math.floor(FX.fires.length / 2)]; if (!f.delay) { boomLight.color.setHex(0xff6a1a); boomLight.position.set(f.x, 1, f.z); boomLight.intensity = Math.max(boomLight.intensity, 3 + Math.random()); } }
   hitLight.intensity *= Math.pow(.0005, dt); boomLight.intensity *= Math.pow(.004, dt);
 }
@@ -116,5 +124,5 @@ function renderFX() {
 function clearFX() {
   for (const r of FX.rings) scene.remove(r.m); for (const b of FX.bolts) scene.remove(b.m);
   for (const d of FX.decals) scene.remove(d.m); for (const g of FX.gibs) scene.remove(g.m);
-  FX.parts = []; FX.rings = []; FX.bolts = []; FX.decals = []; FX.gibs = []; FX.texts = []; FX.fires = [];
+  FX.parts = []; FX.rings = []; FX.bolts = []; FX.decals = []; FX.gibs = []; FX.texts = []; FX.fires = []; FX.clouds = [];
 }
