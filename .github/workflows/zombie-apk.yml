@@ -1,0 +1,54 @@
+name: Build Ofek vs Zombies APK
+
+# Builds an Android APK of zombie-game/ on every push that touches it, and on demand.
+# The APK is attached to the "zombie-apk" release (a stable download link) and kept as a run artifact.
+on:
+  push:
+    paths:
+      - 'zombie-game/**'
+      - '.github/workflows/zombie-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: zombie-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Copy the game into the Android project
+        run: bash zombie-game/tools/prepare-android.sh
+      - name: Build the APK
+        run: gradle -p zombie-game/android assembleRelease --no-daemon --stacktrace
+      - name: Name the APK
+        run: cp zombie-game/android/app/build/outputs/apk/release/app-release.apk OfekVsZombies.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OfekVsZombies-apk
+          path: OfekVsZombies.apk
+      - name: Publish to the zombie-apk release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: zombie-apk
+          name: Ofek vs Zombies (Android)
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          body: |
+            Android build of Ofek vs Zombies, from commit ${{ github.sha }}.
+            Install: download OfekVsZombies.apk on the phone, open it, and allow installing from this source.
+          files: OfekVsZombies.apk

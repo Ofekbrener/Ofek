@@ -1,0 +1,17 @@
+plugins { id 'com.android.application' }
+android {
+  namespace 'com.ofek.zombies'
+  compileSdk 34
+  defaultConfig {
+    applicationId 'com.ofek.zombies'
+    minSdk 24
+    targetSdk 34
+    versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+    versionName '1.0.' + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
+  }
+  // one fixed key in the repo so a newer APK installs over an older one
+  signingConfigs { shared { storeFile file('../shared.keystore'); storePassword 'zombies'; keyAlias 'zombies'; keyPassword 'zombies' } }
+  buildTypes { release { minifyEnabled false; signingConfig signingConfigs.shared } debug { signingConfig signingConfigs.shared } }
+  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+  aaptOptions { noCompress 'json', 'mp3' }
+}
