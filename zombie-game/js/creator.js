@@ -2,7 +2,7 @@
 'use strict';
 const CREATOR = {el: null, spin: 0, drag: null, loading: false, from: 'menu'};
 function openCreator(from = 'menu') {
-  CREATOR.from = from; G.state = 'creator'; document.getElementById('menu').hidden = true;
+  CREATOR.from = from; CREATOR.shown = false; G.state = 'creator'; document.getElementById('menu').hidden = true;
   clearZombies(); clearPickups(); clearFX(); clearTrail();
   rebuildPreview(); renderCreator(); AU.resume(); AU.musicTo('music_calm');
 }
@@ -17,7 +17,7 @@ const sw = (part, c, on) => `<button class="sw${on ? ' on' : ''}" data-part="${p
 function renderCreator() {
   const el = CREATOR.el = document.getElementById('creator'); el.hidden = false;
   const w = WEAPONS[LOOK.weapon];
-  el.innerHTML = `<div class="panel">
+  el.innerHTML = `<div class="panel"${CREATOR.shown ? ' style="animation:none"' : ''}><span class="hzstrip"></span>
     <h2>Your survivor</h2>
     <div class="gender"><button class="${survivorGender() === 'F' ? 'on' : ''}" data-g="F">Woman</button><button class="${survivorGender() === 'M' ? 'on' : ''}" data-g="M">Man</button></div>
     <div class="chars">${SURVIVORS.filter(s => s.g === survivorGender()).map(s => `<button class="char${LOOK.char === s.id ? ' on' : ''}" data-char="${s.id}"><b>${s.name}</b><small>${s.tag}</small></button>`).join('')}</div>
@@ -26,8 +26,9 @@ function renderCreator() {
     <h3>Starting weapon</h3>
     <div class="weps">${Object.keys(WEAPONS).map(k => `<button class="wep${LOOK.weapon === k ? ' on' : ''}" data-w="${k}"><img src="${WEAPON_ART[k] || ''}" alt=""><b>${WEAPONS[k].name}</b></button>`).join('')}</div>
     <p class="wdesc"><b>${w.name}</b> · ${w.desc} Finisher: ${w.fin}, ${w.finText}.</p>
-    <div class="acts"><button id="cStart" class="primary">${G.player && TUT_DONE() ? 'Start run' : 'Start training'}</button><button id="cBack" class="ghost">Back</button></div>
-  </div><p class="hint">Drag to turn your survivor</p>`;
+    <div class="acts"><button id="cStart" class="primary">${icon('play')}${G.player && TUT_DONE() ? 'Start run' : 'Start training'}</button><button id="cBack" class="ghost">${icon('back')}Back</button></div>
+  </div><p class="hint">${icon('back')}Drag to turn your survivor</p>`;
+  CREATOR.shown = true;
   el.querySelectorAll('.gender button').forEach(b => b.onclick = () => { if (survivorGender() === b.dataset.g) return; LOOK.char = SURVIVORS.find(s => s.g === b.dataset.g).id; AU.play('cardHover', {vol: .4}); rebuildPreview(); renderCreator(); });
   el.querySelectorAll('.char').forEach(b => b.onclick = () => { if (LOOK.char === b.dataset.char) return; LOOK.char = b.dataset.char; AU.play('cardHover', {vol: .4}); rebuildPreview(); });
   el.querySelectorAll('.sw').forEach(b => b.onclick = () => { LOOK.colors[b.dataset.part] = b.dataset.c || null; if (G.player) applyLook(G.player.rig, LOOK); AU.play('cardHover', {vol: .3, rate: 1.3}); renderCreator(); });
