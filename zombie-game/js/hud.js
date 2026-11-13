@@ -16,7 +16,7 @@ const FONT = s => `${s}px Oswald, Impact, system-ui, sans-serif`;
 
 function drawHUD(dt) {
   hx.setTransform(DPR, 0, 0, DPR, 0, 0); hx.clearRect(0, 0, W, H);
-  const P = G.player, t = G.time; if (!P || G.state === 'creator') return;
+  const P = G.player, t = G.time; if (!P || G.state === 'creator' || G.state === 'intro') return;
   // floating text in the world
   for (const tx of FX.texts) {
     const [x, y, ok] = toScreen(tx.x, tx.y, tx.z); if (!ok) continue;

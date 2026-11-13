@@ -171,7 +171,7 @@ function pickCard(i) {
   setTimeout(() => {
     DRAFT.el.hidden = true; G.state = 'playing';
     const P = G.player; ring(P.x, P.z, 2.5, 0xffcc33, .4); popText(P.x, P.z, c.title, '#ffcc33', 34, 3);
-    setTimeout(startWave, 700);
+    setTimeout(nextWave, 700);
   }, 650);
 }
 function WSND_DRAW(k) { const cls = WEAPONS[k].cls; AU.play(cls === 'blade' || cls === 'pierce' ? 'swingBlade' : cls === 'saw' ? 'hitSaw' : cls === 'heavy' ? 'hitAxe' : k === 'Guitar' ? 'guitarHit' : 'hitWood', {vol: .8, dur: .8}); }

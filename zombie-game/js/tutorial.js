@@ -96,6 +96,7 @@ TUT.finish = function (skipped) {
   for (const zb of G.zombies) if (zb.dummy) { zb.gone = true; }
   if (!skipped) { HUD.banner('TRAINING DONE', 'here they come', '#7dff8a'); AU.play('levelUp', {vol: .7}); }
   G.player.hp = G.player.maxHp; G.wave = 0; G.score = 0; G.kills = 0; G.combo = 0;
-  setTimeout(() => { if (G.state === 'playing' && !G.player.dead) startWave(); }, skipped ? 300 : 1400);
+  setTimeout(() => { if (G.state === 'playing' && !G.player.dead) areaCard(0); }, skipped ? 100 : 1400);
+  setTimeout(() => { if (G.state === 'playing' && !G.player.dead && !G.wave) startWave(); }, skipped ? 2400 : 3800);
 };
 TUT.abort = function () { if (!TUT.active) return; TUT.active = false; if (TUT.el) TUT.el.hidden = true; if (TUT.marker) { scene.remove(TUT.marker); scene.remove(TUT.arrow); } TUT.dummy = null; };

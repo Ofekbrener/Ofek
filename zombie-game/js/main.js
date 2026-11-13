@@ -66,7 +66,7 @@ function newRun(cp = null, opts = {}) {
   TUT.abort(); document.getElementById('creator').hidden = true;
   AU.resume(); clearZombies(); clearPickups(); clearFX(); clearTrail(); resetUpgrades(); POW.reset(); clearGear();
   if (G.player && G.player.javelin) { scene.remove(G.player.javelin.g); G.player.javelin = null; }
-  for (const b of G.barrels) { scene.remove(b.m); } G.barrels = []; for (const [x, z] of [[-6, -3], [6.5, 3.5], [-3, 9.5], [3.5, -10], [-12, 4], [12, -3]]) addBarrel(x, z);
+
   Object.assign(G, {wave: 0, score: 0, coins: 0, kills: 0, combo: 0, hitstop: 0, trauma: 0, slowT: 0, timeScale: 1, flash: 0, hurtFlash: 0});
   DRAFT.rerollCost = 10;
   makePlayer(); G.cam.x = 0; G.cam.z = 2;
@@ -76,21 +76,24 @@ function newRun(cp = null, opts = {}) {
     UP.el = Object.assign({fire: 0, frost: 0, storm: 0, poison: 0}, cp.up.el || {}); UP.gear = Object.assign({}, cp.up.gear || {}); UP.wlvl = cp.up.wlvl || 1;
     if (cp.weapon) { LOOK.weapon = LOOK.weapon; equipWeapon(cp.weapon); } buildGear();
   } else clearCheckpoint();
-  ui.hidden = true; document.getElementById('draft').hidden = true; G.state = 'playing';
+  ui.hidden = true; document.getElementById('draft').hidden = true; G.state = 'playing'; RADIO.clear();
+  G.area = areaIndex(G.wave + 1); if (WORLD.built !== G.area) buildLayout(G.area); else resetBarrels();
   AU.ambience(true);
-  if (opts.tutorial) TUT.start(); else startWave();
+  const w0 = G.wave, run = G.runId = (G.runId || 0) + 1;
+  if (opts.tutorial) TUT.start(); else { areaCard(G.area); setTimeout(() => { if (G.state === 'playing' && G.wave === w0 && G.runId === run) startWave(); }, 2600); }
 }
 function menuButtons(primaryLabel) {
   const cp = loadCheckpoint();
-  return (cp ? `<button id="go">Continue from wave ${cp.wave}</button><button id="fresh" class="ghost">New run from wave 1</button>`
+  return (cp ? `<button id="go">Continue: ${AREAS[areaIndex(cp.wave)].short} · wave ${cp.wave}</button><button id="fresh" class="ghost">New story from the start</button>`
     : `<button id="go">${primaryLabel}</button>`) +
-    `<div class="minor"><button id="custom" class="ghost">Customize survivor</button><button id="howto" class="ghost">How to play</button></div>`;
+    `<div class="minor"><button id="custom" class="ghost">Customize survivor</button><button id="howto" class="ghost">How to play</button><button id="story" class="ghost">Story</button></div>`;
 }
 const hapLabel = () => 'Vibration: ' + (HAPTIC.on ? 'on' : 'off');
 function wireMenu() {
   const cp = loadCheckpoint(), go = document.getElementById('go'), fresh = document.getElementById('fresh');
   // first launch: design the survivor, then the training run
-  const play = c => lookSaved() ? newRun(c, {tutorial: !TUT_DONE()}) : openCreator('play');
+  const play = c => !STORY.seen() && !c ? STORY.intro(() => play(c)) : lookSaved() ? newRun(c, {tutorial: !TUT_DONE()}) : openCreator('play');
+  document.getElementById('story').onclick = () => STORY.intro(showMenu);
   go.disabled = false; go.onclick = () => play(cp); if (fresh) fresh.onclick = () => play(null); go.focus();
   document.getElementById('custom').onclick = () => openCreator('menu');
   document.getElementById('howto').onclick = () => { if (!lookSaved()) return openCreator('play'); newRun(null, {tutorial: true}); };
@@ -153,14 +156,16 @@ function frame(ts) {
   if (G.state === 'playing' || G.state === 'dead') {
     if (dt > 0) { updatePlayer(dt); updateGear(dt); POW.update(dt); updateZombies(dt); updateWaves(dt); updateBarrels(dt); updatePickups(dt); }
     G.comboT -= dt; if (G.comboT <= 0) G.combo = 0;
-  } else if (G.state === 'draft' && G.player) { G.player.rig.play('Idle', {fade: .3}); G.player.rig.mixer.update(raw); for (const zb of G.zombies) zb.rig.mixer.update(raw); }
+  } else if ((G.state === 'draft' || G.state === 'travel') && G.player) { G.player.rig.play('Idle', {fade: .3}); G.player.rig.mixer.update(raw); for (const zb of G.zombies) zb.rig.mixer.update(raw); }
   else if (G.state === 'menu' && G.player) { G.player.rig.mixer.update(raw); G.player.face += raw * .3; syncPlayer(); }
   else if (G.state === 'creator') updateCreator(raw);
+  else if (G.state === 'intro') STORY.update(raw);
   if (G.state === 'playing') TUT.update(dt);
+  RADIO.update(raw);
   if (UP.magnetPulse > 0) { UP.magnetPulse -= raw; for (const k of G.pickups) { const P = G.player, dx = P.x - k.x, dz = P.z - k.z, d = Math.hypot(dx, dz) || 1; k.x += dx / d * 14 * raw; k.z += dz / d * 14 * raw; } }
   updateFX(dt || raw * .02); updateRain(raw);
   G.trauma = Math.max(0, G.trauma - raw * 1.6); G.flash = Math.max(0, G.flash - raw * 2); G.hurtFlash = Math.max(0, G.hurtFlash - raw * 2);
-  if (G.player && G.state !== 'creator') updateCamera(raw);
+  if (G.player && G.state !== 'creator' && G.state !== 'intro') updateCamera(raw);
   renderFX(); renderer.render(scene, camera); drawHUD(raw);
 }
 

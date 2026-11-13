@@ -3,61 +3,79 @@
 const WORLD = {lamps: [], rain: null, spawnPoints: [[0, -23], [0, 23], [-23, 0], [23, 0]]};
 
 function buildLights() {
-  scene.add(new THREE.HemisphereLight(0x5a6aa0, 0x120e0a, .32));
+  WORLD.hemi = new THREE.HemisphereLight(0x5a6aa0, 0x120e0a, .32); scene.add(WORLD.hemi);
   const moon = new THREE.DirectionalLight(0x8fa6ff, .75);
   moon.castShadow = true; moon.shadow.mapSize.set(2048, 2048);
   Object.assign(moon.shadow.camera, {left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 60});
   moon.shadow.bias = -.0005; moon.shadow.normalBias = .03; scene.add(moon, moon.target); WORLD.moon = moon;
 }
 function place(name, x, z, rot = 0, s = 1) {
-  const m = propClone(name); m.position.set(x, 0, z); m.rotation.y = rot; m.scale.setScalar(s); scene.add(m); G.props.push(m); return m;
+  const m = propClone(name); m.position.set(x, 0, z); m.rotation.y = rot; m.scale.setScalar(s); (WORLD.layer || scene).add(m); G.props.push(m); return m;
 }
+const addToLayer = o => { (WORLD.layer || scene).add(o); return o; };
 // axis-aligned box collider from a placed prop's bounds
 function solid(m, pad = 0) {
   m.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(m);
   G.colliders.push({x: (b.min.x + b.max.x) / 2, z: (b.min.z + b.max.z) / 2, hw: (b.max.x - b.min.x) / 2 + pad, hd: (b.max.z - b.min.z) / 2 + pad});
 }
+// The ground, moon and rain stay for the whole game. Each area swaps the layer of props, lamps and barrels on top.
 function buildArena() {
   buildLights();
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(160, 160), new THREE.MeshStandardMaterial({color: 0x141318, roughness: .95}));
-  ground.rotation.x = -Math.PI / 2; ground.position.y = -.01; ground.receiveShadow = true; scene.add(ground);
-  // sidewalk slabs around the cross so the arena reads as a city block
-  const slab = new THREE.MeshStandardMaterial({color: 0x24222a, roughness: .9});
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -.01; ground.receiveShadow = true; scene.add(ground); WORLD.ground = ground;
+  buildRain(); buildLayout(0);
+}
+function clearLayout() {
+  if (WORLD.layer) scene.remove(WORLD.layer);
+  WORLD.layer = null; G.props = []; G.colliders = []; G.barrels = []; WORLD.lamps = [];
+}
+function buildLayout(i) {
+  clearLayout(); const A = AREAS[i]; WORLD.built = i;
+  WORLD.layer = new THREE.Group(); scene.add(WORLD.layer);
+  layoutStreet(A); if (A.dress) A.dress(A);
+  resetBarrels(); applyAreaLook(A);
+}
+function resetBarrels() {
+  for (const b of G.barrels) if (b.m.parent) b.m.parent.remove(b.m);
+  G.barrels = []; for (const [x, z] of (AREAS[WORLD.built].barrels || BARRELS)) addBarrel(x, z);
+}
+const BARRELS = [[-6, -3], [6.5, 3.5], [-3, 9.5], [3.5, -10], [-12, 4], [12, -3]];
+// the crossroads block every area is built on; areas pick the street tiles, cover and edge walls
+function layoutStreet(A) {
+  const slab = new THREE.MeshStandardMaterial({color: A.slab || 0x24222a, roughness: .9});
   for (const [x, z] of [[-12, -12], [12, -12], [-12, 12], [12, 12]]) {
-    const s = new THREE.Mesh(new THREE.BoxGeometry(15.6, .14, 15.6), slab); s.position.set(x, .06, z); s.receiveShadow = true; scene.add(s);
+    const s = new THREE.Mesh(new THREE.BoxGeometry(15.6, .14, 15.6), slab); s.position.set(x, .06, z); s.receiveShadow = true; addToLayer(s);
   }
-  // streets: a crossroads with two tiles in every direction
   place('Street_4Way', 0, 0);
   for (const d of [8, 16, 24]) {
     const v = d === 16 ? 'Street_Straight_Crack1' : d === 24 ? 'Street_Straight_Crack2' : 'Street_Straight';
     place(v, 0, d); place(v, 0, -d, Math.PI); place(v, d, 0, Math.PI / 2); place(v, -d, 0, -Math.PI / 2);
   }
-  // street lamps at the crossroads with warm point lights
-  for (const [x, z, r] of [[-4.6, -4.6, Math.PI * .25], [4.6, 4.6, Math.PI * 1.25], [4.6, -4.6, -Math.PI * .25], [-4.6, 4.6, Math.PI * .75]]) {
+  for (const [x, z, r] of A.lamps || [[-4.6, -4.6, Math.PI * .25], [4.6, 4.6, Math.PI * 1.25], [4.6, -4.6, -Math.PI * .25], [-4.6, 4.6, Math.PI * .75]]) {
     place('StreetLights', x, z, r);
-    const l = new THREE.PointLight(0xffa25a, 3.2, 16, 1.6); l.position.set(x + Math.sin(r) * 2.2, 5.6, z + Math.cos(r) * 2.2); scene.add(l); WORLD.lamps.push(l);
+    const l = new THREE.PointLight(A.lampCol || 0xffa25a, A.lampI || 3.2, 16, 1.6); l.position.set(x + Math.sin(r) * 2.2, 5.6, z + Math.cos(r) * 2.2); addToLayer(l); WORLD.lamps.push(l);
   }
-  // interior cover (solid)
-  solid(place('Vehicle_Pickup', -9, -10, 0));
-  solid(place('Vehicle_Sports', 10, 9, Math.PI / 2));
-  solid(place('Container_Red', 12, -12, 0));
-  solid(place('WaterTower', -14, 13, 0), -.4);
-  solid(place('Wheels_Stack', 7, -7, 0), -.1);
-  solid(place('Couch', -7, 8, Math.PI / 2), -.1);
-  // decor (walk-through)
-  for (const [n, x, z, r] of [['TrafficCone_1', 2.5, 6, 0], ['TrafficCone_2', -2.6, -6.5, 1], ['TrafficCone_1', 6, -2.4, 2], ['TrashBag_1', -10.5, -5, 0],
-    ['TrashBag_2', 9.5, 4.5, 1], ['Pallet_Broken', -5, 12, .4], ['CinderBlock', 5, 12, .2], ['FireHydrant', -4.4, -9, 0], ['TrafficLight_1', 4.3, -4.3, -Math.PI / 4],
-    ['TownSign', -6, -15.5, 0], ['Pipes', 14, 3, Math.PI / 2], ['Pallet', -14, -3, 0], ['TrashBag_1', 13.5, -6, 2]]) place(n, x, z, r);
-  // edge walls: barriers and wrecks around the block, open where the streets enter
-  const E = 19.5;
-  const edge = [['Container_Green', -12, -E - 1.3, 0], ['Vehicle_Truck_Armored', 12, -E - 2, Math.PI / 2], ['Container_Red', -12, E + 1.3, 0], ['Container_Green', 12, E + 1.3, 0],
-    ['Container_Green', -E - 1.3, -12, Math.PI / 2], ['Vehicle_Pickup', -E - 1.5, 11, .1], ['Container_Red', E + 1.3, 12, Math.PI / 2], ['Vehicle_Sports', E + 1.5, -11, .2],
-    ['TrafficBarrier_1', -5.5, -E, 0], ['TrafficBarrier_1', 5.5, -E, 0], ['TrafficBarrier_2', -5.5, E, 0], ['TrafficBarrier_2', 5.5, E, 0],
-    ['PlasticBarrier', -E, -5.5, Math.PI / 2], ['PlasticBarrier', -E, 5.5, Math.PI / 2], ['PlasticBarrier', E, -5.5, Math.PI / 2], ['PlasticBarrier', E, 5.5, Math.PI / 2]];
-  for (const [n, x, z, r] of edge) place(n, x, z, r);
-  // explosive barrels
-  for (const [x, z] of [[-6, -3], [6.5, 3.5], [-3, 9.5], [3.5, -10], [-12, 4], [12, -3]]) addBarrel(x, z);
-  buildRain();
+  for (const [n, x, z, r, pad] of A.cover) solid(place(n, x, z, r), pad || 0);
+  for (const [n, x, z, r] of A.decor) place(n, x, z, r);
+  for (const [n, x, z, r] of A.edge) place(n, x, z, r);
+}
+// a flat sign with painted text, used for area landmarks
+function signPlane(lines, w, h, {bg = '#e8e8e8', fg = '#b01010', x = 0, y = 3, z = 0, rot = 0, glow = 0} = {}) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = Math.round(512 * h / w); const g = c.getContext('2d');
+  g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height); g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const fs = c.height / (lines.length + .6); g.font = `bold ${fs}px Oswald, Impact, sans-serif`;
+  lines.forEach((t, i) => g.fillText(t, c.width / 2, c.height * (i + 1) / (lines.length + 1)));
+  const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({map: tex, roughness: .7, emissive: new THREE.Color(glow ? 0xffffff : 0), emissiveMap: glow ? tex : null, emissiveIntensity: glow, side: THREE.DoubleSide}));
+  m.position.set(x, y, z); m.rotation.y = rot; addToLayer(m); return m;
+}
+// lights, fog and rain for an area
+function applyAreaLook(A) {
+  const L = A.look; WORLD.hemi.color.setHex(L.sky); WORLD.hemi.groundColor.setHex(L.ground); WORLD.hemi.intensity = L.hemiI;
+  WORLD.moon.color.setHex(L.moon); WORLD.moon.intensity = L.moonI;
+  scene.background.setHex(L.fog); scene.fog.color.setHex(L.fog); scene.fog.near = L.fogNear; scene.fog.far = L.fogFar;
+  renderer.toneMappingExposure = L.exposure || .9; WORLD.ground.material.color.setHex(L.groundCol || 0x141318);
+  if (WORLD.rain) WORLD.rain.m.visible = !!A.rain; WORLD.raining = !!A.rain;
 }
 function addBarrel(x, z) {
   const m = place('Barrel', x, z, rnd(0, 6));
@@ -99,7 +117,7 @@ function explodeAt(x, z, radius, dmgZ, dmgP, src) {
 }
 function updateBarrels(dt) {
   for (const b of G.barrels) if (!b.dead && b.fuse >= 0) {
-    b.fuse -= dt; if (b.fuse < 0) { b.dead = true; scene.remove(b.m); explodeAt(b.x, b.z, 3.4, 4, 1, 'barrel'); }
+    b.fuse -= dt; if (b.fuse < 0) { b.dead = true; if (b.m.parent) b.m.parent.remove(b.m); explodeAt(b.x, b.z, 3.4, 4, 1, 'barrel'); }
   }
 }
 
@@ -111,7 +129,7 @@ function buildRain() {
   m.frustumCulled = false; scene.add(m); WORLD.rain = {m, pos, N, drops: Array.from({length: N}, () => ({x: rnd(-22, 22), y: rnd(0, 16), z: rnd(-22, 22), v: rnd(16, 22)}))};
 }
 function updateRain(dt) {
-  const R = WORLD.rain; if (!R) return; const cx = G.cam.x, cz = G.cam.z;
+  const R = WORLD.rain; if (!R || !WORLD.raining) return; const cx = G.cam.x, cz = G.cam.z;
   for (let i = 0; i < R.N; i++) {
     const d = R.drops[i]; d.y -= d.v * dt; if (d.y < 0) { d.y = rnd(10, 16); d.x = cx + rnd(-22, 22); d.z = cz + rnd(-22, 22); if (Math.random() < .08) addPart({x: d.x, y: .05, z: d.z, vx: 0, vz: 0, vy: 1.2, g: 9, life: .15, max: .15, size: .05, col: '#8fa3c8', drag: 1, rx: 0, ry: 0}); }
     R.pos[i * 6] = d.x; R.pos[i * 6 + 1] = d.y; R.pos[i * 6 + 2] = d.z; R.pos[i * 6 + 3] = d.x + .04; R.pos[i * 6 + 4] = d.y + .55; R.pos[i * 6 + 5] = d.z + .02;

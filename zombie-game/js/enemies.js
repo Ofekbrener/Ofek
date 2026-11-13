@@ -36,19 +36,20 @@ function startWave() {
   POW.lastStand = false;
   if (G.wave > 1 && G.wave % 5 !== 0) { const P = G.player; if (P.hp < P.maxHp) { P.hp++; popText(P.x, P.z, '+1 ♥', '#ff5a6a', 26, 2.8); } } // a heart back every wave
   AU.play('waveStart', {vol: .8}); AU.musicTo(G.wave % 5 === 0 ? 'music_boss' : 'music_combat');
+  if (!TUT.active) storyWaveStart();
   setTimeout(() => AU.play('zGroan', {vol: .7, rate: .9}), 600);
 }
 function spawnZombie(type) {
   const T = ZTYPES[type], sp = pick(WORLD.spawnPoints);
   const x = sp[0] + rnd(-3, 3), z = sp[1] + rnd(-3, 3);
   const scale = (T.scale || 1) * (T.boss ? 1 : rnd(.93, 1.07));
-  const rig = new Rig(T.model, {tint: T.tint, scale});
-  const bossN = Math.max(1, Math.floor(G.wave / 5)), hpMul = T.boss ? (30 / T.hp) * (1 + .4 * (bossN - 1)) : 1 + (G.wave - 1) * .08;
+  const BP = T.boss ? bossProfile() : null, rig = new Rig(T.model, {tint: BP ? BP.tint : T.tint, scale: BP ? BP.scale : scale});
+  const bossN = Math.max(1, Math.floor(G.wave / 5)), hpMul = T.boss ? BP.hp / T.hp : 1 + (G.wave - 1) * .08;
   const zb = {type, T, rig, x, z, vx: 0, vz: 0, y: -2, vy: 0, r: T.r * (T.boss ? 1 : scale), face: Math.atan2(-z, -x),
     hp: Math.ceil(T.hp * hpMul), maxHp: Math.ceil(T.hp * hpMul), speed: rnd(...T.speed) * (1 + G.wave * .025),
     state: 'rise', st: 0, cd: rnd(.5, 1.2), flash: 0, stun: 0, burn: 0, bleed: 0, dying: null, wob: rnd(0, 7), groanT: rnd(2, 8)};
   rig.play(T.move, {fade: 0}); rig.cur.time = rnd(0, rig.dur(T.move));
-  if (T.boss) { WAVE.boss = zb; zb.bossCd = 2.5; zb.lastMove = ''; AU.play('bossIntro', {vol: 1}); HAPTIC.fx('boss'); AU.play('evilLaugh', {vol: .9, delay: .8, bus: 'voice'}); HUD.banner('THE BUTCHER', 'boss zombie', '#ff4f4f'); slowmo(.5); shake(.4); }
+  if (T.boss) { WAVE.boss = zb; zb.bossCd = 2.5; zb.lastMove = ''; zb.prof = BP; zb.bossName = BP.name; zb.r = T.r * BP.scale / T.scale; AU.play('bossIntro', {vol: 1}); HAPTIC.fx('boss'); AU.play('evilLaugh', {vol: .9, delay: .8, bus: 'voice'}); HUD.banner(BP.name, BP.sub, '#ff4f4f'); slowmo(.5); shake(.4); }
   G.zombies.push(zb); WAVE.alive++;
 }
 function updateWaves(dt) {
@@ -141,7 +142,7 @@ function bossAI(zb, dt, d, toP) {
     zb.bossCd -= dt;
     if (zb.bossCd <= 0 && !P.dead) {
       const runners = G.zombies.filter(z => z.type === 'runner' && !z.dying).length;
-      const moves = ['charge', 'slam', 'summon'].filter(m => m !== zb.lastMove && !(m === 'slam' && d > 9) && !(m === 'summon' && runners >= 4));
+      const moves = (zb.prof ? zb.prof.moves : ['charge', 'slam', 'summon']).filter(m => m !== zb.lastMove && !(m === 'slam' && d > 9) && !(m === 'summon' && runners >= 4));
       const m = d < 4 ? 'slam' : pick(moves); zb.lastMove = m; zb.state = m + 'Tele'; zb.st = 0; zb.vx = zb.vz = 0; zb.tele = true;
       if (m === 'charge') { zb.chargeDir = toP; zb.teleMesh = new THREE.Mesh(new THREE.PlaneGeometry(14, 2.6), teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; scene.add(zb.teleMesh); rig.play('Idle_Attack', {fade: .1}); AU.play('bossEffort', {vol: 1, bus: 'voice'}); }
       if (m === 'slam') { zb.slamX = P.x; zb.slamZ = P.z; zb.teleMesh = new THREE.Mesh(new THREE.CircleGeometry(4, 40), teleMat); zb.teleMesh.rotation.x = -Math.PI / 2; zb.teleMesh.position.set(P.x, .04, P.z); scene.add(zb.teleMesh); rig.play('Jump', {loop: false, restart: true, fade: .1, speed: .5}); AU.play('bossEffort', {vol: 1, bus: 'voice', rate: .9}); }
@@ -216,6 +217,7 @@ function killZombie(zb, dir, o) {
   const T = zb.T, P = G.player;
   G.kills++; WAVE.killed++; G.score += T.score * (1 + Math.floor(G.combo / 10));
   zb.dying = {type: chooseDeath(zb, o), t: 0}; zb.state = 'dead'; zb.stun = 0;
+  if (T.boss && !TUT.active) storyBossDown();
   popText(zb.x, zb.z, '+' + T.score, '#ffcc33', 26 + Math.min(G.combo, 20), 2.6 * (T.scale || 1));
   AU.play(T.boss ? 'bossDeath' : 'zDeath', {vol: .7, rate: T.voice * rnd(.9, 1.1), x: zb.x, z: zb.z, bus: 'voice', max: 2});
   AU.play(pick(['bone', 'skull', 'gore']), {vol: .8, x: zb.x, z: zb.z, delay: .02});
