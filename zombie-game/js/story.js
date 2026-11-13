@@ -3,6 +3,30 @@
 // ---------- radio ----------
 const WHO = {DOC: {name: 'DR. ADLER', col: '#7dff8a'}, ARMY: {name: 'ARMY · WALL', col: '#ffcc33'}, NOTE: {name: 'FOUND NOTE', col: '#cfd6ff'}};
 const RADIO = {q: [], cur: null, t: 0, chars: 0, el: null};
+// faces in the radio bubble: Doc is a real 3D head shot of his model, rendered once; the army and notes get drawn icons
+const FACES = {};
+function docFace() {
+  const key = docModel(); if (FACES[key] || FACES[key + ':busy']) return FACES[key] || null;
+  FACES[key + ':busy'] = true;
+  ensureCharacter(key.slice(11)).then(() => {
+    const S = 160, r = new THREE.WebGLRenderer({alpha: true, antialias: true, preserveDrawingBuffer: true});
+    r.setSize(S, S); r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.2;
+    const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xdfffe8, 0x203028, 1.1));
+    const k = new THREE.DirectionalLight(0xffffff, 1.7); k.position.set(1.5, 2, 3); sc.add(k); const g = new THREE.DirectionalLight(0x7dff8a, 1.2); g.position.set(-2, 1, -1); sc.add(g);
+    const m = THREE.SkeletonUtils.clone(MODELS[key].scene); m.traverse(o => { if (o.isMesh && WEAPON_MESHES.includes(o.name)) o.visible = false; });
+    const idle = MODELS[key].animations.find(a => a.name === 'Idle'); if (idle) { const mix = new THREE.AnimationMixer(m); mix.clipAction(idle).play(); mix.update(.3); }
+    sc.add(m); m.updateMatrixWorld(true); let head = null; m.traverse(o => { if (o.isBone && o.name === 'Head') head = o; });
+    const hp = head ? head.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1.5, 0);
+    const cam = new THREE.PerspectiveCamera(30, 1, .01, 20); cam.position.set(hp.x + .25, hp.y + .32, hp.z + 1.25); cam.lookAt(hp.x, hp.y + .26, hp.z);
+    r.render(sc, cam); FACES[key] = r.domElement.toDataURL('image/png'); r.dispose();
+    const im = document.querySelector('#radio .rface img[data-doc]'); if (im) im.src = FACES[key];
+  }).catch(() => {});
+  return null;
+}
+function faceHTML(who) {
+  if (who === 'DOC') { const f = docFace(); return `<span class="rface doc"><img data-doc ${f ? `src="${f}"` : ''} alt=""></span>`; }
+  return `<span class="rface ${who === 'ARMY' ? 'army' : 'note'}">${icon(who === 'ARMY' ? 'radio' : 'story')}</span>`;
+}
 // short burst of filtered noise and a beep, played on the radio's open and close
 function radioStatic(len = .22, beep = true) {
   if (!AU.ctx || AU.muted) return; const c = AU.ctx, t = c.currentTime;
@@ -18,7 +42,7 @@ RADIO.next = function () {
   RADIO.cur = RADIO.q.shift() || null; RADIO.chars = 0; RADIO.t = 0;
   if (!RADIO.cur) { el.classList.remove('on'); radioStatic(.12, false); return; }
   const w = WHO[RADIO.cur.who] || WHO.DOC;
-  el.innerHTML = `<div class="rhead"><i class="rled" style="background:${w.col}"></i><b style="color:${w.col}">${w.name}</b><span class="rwave"><i></i><i></i><i></i><i></i><i></i></span></div><div class="rtext"><span></span><span class="rrest"></span></div>`;
+  el.innerHTML = faceHTML(RADIO.cur.who) + `<div class="rhead"><i class="rled" style="background:${w.col}"></i><b style="color:${w.col}">${w.name}</b><span class="rwave"><i></i><i></i><i></i><i></i><i></i></span></div><div class="rtext"><span></span><span class="rrest"></span></div>`;
   el.className = 'on' + (RADIO.cur.who === 'NOTE' ? ' note' : ''); radioStatic();
   const c = RADIO.cur, spoken = VOICE.speak(c.who, c.text); RADIO.hold = Math.max(c.text.length / 42 + 1.6 + c.text.length * .035, spoken + .9);
 };

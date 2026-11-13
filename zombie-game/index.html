@@ -402,7 +402,7 @@ button:focus:not(:focus-visible){outline:none}
 #home .hicons button .ico{width:26px;height:26px}
 #home .hicons small{font-size:12px;letter-spacing:.5px;color:var(--ink);opacity:.85;line-height:1}
 #home .hname{gap:4px}#home .hname b{font-family:'Black Ops One',Oswald,sans-serif;font-weight:400;font-size:34px;letter-spacing:2px}#home .hname span{font-size:16px;color:#d6dbea}#home .hname small{font-size:14px;color:var(--gold);letter-spacing:1px}
-#home .hbtns{gap:12px;padding:0 16px;grid-template-columns:1fr 1.4fr;align-items:end}
+#home .hbtns{gap:12px;padding:0 16px;grid-template-columns:1fr 1fr;align-items:end}
 .hbig{height:96px;border-radius:16px;font-family:'Black Ops One',Oswald,sans-serif;font-weight:400;letter-spacing:2px;gap:4px;overflow:hidden}
 .hbig .ico{width:30px;height:30px}
 .hbig small{font-family:Oswald,sans-serif;font-size:14px;font-weight:500;letter-spacing:.5px;text-transform:none;opacity:.9;max-width:94%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -414,7 +414,8 @@ button:focus:not(:focus-visible){outline:none}
 @keyframes idle-shine{0%,85%{translate:-120% 0}100%{translate:120% 0}}
 .play-halo{position:absolute;inset:-4px;border-radius:20px;border:3px solid rgba(255,204,51,.55);pointer-events:none;animation:halo 2s var(--ease-in-out) infinite}
 @keyframes halo{0%,100%{scale:1.01;opacity:.7}50%{scale:1.035;opacity:.15}}
-@media (max-width:760px){.hbig{height:88px}.hbig.play{height:100px;font-size:36px}.hbig.shop{font-size:24px}}
+#home .hbig.shop,#home .hbig.play{height:104px;font-size:34px;flex-direction:row;flex-wrap:wrap;align-content:center;column-gap:10px;row-gap:2px;padding:0 12px}#home .hbig.shop small{flex-basis:100%;text-align:center}#home .hbig.shop .ico{width:32px;height:32px}
+@media (max-width:760px){#home .hbig.shop,#home .hbig.play{height:96px;font-size:30px}}
 /* sheets (settings, play chooser): slide up on phones, pop as a dialog on wide screens */
 #hsheet{background:rgba(4,5,8,.55);animation:fade-in var(--d-fade-quick) linear both}
 #hsheet .hsbox{border-radius:16px 16px 0 0;padding:0 16px max(16px,env(safe-area-inset-bottom));gap:12px;animation:sheet-up var(--d-spring-sheet) var(--spring-sheet) both}
@@ -634,6 +635,27 @@ button:focus:not(:focus-visible){outline:none}
   .play-halo,.hbig.play::after,.go-actions .halo::before{animation:none}
 }
 @media (prefers-reduced-motion:reduce){.card,.deal .card,.card .art img,.card .art svg,.card.epic .art::after{animation:none;transition:none}}
+
+/* shiny currency: drawn coin and emerald, with a glint sweeping across every 3.2 s */
+.ccoin,.cgem,#draft .dchips .ccoin{position:relative;display:inline-block;vertical-align:-3px;width:20px;height:20px;border:0;border-radius:0;clip-path:none;background:url(assets/ui/coin.svg) center/contain no-repeat;overflow:hidden;filter:drop-shadow(0 0 4px rgba(255,200,60,.45))}
+.cgem{background-image:url(assets/ui/gem.svg);filter:drop-shadow(0 0 4px rgba(60,255,140,.45))}
+.ccoin::after,.cgem::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.95) 50%,transparent 58%) 0 0/300% 100% no-repeat;background-position:100% 0;animation:cur-glint 3.2s var(--ease-in-out) infinite;-webkit-mask:url(assets/ui/coin.svg) center/contain no-repeat;mask:url(assets/ui/coin.svg) center/contain no-repeat}
+.cgem::after{-webkit-mask-image:url(assets/ui/gem.svg);mask-image:url(assets/ui/gem.svg);animation-delay:1.1s}
+@keyframes cur-glint{0%,72%{background-position:100% 0}100%{background-position:0 0}}
+.hwallet .ccoin,.hwallet .cgem{width:26px;height:26px;vertical-align:-6px}
+@media (prefers-reduced-motion:reduce){.ccoin::after,.cgem::after{animation:none}}
+
+/* radio speaker bubble: Doc's face (green monitor ring, pulses while he talks), the army helmet, a note */
+#radio{padding-left:76px;min-height:72px}
+#radio .rface{position:absolute;left:9px;top:50%;translate:0 -50%;width:56px;height:56px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,#1d3a26,#07120b);border:2px solid var(--toxic,#7dff8a);box-shadow:0 0 0 3px rgba(0,0,0,.6),0 0 14px rgba(125,255,138,.45)}
+#radio .rface img{width:100%;height:100%;object-fit:cover}
+#radio .rface::after{content:"";position:absolute;inset:0;border-radius:50%;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 2px,transparent 2px 4px)}
+#radio.on .rface.doc{animation:rface-talk .32s ease-in-out infinite alternate}
+@keyframes rface-talk{from{scale:1}to{scale:1.05}}
+#radio .rface.army{border-color:#ffcc33;box-shadow:0 0 0 3px rgba(0,0,0,.6),0 0 14px rgba(255,204,51,.4);color:#ffcc33}
+#radio .rface.note{border-color:#b8ae90;background:#e8e2ce;color:#2a2418;box-shadow:none}
+#radio .rface .ico{width:28px;height:28px}
+@media (prefers-reduced-motion:reduce){#radio.on .rface.doc{animation:none}}
 </style>
 </head>
 <body>

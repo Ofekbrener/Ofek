@@ -20,10 +20,10 @@ function homeStage(on) {
 function showHome() {
   HOME.on = true; homeStage(true); const cp = loadCheckpoint(), s = SURVIVORS.find(x => x.id === LOOK.char) || SURVIVORS[0];
   let best = 0; try { best = +localStorage.getItem('ozBest') || 0; } catch (e) {}
-  const sub = cp ? `Continue: ${cp.endless ? 'Endless' : AREAS[areaIndex(cp.wave)].short} · wave ${cp.wave}` : storyFlag('ozEnding') ? 'New story or Endless' : 'Story: Area 1, St. Mercy';
+  const sub = cp ? `${cp.endless ? 'Endless' : 'Area ' + (areaIndex(cp.wave) + 1)} · wave ${cp.wave}` : storyFlag('ozEnding') ? 'Story or Endless' : 'Area 1 · St. Mercy';
   ui.innerHTML = `<div id="home">
     <div class="htop"><div class="hlogo">ZOMBIE RAID</div><div class="hwallet">${walletHTML()}</div></div>
-    <div class="hicons"><button id="hCustom" style="--i:0" aria-label="Customize survivor">${icon('survivor')}<small>Survivor</small></button><button id="hStory" style="--i:1" aria-label="Story">${icon('story')}<small>Story</small></button><button id="hSet" style="--i:2" aria-label="Settings">${icon('settings')}<small>Settings</small></button></div>
+    <div class="hicons"><button id="hCustom" style="--i:0" aria-label="Customize survivor">${icon('survivor')}<small>Survivor</small></button><button id="hSet" style="--i:1" aria-label="Settings">${icon('settings')}<small>Settings</small></button></div>
     <div class="hname"><b>${s.name}</b><span>${s.tag}</span>${best ? `<small>Best score ${fmt(best)}</small>` : ''}</div>
     <div class="hbtns"><button id="hShop" class="hbig shop">${icon('shop')}SHOP<small>Safehouse · Locker</small></button>
       <div class="play-wrap"><span class="play-halo" aria-hidden="true"></span><button id="hPlay" class="hbig play hero">${icon('play')}PLAY<small>${sub}</small></button></div></div>
@@ -32,7 +32,6 @@ function showHome() {
   document.getElementById('hShop').onclick = () => openShop();
   document.getElementById('hPlay').onclick = () => playChooser();
   document.getElementById('hCustom').onclick = () => { HOME.on = false; openCreator('menu'); };
-  document.getElementById('hStory').onclick = () => { HOME.on = false; STORY.intro(showMenu); };
   document.getElementById('hSet').onclick = () => settingsSheet();
   AU.play('cardOpen', {vol: .5}); showUpdate(); checkUpdate();
 }
@@ -161,6 +160,6 @@ function homeCamera(raw) {
   const P = G.player; HOME.spin += raw * .35; P.face = Math.PI / 2 + Math.sin(HOME.spin) * .6;
   const narrow = W < H, x = HOME.shop && !narrow ? P.x - 1.2 : P.x, d = narrow ? 4.6 : 3.8;
   // with the shop open on a phone, the survivor moves to the top third, above the sheet
-  if (HOME.shop && narrow) { camera.position.set(x + .2, 2.2, P.z + 3.4); camera.lookAt(x, .05, P.z); return; }
+  if (HOME.shop && narrow) { camera.position.set(x + .2, 1.5, P.z + 5.6); camera.lookAt(x, -1.15, P.z); return; }
   camera.position.set(x + .2, 1.45, P.z + d); camera.lookAt(x, narrow ? 1.25 : 1.0, P.z);
 }

@@ -10,6 +10,13 @@ HUD.banner = (t, s, c) => { HUD.bannerT = 2.2; HUD.bannerTxt = t; HUD.bannerSub 
 HUD.layout = () => { const b = HUD.btn, R = W - 24, B = H - 24; b.atk.x = R - 44; b.atk.y = B - 56; b.jmp.x = R - 128; b.jmp.y = B - 26; b.dash.x = R - 112; b.dash.y = B - 118; };
 const _pv = new THREE.Vector3();
 function toScreen(x, y, z) { _pv.set(x, y, z).project(camera); return [(_pv.x + 1) / 2 * W, (1 - _pv.y) / 2 * H, _pv.z < 1]; }
+// shiny coin and emerald pictures (assets/ui), with a glint that passes every few seconds
+const CUR_IMG = {coin: new Image(), gem: new Image()}; CUR_IMG.coin.src = 'assets/ui/coin.svg'; CUR_IMG.gem.src = 'assets/ui/gem.svg';
+function curIcon(img, x, y, s, ph) {
+  if (img.complete && img.naturalWidth) hx.drawImage(img, x, y, s, s);
+  const k = ((G.time * .45 + ph) % 2.6); if (k < .5) { const a = Math.sin(k / .5 * Math.PI), r = 6 * a; hx.save(); hx.globalAlpha = a; hx.fillStyle = '#fff'; hx.translate(x + s * .78, y + s * .2);
+    hx.beginPath(); hx.moveTo(0, -r); hx.lineTo(r * .25, -r * .25); hx.lineTo(r, 0); hx.lineTo(r * .25, r * .25); hx.lineTo(0, r); hx.lineTo(-r * .25, r * .25); hx.lineTo(-r, 0); hx.lineTo(-r * .25, -r * .25); hx.fill(); hx.restore(); }
+}
 function stroked(txt, x, y, font, fill, lw = 5, align = 'center') { hx.font = font; hx.textAlign = align; hx.lineWidth = lw; hx.strokeStyle = '#000'; hx.lineJoin = 'round'; hx.strokeText(txt, x, y); hx.fillStyle = fill; hx.fillText(txt, x, y); }
 // touch button icons, drawn as strokes so they stay sharp at any size: axe blade, up chevron, double right chevron
 function btnIcon(k, x, y, s) {
@@ -55,8 +62,8 @@ function drawHUD(dt) {
   hx.save(); hx.translate(L + 66, T + 22); hx.scale(hsc, hsc); stroked(hs, 0, 0, FONT(24), '#ff4a5a', 4, 'left'); hx.restore();
   // in a run only this run's pickups show; the bank totals live on the home screen
   const inRun = G.state === 'playing', coins = inRun ? G.runCoins || 0 : G.coins, gems = inRun ? G.runGems || 0 : META.gems;
-  hx.save(); hx.translate(L + 66, T + 50); hx.scale(csc, csc); stroked('● ' + coins, 0, 0, FONT(18), '#ffc83a', 4, 'left'); hx.restore();
-  if (!inRun || gems) { const gsc = FLY.slotPop('gems', L + 150, T + 44, 12); hx.save(); hx.translate(L + 138, T + 50); hx.scale(gsc, gsc); stroked('◆ ' + gems, 0, 0, FONT(18), '#30e070', 4, 'left'); hx.restore(); }
+  hx.save(); hx.translate(L + 66, T + 50); hx.scale(csc, csc); curIcon(CUR_IMG.coin, -1, -18, 21, 0); stroked('' + coins, 25, 0, FONT(18), '#ffd44a', 4, 'left'); hx.restore();
+  if (!inRun || gems) { const gsc = FLY.slotPop('gems', L + 150, T + 44, 12); hx.save(); hx.translate(L + 138, T + 50); hx.scale(gsc, gsc); curIcon(CUR_IMG.gem, 0, -19, 21, 1.4); stroked('' + gems, 24, 0, FONT(18), '#5cf598', 4, 'left'); hx.restore(); }
   // FURY meter: fills from hits and kills, fires a power-up when full
   { const bx = L, by = T + 66, bw = 150, bh = 9, k = POW.active ? clamp(POW.t / POWERS[POW.active].dur, 0, 1) : POW.fury / 100;
     if (k > 0) { hx.fillStyle = 'rgba(0,0,0,.55)'; hx.fillRect(bx - 2, by - 2, bw + 4, bh + 4); }
