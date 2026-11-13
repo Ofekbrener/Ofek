@@ -69,13 +69,14 @@ const ENDINGS = {
   army: {title: 'ENDING: DAWN', col: '#ffcc33', lines: ['The gate opens. Soldiers take the case from your hands.', 'Three weeks later, the first doses reach the city.', 'Somewhere in the static, a voice says thank you. Then nothing.']},
   doc: {title: 'ENDING: STATIC', col: '#d0a0ff', lines: ['Dr. Adler drinks the cure in one go. His eyes clear.', '"You saved me," he says, and walks into the dark.', 'Behind you, the floodlights on the wall go out one by one.']},
 };
+const ENDING_RADIO = [{who: 'ARMY', text: 'Survivor, bring the case to the gate. We can save everyone.'}, {who: 'DOC', text: 'Please. I made this. I only need one dose.'}];
 function showEnding() {
   const el = document.getElementById('ending'); G.state = 'ending'; el.hidden = false; RADIO.clear(); AU.musicTo('music_calm'); clearCheckpoint();
   el.innerHTML = `<div class="ebox"><div class="etitle">THE CASE IS STILL WARM</div>
     <p class="eline">Patient Zero is down. Two voices on the radio. One choice.</p>
     <div class="echoice"><button id="eArmy" class="ecard army"><b>Give the cure to the army</b><span>They can make enough for the whole city.</span></button>
     <button id="eDoc" class="ecard doc"><b>Give the cure to Doc</b><span>It is the only thing that keeps him human.</span></button></div></div>`;
-  RADIO.say([{who: 'ARMY', text: 'Survivor, bring the case to the gate. We can save everyone.'}, {who: 'DOC', text: 'Please. I made this. I only need one dose.'}]);
+  RADIO.say(ENDING_RADIO);
   const pickE = id => { AU.play('cardPick', {vol: .9}); RADIO.clear(); playEnding(id); };
   document.getElementById('eArmy').onclick = () => pickE('army'); document.getElementById('eDoc').onclick = () => pickE('doc');
 }
