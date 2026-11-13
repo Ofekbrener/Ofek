@@ -102,7 +102,7 @@ const hapLabel = () => 'Vibration: ' + (HAPTIC.on ? 'on' : 'off');
 function wireMenu() {
   const cp = loadCheckpoint(), go = document.getElementById('go'), fresh = document.getElementById('fresh');
   // first launch: design the survivor, then the training run
-  const play = c => !STORY.seen() && !c ? STORY.intro(() => play(c)) : lookSaved() ? newRun(c, {tutorial: !TUT_DONE()}) : openCreator('play');
+  const play = c => !c ? startJourney() : lookSaved() ? newRun(c, {tutorial: !TUT_DONE()}) : openCreator('play');
   const en = document.getElementById('endless'); if (en) en.onclick = () => lookSaved() ? newRun(null, {endless: true}) : openCreator('play');
   go.disabled = false; go.onclick = () => play(cp); if (fresh) fresh.onclick = () => play(null); go.focus();
   showUpdate();

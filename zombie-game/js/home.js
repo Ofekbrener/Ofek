@@ -38,15 +38,20 @@ function showHome() {
 }
 function sheet(html) { const el = document.getElementById('hsheet'); el.innerHTML = `<div class="hsbox"><span class="hzstrip"></span>${html}<button class="ghost hsclose" id="hsClose">${icon('close')}Close</button></div>`; el.hidden = false; const close = () => { el.classList.add('out'); setTimeout(() => { el.hidden = true; el.classList.remove('out'); }, 240); };
   document.getElementById('hsClose').onclick = close; el.onclick = e => { if (e.target === el) close(); }; return el; }
+// A new story always opens with the story video, then the training run, then wave 1.
+function startJourney() {
+  HOME.on = false;
+  STORY.intro(() => lookSaved() ? newRun(null, {tutorial: true}) : openCreator('play'));
+}
 function playChooser() {
   const cp = loadCheckpoint(), endless = storyFlag('ozEndless');
-  if (!cp && !endless) { HOME.on = false; newRun(null); return; }
+  if (!cp && !endless) { startJourney(); return; }
   const row = (id, ic, t, sub, main) => `<button class="row-btn${main ? ' main' : ''}" id="${id}"><span class="rico">${icon(ic)}</span><span class="rtx">${t}<small>${sub}</small></span>${icon('play')}</button>`;
   const el = sheet(`<h3>Play</h3>${cp ? row('pCont', 'map', 'Continue · wave ' + cp.wave, cp.endless ? 'Endless' : AREAS[areaIndex(cp.wave)].name, true) : ''}
     ${row('pNew', 'story', 'New story', 'from St. Mercy, wave 1', !cp)}${endless ? row('pEnd', 'infinity', 'Endless mode', 'the districts loop, bosses grow') : ''}`);
   const go = (c, o) => { el.hidden = true; HOME.on = false; newRun(c, o); };
   if (cp) document.getElementById('pCont').onclick = () => go(cp);
-  document.getElementById('pNew').onclick = () => go(null);
+  document.getElementById('pNew').onclick = () => { el.hidden = true; startJourney(); };
   if (endless) document.getElementById('pEnd').onclick = () => go(null, {endless: true});
 }
 function settingsSheet() {
