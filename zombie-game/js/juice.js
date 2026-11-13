@@ -119,7 +119,7 @@ function updateFX(dt) {
   for (const c of FX.clouds) {
     c.life -= dt; c.tick -= dt;
     for (let i = 0; i < 2; i++) { const a = rnd(0, 7), r = rnd(0, c.r); addPart({x: c.x + Math.cos(a) * r, y: rnd(.1, 1), z: c.z + Math.sin(a) * r, vx: rnd(-.2, .2), vz: rnd(-.2, .2), vy: rnd(.2, .6), g: 0, life: .9, max: .9, size: rnd(.15, .3), col: pick(['#7adf3a', '#4aa020', '#a8ff5a']), drag: .98, rx: 0, ry: 0}); }
-    for (const zb of G.zombies) if (!zb.dying && zb.state !== 'rise' && Math.hypot(zb.x - c.x, zb.z - c.z) < c.r) { if (c.slow) zb.inCloud = .3; if (c.tick <= 0) damageZombie(zb, 0, 1, {dot: 'poison'}); }
+    for (const zb of G.zombies) if (!zb.dying && zb.state !== 'rise' && Math.hypot(zb.x - c.x, zb.z - c.z) < c.r) { if (cloudCheck(c, zb)) break; if (c.slow) zb.inCloud = .3; if (c.tick <= 0) damageZombie(zb, 0, 1, {dot: 'poison'}); }
     if (c.tick <= 0) c.tick = 1;
   }
   FX.clouds = FX.clouds.filter(c => c.life > 0);

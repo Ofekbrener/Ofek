@@ -17,6 +17,7 @@ function curIcon(img, x, y, s, ph) {
   const k = ((G.time * .45 + ph) % 2.6); if (k < .5) { const a = Math.sin(k / .5 * Math.PI), r = 6 * a; hx.save(); hx.globalAlpha = a; hx.fillStyle = '#fff'; hx.translate(x + s * .78, y + s * .2);
     hx.beginPath(); hx.moveTo(0, -r); hx.lineTo(r * .25, -r * .25); hx.lineTo(r, 0); hx.lineTo(r * .25, r * .25); hx.lineTo(0, r); hx.lineTo(-r * .25, r * .25); hx.lineTo(-r, 0); hx.lineTo(-r * .25, -r * .25); hx.fill(); hx.restore(); }
 }
+const HUD_POS = {gx: 20, gy: 120, ex: 20};
 function stroked(txt, x, y, font, fill, lw = 5, align = 'center') { hx.font = font; hx.textAlign = align; hx.lineWidth = lw; hx.strokeStyle = '#000'; hx.lineJoin = 'round'; hx.strokeText(txt, x, y); hx.fillStyle = fill; hx.fillText(txt, x, y); }
 // touch button icons, drawn as strokes so they stay sharp at any size: axe blade, up chevron, double right chevron
 function btnIcon(k, x, y, s) {
@@ -83,8 +84,11 @@ function drawHUD(dt) {
   // weapon + upgrade badges
   const w = weapon(), wi = WEAPON_IMG[P.weapon], wsc = FLY.slotPop('weapon', 34, H - 38, 28); if (wi && wi.complete) hx.drawImage(wi, 34 - 28 * wsc, H - 38 - 28 * wsc, 56 * wsc, 56 * wsc);
   // element dots and gear icons with cooldown rings above the weapon name
-  elActive().forEach((e, i) => { const es = FLY.slotPop('el' + i, 70 + i * 16, H - 52, 8); hx.fillStyle = CSS(ELEMENTS[e].col); hx.beginPath(); hx.arc(70 + i * 16, H - 52, 6 * es, 0, 7); hx.fill(); hx.strokeStyle = '#000'; hx.lineWidth = 2; hx.stroke(); stroked(String(UP.el[e]), 70 + i * 16, H - 48, FONT(9), '#000', 0); });
-  Object.keys(UP.gear).forEach((g, i) => { const x = 22 + i * 40, y = H - 92, img = gearImg(g), gs = FLY.slotPop('gear' + i, x, y, 17);
+  // they sit top-left under FURY, away from the move thumb; on phones they drop below the boss bar while a boss is up
+  const nG = Object.keys(UP.gear).length, bossUp = WAVE.boss && !WAVE.boss.dying;
+  HUD_POS.gy = T + (narrow && bossUp ? 146 : 104); HUD_POS.gx = L + 20; HUD_POS.ex = L + 20 + nG * 40 - (nG ? 8 : 12);
+  elActive().forEach((e, i) => { const ex = HUD_POS.ex + i * 22, ey = HUD_POS.gy, es = FLY.slotPop('el' + i, ex, ey, 9); hx.fillStyle = CSS(ELEMENTS[e].col); hx.beginPath(); hx.arc(ex, ey, 9 * es, 0, 7); hx.fill(); hx.strokeStyle = '#000'; hx.lineWidth = 2.5; hx.stroke(); stroked(String(UP.el[e]), ex, ey + 4, FONT(11), '#000', 0); });
+  Object.keys(UP.gear).forEach((g, i) => { const x = HUD_POS.gx + i * 40, y = HUD_POS.gy, img = gearImg(g), gs = FLY.slotPop('gear' + i, x, y, 17);
     hx.fillStyle = 'rgba(0,0,0,.6)'; hx.beginPath(); hx.arc(x, y, 17 * gs, 0, 7); hx.fill(); if (img.complete) hx.drawImage(img, x - 13 * gs, y - 13 * gs, 26 * gs, 26 * gs);
     const cdMax = {molotov: 4 - .4 * (gearLvl(g) - 1), tesla: 2.5 - .2 * (gearLvl(g) - 1), pulse: 5 - .3 * (gearLvl(g) - 1)}[g];
     if (cdMax && GS.cd[g] !== undefined) { hx.strokeStyle = '#a8fff0'; hx.lineWidth = 3; hx.beginPath(); hx.arc(x, y, 17, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - clamp(GS.cd[g] / cdMax, 0, 1))); hx.stroke(); }

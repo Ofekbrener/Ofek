@@ -4,7 +4,7 @@
 const UP = {};
 function resetUpgrades() {
   Object.assign(UP, {dmg: 0, atkSpeed: 1, range: 1, move: 1, crit: 0, slam: 1, dash: false, fire: false, chain: false,
-    explosive: false, magnet: false, thorns: false, lifesteal: false, horde: false, wlvl: 1, el: {fire: 0, frost: 0, storm: 0, poison: 0}, gear: {}, taken: []});
+    explosive: false, magnet: false, thorns: false, lifesteal: false, horde: false, wlvl: 1, el: {fire: 0, frost: 0, storm: 0, poison: 0, bleed: 0, acid: 0, blast: 0, gravity: 0}, gear: {}, taken: []});
 }
 resetUpgrades();
 
@@ -154,7 +154,7 @@ function cardHTML(c, i) {
     <span class="key">${i + 1}</span><span class="tag">${tag}</span>
     <span class="art">${art}</span>
     ${(c.id.startsWith('el_') && !UP.el[c.id.slice(3)]) || (c.id.startsWith('gear_') && !gearLvl(c.id.slice(5))) ? '<span class="ribbon">NEW</span>' : ''}
-    <span class="title">${c.title}</span>${cardPips(c)}${body}<span class="flavor">${flavor}</span>
+    <span class="title">${c.title}</span>${cardPips(c)}${body}<span class="flavor">${flavor}</span>${c.id.startsWith('el_') ? comboChips(c.id.slice(3)) : ''}
     <span class="rar"><i></i>${c.rarity}</span></button>`;
 }
 // deal face down, flip, shine, hop; taps wait until the flips finish (about 1 s)  [docs/UI-MOTION.md §3.3]

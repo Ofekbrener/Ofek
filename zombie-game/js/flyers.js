@@ -7,7 +7,7 @@ const HUD_SLOT = {
   player: () => { const P = G.player, [x, y] = toScreen(P.x, 1.3 * (POW.scale || 1), P.z); return {x, y}; },
   coins: () => ({x: 90, y: 58}), gems: () => ({x: 160, y: 58}), hearts: () => ({x: 120, y: 30}), fury: () => ({x: 90, y: 84}),
   weapon: () => ({x: 34, y: H - 38}),
-  gear: i => () => ({x: 22 + i * 40, y: H - 92}), el: i => () => ({x: 70 + i * 16, y: H - 52}),
+  gear: i => () => ({x: HUD_POS.gx + i * 40, y: HUD_POS.gy}), el: i => () => ({x: HUD_POS.ex + i * 22, y: HUD_POS.gy}),
 };
 // launch one flyer; html is its look, from is a screen point, to() returns the moving target
 function flyTo(html, from, to, {dur = .75, arc = 120, size = 96, endScale = .35, spin = 1, col = '#ffcc33', trail = true, onArrive = null} = {}) {

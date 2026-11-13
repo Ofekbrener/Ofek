@@ -78,7 +78,7 @@ function newRun(cp = null, opts = {}) {
   if (cp) { // resume: same weapon, upgrades, coins and score, full hearts, the wave you died on
     Object.assign(UP, cp.up); equipWeapon(cp.weapon); G.player.maxHp = G.player.hp = cp.maxHp;
     Object.assign(G, {wave: cp.wave - 1, score: cp.score, kills: cp.kills}); DRAFT.rerollCost = cp.reroll;
-    UP.el = Object.assign({fire: 0, frost: 0, storm: 0, poison: 0}, cp.up.el || {}); UP.gear = Object.assign({}, cp.up.gear || {}); UP.wlvl = cp.up.wlvl || 1;
+    UP.el = Object.assign({fire: 0, frost: 0, storm: 0, poison: 0, bleed: 0, acid: 0, blast: 0, gravity: 0}, cp.up.el || {}); UP.gear = Object.assign({}, cp.up.gear || {}); UP.wlvl = cp.up.wlvl || 1;
     if (cp.weapon) { LOOK.weapon = LOOK.weapon; equipWeapon(cp.weapon); } buildGear();
     G.player.revive = safeLv('wind');
   } else { clearCheckpoint(); applySafehouse(); }

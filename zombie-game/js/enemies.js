@@ -96,6 +96,7 @@ function updateZombie(zb, dt) {
     if (zb.burn > 0) { zb.burn -= dt; zb.burnT = (zb.burnT ?? 1) - dt; if (Math.random() < .6) addPart({x: zb.x + rnd(-.3, .3), y: rnd(.4, 1.7), z: zb.z + rnd(-.3, .3), vx: 0, vz: 0, vy: rnd(2, 4), g: -2, life: .45, max: .45, size: rnd(.1, .18), col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10']), drag: .9, rx: 0, ry: 0}); if (zb.burnT <= 0) { zb.burnT = 1; damageZombie(zb, zb.face + Math.PI, zb.burnDmg || 1, {dot: 'burn'}); } }
     if (zb.bleed > 0 && !zb.dying) { zb.bleed -= dt; zb.bleedT = (zb.bleedT ?? 1) - dt; if (Math.random() < .25 * zb.bleedN) addPart({x: zb.x + rnd(-.25, .25), y: rnd(.6, 1.4), z: zb.z + rnd(-.25, .25), vx: 0, vz: 0, vy: -1, g: 14, life: .5, max: .5, size: .07, col: '#b01818', drag: 1, rx: 0, ry: 0}); if (zb.bleedT <= 0) { zb.bleedT = 1; damageZombie(zb, zb.face + Math.PI, zb.bleedN || 1, {dot: 'bleed'}); } if (zb.bleed <= 0) zb.bleedN = 0; }
     if (zb.inCloud > 0) zb.inCloud -= dt;
+    comboTick(zb, dt);
     if (zb.slow > 0) { zb.slow -= dt; if (Math.random() < .3) addPart({x: zb.x + rnd(-.3, .3), y: rnd(.3, 1.8), z: zb.z + rnd(-.3, .3), vx: 0, vz: 0, vy: -.4, g: 0, life: .4, max: .4, size: .06, col: '#cff6ff', drag: 1, rx: 0, ry: 0}); }
     if (zb.stun > .25 && Math.random() < .5) { const a = G.time * 8 + Math.random() * 6; addPart({x: zb.x + Math.cos(a) * .35, y: 2 * (zb.T.scale || 1), z: zb.z + Math.sin(a) * .35, vx: -Math.sin(a), vz: Math.cos(a), vy: 0, g: 0, life: .3, max: .3, size: .07, col: '#ffe14a', drag: 1, rx: 0, ry: 0}); }
     if (zb.air) { zb.y += zb.vy * dt; zb.vy -= 22 * dt; zb.rig.body.rotation.x += 10 * dt; if (zb.y <= 0) { zb.y = 0; zb.air = false; zb.rig.body.rotation.x = 0; dust(zb.x, zb.z, 12); shake(.2); AU.play('land', {vol: .6, x: zb.x, z: zb.z}); if (zb.homerun) homerunLand(zb); } }
@@ -163,7 +164,7 @@ function hitFlash(zb, col, n) { zb.flash = n / 60; zb.flashCol = col; const c = 
 function syncZombie(zb) {
   const rig = zb.rig; rig.root.position.set(zb.x, zb.y, zb.z); rig.root.rotation.y = yawFor(zb.face);
   if (zb.dying) { if (zb.dying.type !== 'burn' && zb.dying.type !== 'swell') rig.flash(zb.flash > 0 ? .45 : 0); return; }
-  if (zb.flash > 0) { const c = FLASH_COL[zb.flashCol || 0]; rig.flash(.55, c[0], c[1], c[2]); } else if (zb.rage > 0) rig.flash(.25 + .1 * Math.sin(G.time * 14), .8, .3, 1); else if (zb.burn > 0) rig.flash(.35, 1, .4, 0); else if (zb.slow > 0) rig.flash(.4, .35, .75, 1); else if (zb.T.boss && zb.tele) rig.flash(.3 + .3 * Math.sin(G.time * 30), 1, .1, .1); else if (rig.zero) rig.flash(.22 + .1 * Math.sin(G.time * 5), .55, .2, 1); else rig.flash(0);
+  if (zb.flash > 0) { const c = FLASH_COL[zb.flashCol || 0]; rig.flash(.55, c[0], c[1], c[2]); } else if (zb.rage > 0) rig.flash(.25 + .1 * Math.sin(G.time * 14), .8, .3, 1); else if (zb.burn > 0) rig.flash(.35, 1, .4, 0); else if (zb.acidT > 0) rig.flash(.35, .75, 1, .1); else if (zb.slow > 0) rig.flash(.4, .35, .75, 1); else if (zb.T.boss && zb.tele) rig.flash(.3 + .3 * Math.sin(G.time * 30), 1, .1, .1); else if (rig.zero) rig.flash(.22 + .1 * Math.sin(G.time * 5), .55, .2, 1); else rig.flash(0);
 }
 
 // ---------- boss: charge, slam, summon ----------
@@ -256,6 +257,7 @@ function damageZombie(zb, dir, dmg, o = {}) {
     return;
   }
   // hit flash: white 2 frames, gold 3 frames for crits and finishers
+  dmg = comboDamage(zb, dmg, o);
   const gold = o.crit || o.finisher; zb.hp -= dmg; hitFlash(zb, gold ? 1 : 0, gold ? 3 : 2); G.combo++; G.comboT = 2; if (G.combo > (G.waveBest || 0)) G.waveBest = G.combo;
   if (!o.dot) {
     const kb = (o.kb ?? w.kb + (o.finisher ? 4 : 0)) * (zb.dummy ? .05 : T.boss ? .08 : T.explode ? .4 : 1) * (zb.hp <= 0 ? 1.4 : 1);
@@ -304,6 +306,7 @@ function killZombie(zb, dir, o) {
   if (T.boss) { dropPickup('heart', zb.x, zb.z); dropPickup('heart', zb.x, zb.z); }
   POW.add(4);
   if (zb.spreadFire && zb.burn > 0) for (const o of G.zombies) if (o !== zb && !o.dying && Math.hypot(o.x - zb.x, o.z - zb.z) < 2.5) { o.burn = 3; o.burnDmg = zb.burnDmg; o.spreadFire = true; burst(o.x, o.z, 6, ['#ff8a1a', '#ffcf3a'], 4, .1, .4, 1); }
+  comboKill(zb);
   if (Math.random() < .025 + (T.boss ? 1 : 0)) dropPickup('rage', zb.x, zb.z);
   if (UP.lifesteal) { P.killsForHeal++; if (P.killsForHeal >= 12) { P.killsForHeal = 0; P.hp = Math.min(P.maxHp, P.hp + 1); popText(P.x, P.z, '+1 ♥', '#ff5a6a', 26); AU.play('heart', {vol: .5}); } }
   if (UP.explosive && Math.random() < .15 && !T.explode) setTimeout(() => explodeAt(zb.x, zb.z, 2.6, 3, 0, 'kill'), 120);

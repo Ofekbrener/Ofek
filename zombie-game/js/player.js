@@ -167,6 +167,7 @@ function applyElements(zb, w) {
     }
   }
   if (E.poison && G.time - lastCloud > .35) { lastCloud = G.time; FX.clouds.push({x: zb.x, z: zb.z, r: E.poison >= 2 ? 2.2 : 1.3, life: 3, slow: E.poison >= 3, tick: 0}); AU.play('gore', {vol: .25, rate: 1.6, dur: .3, max: 2}); }
+  applyElements2(zb, w);
 }
 
 // ---------- finishers ----------
@@ -264,7 +265,7 @@ function hurtPlayer(dmg, fx, fz) {
 
 // particles that follow the weapon tip, by trail style
 function trailFX(fx, tip, base) {
-  const r = Math.random;
+  const r = Math.random; trailFX2(fx, tip);
   // fire: small embers every second frame, left behind the blade (between this tip and the last one), never at the body
   if (fx === 'fire' && (TRAIL.fireN = (TRAIL.fireN || 0) + 1) % 2 === 0) { const q = TRAIL.pts[1] ? TRAIL.pts[1].tip : tip;
     for (let i = 0; i < 2; i++) { const k = rnd(.3, 1); addPart({x: lerp(tip.x, q.x, k), y: lerp(tip.y, q.y, k), z: lerp(tip.z, q.z, k), vx: rnd(-.4, .4), vz: rnd(-.4, .4), vy: rnd(.2, .8), g: -1, life: .3, max: .3, size: rnd(.08, .18), col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10']), drag: .9, rx: 0, ry: 0, fade: 1}); } }
