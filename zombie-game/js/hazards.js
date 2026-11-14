@@ -27,7 +27,7 @@ function updateHazards(dt) {
   for (const a of HZ.acid) {
     a.life -= dt; a.tick -= dt; a.m.material.opacity = .45 * Math.min(1, a.life / 1.2);
     if (Math.random() < .5) { const an = rnd(0, 7), r = rnd(0, a.r); addPart({x: a.x + Math.cos(an) * r, y: .05, z: a.z + Math.sin(an) * r, vx: 0, vz: 0, vy: rnd(.4, 1.2), g: 0, life: .6, max: .6, size: rnd(.06, .14), col: pick(['#9dff4a', '#d8ff9a']), drag: 1, rx: 0, ry: 0}); }
-    if (a.tick <= 0 && Math.hypot(P.x - a.x, P.z - a.z) < a.r && P.y < .5) { a.tick = 1; if (hurtPlayer(1, a.x, a.z)) popText(P.x, P.z, 'ACID', '#9dff4a', 26, 2.6); }
+    if (a.tick <= 0 && Math.hypot(P.x - a.x, P.z - a.z) < a.r && P.y < .5) { a.tick = 1; if (hurtPlayer(7, a.x, a.z)) popText(P.x, P.z, 'ACID', '#9dff4a', 26, 2.6); }
     if (a.life <= 0) disposeTree(a.m);
   }
   HZ.acid = HZ.acid.filter(a => a.life > 0);
@@ -41,7 +41,7 @@ function updateHazards(dt) {
       if (d.box.position.y <= 0) {
         d.box.position.y = 0; d.landed = true; d.end = d.t + 2.2; scene.remove(d.sh);
         shake(.7); hitstop(.06); dust(d.x, d.z, 26); ring(d.x, d.z, 2.6, 0xd8c8a8, .35); AU.play('hitMetal', {vol: 1, rate: .55}); AU.play('explosion', {vol: .6, rate: 1.2}); HAPTIC.fx('slam', .7);
-        if (Math.hypot(P.x - d.x, P.z - d.z) < 2.3 && P.y < 1) hurtPlayer(2, d.x, d.z);
+        if (Math.hypot(P.x - d.x, P.z - d.z) < 2.3 && P.y < 1) hurtPlayer(25, d.x, d.z);
         for (const zb of G.zombies) if (!zb.dying && !zb.T.boss && zb.state !== 'rise' && Math.hypot(zb.x - d.x, zb.z - d.z) < 2.3) damageZombie(zb, Math.atan2(zb.z - d.z, zb.x - d.x), 6, {w: weapon(), kind: 'crush', kb: 10});
       }
     } else if (d.t > d.end) { d.box.position.y -= dt * 2; if (d.t > d.end + 1) { scene.remove(d.box); d.done = true; } }
@@ -62,7 +62,7 @@ function updateHazards(dt) {
     if (Math.random() < .8) dust(tx, tz, 3);
     const along = l.axis === 'x' ? P.x - tx : P.z - tz, across = l.axis === 'x' ? P.z - l.pos : P.x - l.pos;
     const reach = l.kind === 'stampede' ? 4.5 : 2.4;
-    if (!l.hit && Math.abs(along) < reach && Math.abs(across) < l.w / 2 + .3) { l.hit = true; hurtPlayer(l.kind === 'stampede' ? 1 : 2, tx, tz); shake(.8); }
+    if (!l.hit && Math.abs(along) < reach && Math.abs(across) < l.w / 2 + .3) { l.hit = true; hurtPlayer(l.kind === 'stampede' ? 15 : 30, tx, tz); shake(.8); }
     for (const zb of G.zombies) if (!zb.dying && !zb.T.boss && zb.state !== 'rise') { const za = l.axis === 'x' ? zb.x - tx : zb.z - tz, zc = l.axis === 'x' ? zb.z - l.pos : zb.x - l.pos; if (Math.abs(za) < 2.4 && Math.abs(zc) < l.w / 2 + .3) damageZombie(zb, l.axis === 'x' ? (l.dir > 0 ? 0 : Math.PI) : (l.dir > 0 ? Math.PI / 2 : -Math.PI / 2), 99, {w: weapon(), kind: 'truck', kb: 16}); }
     if (Math.abs(l.s) > 27) { scene.remove(l.truck); scene.remove(l.m); if (l.pack) for (const r of l.pack) r.mixer.stopAllAction(); l.done = true; }
   }

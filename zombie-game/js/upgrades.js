@@ -4,7 +4,7 @@
 const UP = {};
 function resetUpgrades() {
   Object.assign(UP, {dmg: 0, atkSpeed: 1, range: 1, move: 1, crit: 0, slam: 1, dash: false, fire: false, chain: false,
-    explosive: false, magnet: false, thorns: false, lifesteal: false, horde: false, wlvl: 1, el: {fire: 0, frost: 0, storm: 0, poison: 0, bleed: 0, acid: 0, blast: 0, gravity: 0}, gear: {}, taken: []});
+    explosive: false, magnet: false, thorns: false, lifesteal: false, horde: false, wlvl: 1, el: {fire: 0, frost: 0, storm: 0, poison: 0, bleed: 0, acid: 0, blast: 0, gravity: 0}, gear: {}, mods: {}, taken: []});
 }
 resetUpgrades();
 
@@ -95,15 +95,15 @@ const CARDS = [
   {id: 'dmg', cat: 'offense', icon: 'dmg', rarity: 'common', title: 'HEAVY HANDS', flavor: 'Every hit lands harder.', stat: () => [['Damage', `+${UP.dmg}`, `+${UP.dmg + 1}`]], apply: () => UP.dmg++},
   {id: 'spd', cat: 'offense', icon: 'spd', rarity: 'common', title: 'QUICK HANDS', flavor: 'Swing before they swing.', stat: () => [['Attack speed', pct(UP.atkSpeed), pct(UP.atkSpeed * 1.15)]], apply: () => UP.atkSpeed *= 1.15},
   {id: 'rng', cat: 'offense', icon: 'rng', rarity: 'common', title: 'LONG REACH', flavor: 'Keep them at arm\'s length.', stat: () => [['Reach', pct(UP.range), pct(UP.range * 1.2)]], apply: () => UP.range *= 1.2},
-  {id: 'hp', cat: 'defense', icon: 'hp', rarity: 'common', title: 'TOUGH SKIN', flavor: 'Bites hurt less when there is more of you.', stat: () => [['Max hearts', G.player.maxHp, G.player.maxHp + 1]], apply: () => { G.player.maxHp++; G.player.hp++; }},
-  {id: 'heal', cat: 'defense', icon: 'heal', rarity: 'common', title: 'FIRST AID', flavor: 'Patch up between waves.', ok: () => G.player.hp < G.player.maxHp, stat: () => [['Hearts', G.player.hp, Math.min(G.player.maxHp, G.player.hp + 3)]], apply: () => G.player.hp = Math.min(G.player.maxHp, G.player.hp + 3)},
+  {id: 'hp', cat: 'defense', icon: 'hp', rarity: 'common', title: 'TOUGH SKIN', flavor: 'Bites hurt less when there is more of you.', stat: () => [['Max health', G.player.maxHp, G.player.maxHp + 20]], apply: () => { G.player.maxHp += 20; G.player.hp += 20; }},
+  {id: 'heal', cat: 'defense', icon: 'heal', rarity: 'common', title: 'FIRST AID', flavor: 'Patch up between waves.', ok: () => G.player.hp < G.player.maxHp, stat: () => [['Health', G.player.hp, Math.min(G.player.maxHp, G.player.hp + 60)]], apply: () => G.player.hp = Math.min(G.player.maxHp, G.player.hp + 60)},
   {id: 'move', cat: 'utility', icon: 'move', rarity: 'common', title: 'SPRINTER', flavor: 'Outrun the horde.', stat: () => [['Move speed', pct(UP.move), pct(UP.move * 1.12)]], apply: () => UP.move *= 1.12},
   {id: 'crit', cat: 'offense', icon: 'crit', rarity: 'rare', title: 'WEAK SPOTS', flavor: 'Aim for the soft parts.', stat: () => [['Double damage', pct(UP.crit), pct(UP.crit + .15)]], apply: () => UP.crit += .15},
   {id: 'slam', cat: 'offense', icon: 'slam', rarity: 'rare', title: 'METEOR SLAM', flavor: 'Jump, attack, crater.', stat: () => [['Slam radius', (3.2 * UP.slam).toFixed(1) + ' m', (4.8 * UP.slam).toFixed(1) + ' m']], apply: () => UP.slam *= 1.5},
   {id: 'dash', cat: 'utility', icon: 'dash', rarity: 'rare', title: 'DASH', flavor: 'Shift or the DASH button. Untouchable for a moment.', once: true, stat: () => [['Dodge', 'none', '0.3 s safe']], apply: () => UP.dash = true},
   {id: 'magnet', cat: 'utility', icon: 'magnet', rarity: 'common', title: 'COIN MAGNET', flavor: 'Coins come to you. Spend them on rerolls.', once: true, stat: () => [['Pickup range', '2 m', '4.5 m']], apply: () => UP.magnet = true},
   {id: 'thorns', cat: 'defense', icon: 'thorns', rarity: 'rare', title: 'SPIKED ARMOR', flavor: 'Bite me. Go on.', once: true, stat: () => [['Damage back', '0', '2 per hit']], apply: () => UP.thorns = true},
-  {id: 'life', cat: 'defense', icon: 'life', rarity: 'rare', title: 'BLOODLUST', flavor: 'The more you kill, the better you feel.', once: true, stat: () => [['Heal', 'none', '1 per 12 kills']], apply: () => UP.lifesteal = true},
+  {id: 'life', cat: 'defense', icon: 'life', rarity: 'rare', title: 'BLOODLUST', flavor: 'The more you kill, the better you feel.', once: true, stat: () => [['Heal', 'none', '6 HP per 12 kills']], apply: () => UP.lifesteal = true},
   {id: 'boom', cat: 'epic', icon: 'boom', rarity: 'epic', title: 'VOLATILE', flavor: 'Some of them just... pop.', once: true, stat: () => [['Kill explodes', '0%', '15%']], apply: () => UP.explosive = true},
 ];
 const RARITY_W = {common: 10, rare: 5, epic: 2};
@@ -138,24 +138,25 @@ function buildBarHTML() {
     ${chip(`<img src="${WEAPON_ART[G.player.weapon] || ''}" alt="">`, w.name, UP.wlvl, 5, '#ffcc33')}
     ${els.map(e => chip(emblem(ELEMENTS[e].icon || e, e), e.toUpperCase(), UP.el[e], 3, CAT_COL[e] ? CAT_COL[e][1] : '#fff')).join('')}
     ${gear.map(g => chip(emblem(GEAR[g].icon, 'gear'), GEAR[g].name || g.toUpperCase(), gearLvl(g), 5, '#10a58a')).join('')}
+    ${Object.keys(UP.mods || {}).filter(k => UP.mods[k]).map(k => chip(emblem(MODS[k].icon, 'mod'), MODS[k].name, UP.mods[k], 3, '#ff8a1a')).join('')}
     ${!els.length && !gear.length ? '<span class="bempty">Elements and gear you pick show up here.</span>' : ''}</div></div>`;
 }
 // level pips on a card: filled up to the current level, the next level pulses
 function cardPips(c) {
-  const max = c.id === 'wlvl' ? 5 : c.id.startsWith('el_') ? 3 : c.id.startsWith('gear_') ? 5 : 0; if (!max) return '';
-  const cur = c.id === 'wlvl' ? UP.wlvl : c.id.startsWith('el_') ? UP.el[c.id.slice(3)] : gearLvl(c.id.slice(5));
+  const max = c.id === 'wlvl' ? 5 : c.id.startsWith('el_') || c.id.startsWith('mod_') ? 3 : c.id.startsWith('gear_') ? 5 : 0; if (!max) return '';
+  const cur = c.id === 'wlvl' ? UP.wlvl : c.id.startsWith('el_') ? UP.el[c.id.slice(3)] : c.id.startsWith('mod_') ? (UP.mods || {})[c.id.slice(4)] || 0 : gearLvl(c.id.slice(5));
   return `<span class="pips">${Array.from({length: max}, (_, i) => `<i class="${i < cur ? 'on' : i === cur ? 'nx' : ''}"></i>`).join('')}</span>`;
 }
 function cardHTML(c, i) {
   const pv = cardPreview(c), emb = c.weaponCard ? '' : emblem(c.icon, CAT_COL[c.cat] ? c.cat : 'epic');
   const art = c.weaponCard ? `<img src="${WEAPON_ART[G.player.weapon] || ''}" alt="">` : pv ? pv + `<span class="arti">${emb}</span>` : emb;
-  const tag = c.weaponCard ? weapon().name : c.id.startsWith('el_') ? 'ELEMENT' : c.cat === 'gear' ? 'AUTO GEAR' : {offense: 'OFFENSE', defense: 'DEFENSE', utility: 'UTILITY', epic: 'SPECIAL'}[c.cat];
+  const tag = c.weaponCard ? weapon().name : c.id.startsWith('el_') ? 'ELEMENT' : c.cat === 'gear' ? 'AUTO GEAR' : {offense: 'OFFENSE', defense: 'DEFENSE', utility: 'UTILITY', epic: 'SPECIAL', mod: 'SWING MOD'}[c.cat];
   const body = `<div class="stats">${c.stat().map(([l, a, b]) => `<div class="st"><span>${l}</span><b><s>${a}</s> → ${b}</b></div>`).join('')}</div>`;
   const flavor = typeof c.flavor === 'function' ? c.flavor() : c.flavor;
   return `<button class="card ${c.rarity} cat-${c.cat}" data-i="${i}" id="card${i}" style="--d:${i * .14}s;--i:${i}"><span class="cback">${icon('skull')}</span><span class="shine"></span>
     <span class="key">${i + 1}</span><span class="tag">${tag}</span>
     <span class="art">${art}</span>
-    ${(c.id.startsWith('el_') && !UP.el[c.id.slice(3)]) || (c.id.startsWith('gear_') && !gearLvl(c.id.slice(5))) ? '<span class="ribbon">NEW</span>' : ''}
+    ${(c.id.startsWith('el_') && !UP.el[c.id.slice(3)]) || (c.id.startsWith('gear_') && !gearLvl(c.id.slice(5))) || (c.id.startsWith('mod_') && !(UP.mods || {})[c.id.slice(4)]) ? '<span class="ribbon">NEW</span>' : ''}
     <span class="title">${c.title}</span>${cardPips(c)}${body}<span class="flavor">${flavor}</span>${c.id.startsWith('el_') ? comboChips(c.id.slice(3)) : ''}
     <span class="rar"><i></i>${c.rarity}</span></button>`;
 }

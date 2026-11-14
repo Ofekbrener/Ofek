@@ -46,7 +46,7 @@ function drawHUD(dt) {
   hx.globalAlpha = 1;
   if (G.flash > 0) { hx.fillStyle = `rgba(255,255,255,${G.flash * .45})`; hx.fillRect(0, 0, W, H); }
   if (G.hurtFlash > 0) { hx.fillStyle = `rgba(200,20,20,${G.hurtFlash * .45})`; hx.fillRect(0, 0, W, H); }
-  if (P.hp <= 1 && !P.dead) { const v = hx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7); v.addColorStop(0, 'rgba(255,0,0,0)'); v.addColorStop(1, `rgba(255,0,0,${.28 + .12 * Math.sin(t * 6)})`); hx.fillStyle = v; hx.fillRect(0, 0, W, H); }
+  if (P.hp <= P.maxHp * .25 && !P.dead) { const v = hx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7); v.addColorStop(0, 'rgba(255,0,0,0)'); v.addColorStop(1, `rgba(255,0,0,${.28 + .12 * Math.sin(t * 6)})`); hx.fillStyle = v; hx.fillRect(0, 0, W, H); }
   // active power-up: colored glow on the screen edge (and a blue tint for TIME WARP)
   if (POW.active) {
     const c = POWERS[POW.active].css, a = .35 + .15 * Math.sin(t * 9), gw = Math.min(W, H) * .12;
@@ -58,9 +58,19 @@ function drawHUD(dt) {
   const L = 16, T = 14;
   const pi = PORTRAIT.img; hx.save(); hx.beginPath(); hx.arc(L + 28, T + 28, 28, 0, 7); const bg = hx.createRadialGradient(L + 28, T + 20, 4, L + 28, T + 28, 30); bg.addColorStop(0, '#3a3f58'); bg.addColorStop(1, '#14161f'); hx.fillStyle = bg; hx.fill(); hx.clip(); if (pi && pi.complete && pi.naturalWidth) hx.drawImage(pi, L - 4, T - 4, 64, 64); hx.restore();
   hx.lineWidth = 3; hx.strokeStyle = G.hurtFlash > 0 ? '#ff4040' : '#ffcc33'; hx.beginPath(); hx.arc(L + 28, T + 28, 28, 0, 7); hx.stroke();
-  let hs = ''; for (let i = 0; i < P.maxHp; i++) hs += i < P.hp ? '♥' : '♡';
-  const hsc = FLY.slotPop('hearts', L + 100, T + 14), csc = FLY.slotPop('coins', L + 76, T + 44, 12);
-  hx.save(); hx.translate(L + 66, T + 22); hx.scale(hsc, hsc); stroked(hs, 0, 0, FONT(24), '#ff4a5a', 4, 'left'); hx.restore();
+  // health bar: red fill, a white chunk that drains after a hit shows how much it took, numbers inside
+  const hsc = FLY.slotPop('hearts', L + 140, T + 14), csc = FLY.slotPop('coins', L + 76, T + 44, 12);
+  { const bx = L + 66, by = T + 4, bw = 150, bh = 20, k = clamp(P.hp / P.maxHp, 0, 1);
+    HUD.hpLag = HUD.hpLag == null ? k : (G.time - (HUD.hpHit || 0) > .45 ? Math.max(k, HUD.hpLag - (dt || .016) * .6) : Math.max(k, HUD.hpLag)); if (k > HUD.hpLag) HUD.hpLag = k;
+    hx.save(); hx.translate(bx + bw / 2, by + bh / 2); hx.scale(hsc, hsc); hx.translate(-bx - bw / 2, -by - bh / 2);
+    hx.fillStyle = 'rgba(0,0,0,.6)'; hx.fillRect(bx - 2, by - 2, bw + 4, bh + 4); hx.fillStyle = '#3a1218'; hx.fillRect(bx, by, bw, bh);
+    hx.fillStyle = '#ffe8e8'; hx.fillRect(bx, by, bw * HUD.hpLag, bh);
+    const low = k <= .25, g = hx.createLinearGradient(0, by, 0, by + bh); g.addColorStop(0, low ? '#ff6a4a' : '#ff5a68'); g.addColorStop(1, low ? '#b01010' : '#b81830');
+    hx.fillStyle = low && Math.sin(G.time * 10) > 0 ? '#ff8a6a' : g; hx.fillRect(bx, by, bw * k, bh);
+    hx.fillStyle = 'rgba(255,255,255,.18)'; hx.fillRect(bx, by, bw * k, bh * .4);
+    hx.fillStyle = 'rgba(0,0,0,.35)'; for (let x = 25; x < P.maxHp; x += 25) hx.fillRect(bx + bw * x / P.maxHp, by, 1.5, bh);
+    hx.strokeStyle = G.hurtFlash > 0 ? '#ff4040' : '#000'; hx.lineWidth = 2; hx.strokeRect(bx, by, bw, bh);
+    stroked(Math.ceil(P.hp) + ' / ' + P.maxHp, bx + bw / 2, by + 15, FONT(14), '#fff', 3); hx.restore(); }
   // in a run only this run's pickups show; the bank totals live on the home screen
   const inRun = G.state === 'playing' || G.state === 'paused', coins = inRun ? G.runCoins || 0 : G.coins, gems = inRun ? G.runGems || 0 : META.gems;
   hx.save(); hx.translate(L + 66, T + 50); hx.scale(csc, csc); curIcon(CUR_IMG.coin, -1, -18, 21, 0); stroked('' + coins, 25, 0, FONT(18), '#ffd44a', 4, 'left'); hx.restore();

@@ -1,5 +1,5 @@
 // Automatic power-ups: a FURY meter fills from hits and kills; when full, a random power-up empowers the survivor for 7 s.
-// LAST STAND fires once per wave when you drop to 1 heart. Every power-up has its own look, sound and haptic.
+// LAST STAND fires once per wave when health drops to 20% or less. Every power-up has its own look, sound and haptic.
 'use strict';
 const POWERS = {
   frenzy: {name: 'FRENZY', desc: 'attacks 60% faster · finisher every 3rd hit', col: 0xff3b3b, css: '255,59,59', dur: 7},
@@ -21,7 +21,7 @@ POW.onHits = n => POW.add(n);
 POW.onKill = (multi) => POW.add(4 + (multi >= 2 ? multi * 3 : 0));
 POW.onHurt = () => {
   POW.fury = Math.max(0, POW.fury - 20);
-  const P = G.player; if (P.hp === 1 && !POW.lastStand && !P.dead) { POW.lastStand = true; setTimeout(() => { if (!P.dead && G.state === 'playing') POW.start('laststand'); }, 250); }
+  const P = G.player; if (P.hp > 0 && P.hp <= P.maxHp * .2 && !POW.lastStand && !P.dead) { POW.lastStand = true; setTimeout(() => { if (!P.dead && G.state === 'playing') POW.start('laststand'); }, 250); }
 };
 POW.start = function (id) {
   if (POW.active) POW.end(true);
@@ -50,7 +50,7 @@ POW.kbMul = () => POW.is('giant') ? 2 : 1;
 POW.zombieTime = () => POW.is('warp') ? .4 : 1;
 POW.safe = () => POW.is('laststand');
 POW.onSwingHit = function (n) {
-  if (POW.is('vampire')) { POW.hits += n; while (POW.hits >= 4) { POW.hits -= 4; const P = G.player; if (P.hp < P.maxHp) { P.hp++; AU.play('heart', {vol: .4, rate: 1.2}); popText(P.x, P.z, '+1 ♥', '#ff5a7a', 26, 2.8); for (let i = 0; i < 6; i++) addPart({x: P.x + rnd(-.4, .4), y: rnd(.8, 1.8), z: P.z + rnd(-.4, .4), vx: 0, vz: 0, vy: rnd(1.5, 3), g: -1, life: .8, max: .8, size: .1, col: '#ff3b5a', drag: .95, rx: 0, ry: 0}); } } }
+  if (POW.is('vampire')) { POW.hits += n; while (POW.hits >= 4) { POW.hits -= 4; const P = G.player; if (P.hp < P.maxHp) { P.hp = Math.min(P.maxHp, P.hp + 3); AU.play('heart', {vol: .4, rate: 1.2}); popText(P.x, P.z, '+1 ♥', '#ff5a7a', 26, 2.8); for (let i = 0; i < 6; i++) addPart({x: P.x + rnd(-.4, .4), y: rnd(.8, 1.8), z: P.z + rnd(-.4, .4), vx: 0, vz: 0, vy: rnd(1.5, 3), g: -1, life: .8, max: .8, size: .1, col: '#ff3b5a', drag: .95, rx: 0, ry: 0}); } } }
   if (POW.is('giant')) shake(.12);
 };
 POW.update = function (dt) {

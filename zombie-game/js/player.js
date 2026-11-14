@@ -33,7 +33,7 @@ function makePlayer() {
   if (G.player) G.player.rig.dispose();
   const rig = new Rig('Characters_' + (MODELS['Characters_' + LOOK.char] ? LOOK.char : 'Matt'));
   applyLook(rig, LOOK);
-  const P = G.player = {x: 0, z: 2, vx: 0, vz: 0, y: 0, vy: 0, air: false, face: -Math.PI / 2, hp: 5, maxHp: 5, rig,
+  const P = G.player = {x: 0, z: 2, vx: 0, vz: 0, y: 0, vy: 0, air: false, face: -Math.PI / 2, hp: 100, maxHp: 100, rig,
     weapon: 'Knife', wMesh: null, atk: null, queued: false, combo: 0, lastAtkEnd: -9, inv: 0, hurtT: 0, dashT: 0, dashCd: 0, stepD: 0,
     dead: false, deadT: 0, slam: false, landT: 0, spd: 0, killsForHeal: 0, javelin: null, stormN: 0, twist: 0, lean: 0, poseW: 0, poseKey: null};
   P.wLight = new THREE.PointLight(0xff6a1a, 0, 4, 2);
@@ -113,6 +113,7 @@ function strike(a) {
   if (M.smash) { const fx = P.x + Math.cos(a.dir) * range * .7, fz = P.z + Math.sin(a.dir) * range * .7, big = M.smash === 'big';
     dust(fx, fz, big ? 14 : 6); if (big) { ring(fx, fz, 1.4, 0xd8c8a8, .25); shake(.18); AU.play('land', {vol: .6, rate: .8}); }
     for (const zb of G.zombies) if (!zb.dying && Math.hypot(zb.x - fx, zb.z - fz) < (big ? 1.4 : .8)) zb.stun = Math.max(zb.stun, big ? .45 : .25); }
+  modStrike(a, range, arc, dmg + (M.dmg || 0));
   if (M.pierce && hits > 1) popText(P.x + Math.cos(a.dir) * 2, P.z + Math.sin(a.dir) * 2, 'PIERCE x' + hits, '#7fe0ff', 26, 2.8);
   if (F === 'FireLine') fireLine(P.x, P.z, a.dir);
 }
@@ -254,14 +255,14 @@ function dash() {
 }
 function hurtPlayer(dmg, fx, fz) {
   const P = G.player; if (P.inv > 0 || P.dead || G.state !== 'playing' || POW.safe() || CHEAT.god) return false;
-  P.hp -= dmg; POW.onHurt(); P.inv = 1.4; P.hurtT = .3; G.hurtFlash = .5; shake(.65); hitstop(.08); G.combo = 0;
+  P.hp = Math.max(0, P.hp - dmg); HUD.hpHit = G.time; popText(P.x, P.z, '-' + dmg, dmg >= 25 ? '#ff2a2a' : '#ff6a6a', dmg >= 25 ? 34 : 24, 2.2); POW.onHurt(); P.inv = .9; P.hurtT = .3; G.hurtFlash = .5; shake(.65); hitstop(.08); G.combo = 0;
   const d = Math.hypot(P.x - fx, P.z - fz) || 1; P.vx = (P.x - fx) / d * 12; P.vz = (P.z - fz) / d * 12;
   burst(P.x, P.z, 18, ['#c02020', '#ff3b3b'], 7, .12, .7); popText(P.x + (P.x >= G.cam.x ? .8 : -.8), P.z, 'OUCH!', '#ff5050', 32, 2.6);
   AU.play('hitHardest', {vol: 1, rate: .9}); AU.play('pHurt', {vol: .9, bus: 'voice', max: 1}); AU.duck(.3, .4);
   if (P.atk) { P.atk = null; P.rig.body.scale.x = 1; P.rig.body.rotation.y = 0; }
   HAPTIC.fx(P.hp <= 0 ? 'death' : 'hurt');
   if (P.hp <= 0 && P.revive > 0) { // Second Wind from the Safehouse
-    P.revive--; P.hp = 2; P.inv = 3; slowmo(1); G.flash = .6; ring(P.x, P.z, 4, 0xffe14a, .6); boom(P.x, P.z, 0xffe14a, 8); popText(P.x, P.z, 'SECOND WIND', '#ffe14a', 42, 3); AU.play('levelUp', {vol: 1}); HAPTIC.fx('boss');
+    P.revive--; P.hp = 40; P.inv = 3; slowmo(1); G.flash = .6; ring(P.x, P.z, 4, 0xffe14a, .6); boom(P.x, P.z, 0xffe14a, 8); popText(P.x, P.z, 'SECOND WIND', '#ffe14a', 42, 3); AU.play('levelUp', {vol: 1}); HAPTIC.fx('boss');
     for (const zb of G.zombies) if (!zb.dying && !zb.T.boss && Math.hypot(zb.x - P.x, zb.z - P.z) < 5) { zb.vx += (zb.x - P.x) * 3; zb.vz += (zb.z - P.z) * 3; zb.stun = 1; }
     return true;
   }

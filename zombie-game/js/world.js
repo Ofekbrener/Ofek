@@ -144,7 +144,7 @@ function explodeAt(x, z, radius, dmgZ, dmgP, src) {
 }
 function updateBarrels(dt) {
   for (const b of G.barrels) if (!b.dead && b.fuse >= 0) {
-    b.fuse -= dt; if (b.fuse < 0) { b.dead = true; if (b.m.parent) b.m.parent.remove(b.m); explodeAt(b.x, b.z, 3.4, 4, 1, 'barrel'); }
+    b.fuse -= dt; if (b.fuse < 0) { b.dead = true; if (b.m.parent) b.m.parent.remove(b.m); explodeAt(b.x, b.z, 3.4, 4, 15, 'barrel'); }
   }
 }
 
@@ -197,7 +197,7 @@ function collectPickup(k) {
   const p = G.player; flyPickup(k.type, k.x, k.z);
   if (k.type === 'gem') { addGems(1); G.runGems = (G.runGems || 0) + 1; popText(p.x, p.z, '+1 EMERALD', '#30e070', 32, 2.8); AU.play('levelUp', {vol: .7, rate: 1.4}); HAPTIC.fx('card'); ring(p.x, p.z, 1.8, 0x30e070, .4); }
   if (k.type === 'coin') { G.coins++; G.runCoins = (G.runCoins || 0) + 1; G.score += 5; AU.play('coin', {vol: .5, rate: rnd(.95, 1.15), max: 4}); }
-  if (k.type === 'heart') { p.hp = Math.min(p.maxHp, p.hp + 1); AU.play('heart', {vol: .7}); HAPTIC.fx('heart'); popText(p.x, p.z, '+1 ♥', '#ff5a6a', 28); ring(p.x, p.z, 1.6, 0xff4060, .3); }
+  if (k.type === 'heart') { p.hp = Math.min(p.maxHp, p.hp + 20); AU.play('heart', {vol: .7}); HAPTIC.fx('heart'); popText(p.x, p.z, '+20 HP', '#ff5a6a', 28); ring(p.x, p.z, 1.6, 0xff4060, .3); }
   if (k.type === 'rage') { POW.add(50); AU.play('rage', {vol: .8}); popText(p.x, p.z, '+50 FURY', '#ff7a1a', 36, 2.6); ring(p.x, p.z, 3, 0xff7a1a, .4); slowmo(.3); }
 }
 function clearPickups() { for (const k of G.pickups) scene.remove(k.m); G.pickups = []; }

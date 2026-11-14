@@ -22,17 +22,17 @@ function buildGear() {
   for (let i = 0; i < nb && km; i++) {
     const m = new THREE.Mesh(km.geometry, km.material.clone()); m.material.emissive = new THREE.Color(0x6fb8ff); m.material.emissiveIntensity = .6;
     const e = weaponEnds(km, .5), ax = e.tip.clone().sub(e.grip).normalize(); m.quaternion.setFromUnitVectors(ax, new THREE.Vector3(1, 0, 0));
-    m.scale.setScalar(km.getWorldScale(new THREE.Vector3()).x * 1.6); m.castShadow = true;
+    m.scale.setScalar(km.getWorldScale(new THREE.Vector3()).x * (1.25 + .12 * gearLvl('blades'))); if (gearLvl('blades') >= 4) m.material.emissive = new THREE.Color(gearLvl('blades') >= 5 ? 0xffc83a : 0x9fe8ff); m.castShadow = true;
     const g = new THREE.Group(); g.add(m); scene.add(g); GS.blades.push(g);
   }
   const nd = gearLvl('dog') ? (gearLvl('dog') >= 5 ? 2 : 1) : 0;
-  if (nd) ensureModel('Characters_GermanShepherd').then(() => { for (let i = GS.dogs.length; i < nd; i++) { const r = new Rig('Characters_GermanShepherd', {scale: .9}); const P = G.player; GS.dogs.push({rig: r, x: P.x - 1 - i, z: P.z + 1, face: 0, state: 'follow', t: 0, target: null, bit: false}); r.play('Idle'); } });
+  if (nd) ensureModel('Characters_GermanShepherd').then(() => { for (let i = GS.dogs.length; i < nd; i++) { const r = new Rig('Characters_GermanShepherd', {scale: .78 + .06 * gearLvl('dog')}); const P = G.player; GS.dogs.push({rig: r, x: P.x - 1 - i, z: P.z + 1, face: 0, state: 'follow', t: 0, target: null, bit: false}); r.play('Idle'); } });
   if (gearLvl('drone')) {
     const g = new THREE.Group(), body = new THREE.Mesh(new THREE.SphereGeometry(.18, 14, 10), new THREE.MeshStandardMaterial({color: 0x3a4050, metalness: .7, roughness: .3}));
     const eye = new THREE.Mesh(new THREE.SphereGeometry(.06, 8, 6), new THREE.MeshBasicMaterial({color: 0x5fe3ff})); eye.position.set(.15, 0, 0);
     for (const sx of [-1, 1]) { const rot = new THREE.Mesh(new THREE.BoxGeometry(.5, .015, .05), new THREE.MeshStandardMaterial({color: 0x222})); rot.position.set(0, .16, sx * .12); rot.name = 'rotor'; g.add(rot); }
     const pm = kitMesh('Pistol'); if (pm) { const gun = new THREE.Mesh(pm.geometry, pm.material); gun.scale.setScalar(pm.getWorldScale(new THREE.Vector3()).x * 1.2); gun.position.set(.05, -.18, 0); gun.rotation.y = -Math.PI / 2; g.add(gun); }
-    g.add(body, eye); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(g); GS.drone = {g, a: 0};
+    g.add(body, eye); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); g.scale.setScalar(.85 + .1 * gearLvl('drone')); scene.add(g); GS.drone = {g, a: 0};
   }
 }
 function clearGear() {
@@ -40,6 +40,7 @@ function clearGear() {
   for (const d of GS.dogs) d.rig.dispose(); GS.dogs = [];
   if (GS.drone) scene.remove(GS.drone.g); GS.drone = null;
   for (const b of GS.bottles) scene.remove(b.m); GS.bottles = [];
+  clearGear2();
 }
 const cdReady = (id, cd, dt) => { GS.cd[id] = (GS.cd[id] ?? cd * .5) - dt; if (GS.cd[id] <= 0) { GS.cd[id] = cd; return true; } return false; };
 function gearHit(zb, dir, dmg, kind) { damageZombie(zb, dir, dmg, {w: weapon(), kind, kb: 3}); }
@@ -132,4 +133,5 @@ function updateGear(dt) {
       flashLight(x, z, 0xfff3a0, 2.5); AU.play('hitKick', {vol: .35, rate: 2.2, dur: .12, max: 3}); AU.play('shell', {vol: .25, delay: .15, max: 2});
     }
   }
+  updateGear2(dt, gearLvl);
 }

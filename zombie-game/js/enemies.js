@@ -1,16 +1,16 @@
 // Zombies: 4 types plus a boss, each with authored walk/attack/hit/death clips and its own attack pattern.
 'use strict';
 const ZTYPES = {
-  walker:  {model: 'Zombie_Basic',   hp: 3, speed: [1.3, 1.9], move: 'Walk', attack: 'Punch',       range: 1.35, dmg: 1, r: .45, score: 10, coins: [0, 2], voice: 1},
-  runner:  {model: 'Zombie_Ribcage', hp: 1, speed: [4.2, 5.0], move: 'Run',  attack: 'Jump',        range: 2.6,  dmg: 1, r: .38, score: 15, coins: [0, 1], pounce: true, voice: 1.3},
-  tank:    {model: 'Zombie_Chubby',  hp: 8, speed: [.9, 1.15], move: 'Walk', attack: 'Punch',       range: 1.7,  dmg: 2, r: .7,  score: 30, coins: [2, 4], explode: true, voice: .75},
-  grabber: {model: 'Zombie_Arm',     hp: 4, speed: [1.7, 2.1], move: 'Walk', attack: 'Run_Attack',  range: 1.5,  dmg: 1, r: .5,  score: 20, coins: [1, 2], lunge: true, voice: .9},
+  walker:  {model: 'Zombie_Basic',   hp: 3, speed: [1.3, 1.9], move: 'Walk', attack: 'Punch',       range: 1.35, dmg: 10, r: .45, score: 10, coins: [0, 2], voice: 1},
+  runner:  {model: 'Zombie_Ribcage', hp: 1, speed: [4.2, 5.0], move: 'Run',  attack: 'Jump',        range: 2.6,  dmg: 8, r: .38, score: 15, coins: [0, 1], pounce: true, voice: 1.3},
+  tank:    {model: 'Zombie_Chubby',  hp: 8, speed: [.9, 1.15], move: 'Walk', attack: 'Punch',       range: 1.7,  dmg: 20, r: .7,  score: 30, coins: [2, 4], explode: true, voice: .75},
+  grabber: {model: 'Zombie_Arm',     hp: 4, speed: [1.7, 2.1], move: 'Walk', attack: 'Run_Attack',  range: 1.5,  dmg: 12, r: .5,  score: 20, coins: [1, 2], lunge: true, voice: .9},
   // story zombies, one new type per district
-  crawler: {model: 'Zombie_Ribcage', hp: 2, speed: [2.0, 2.4], move: 'Crawl', attack: 'Jump',       range: 2.0,  dmg: 1, r: .42, score: 20, coins: [1, 2], pounce: true, ambush: true, tint: 0xa8c890, voice: 1.2},
-  bloater: {model: 'Zombie_Chubby',  hp: 6, speed: [.95, 1.15], move: 'Walk', attack: 'Punch',      range: 1.6,  dmg: 1, r: .75, score: 30, coins: [2, 3], acid: true, tint: 0xb0ff70, scale: 1.15, voice: .7},
-  riot:    {model: 'Zombie_Basic',   hp: 5, speed: [1.4, 1.7], move: 'Walk', attack: 'Punch',       range: 1.45, dmg: 1, r: .5,  score: 30, coins: [2, 3], shield: true, tint: 0x9aa8c8, voice: .9},
+  crawler: {model: 'Zombie_Ribcage', hp: 2, speed: [2.0, 2.4], move: 'Crawl', attack: 'Jump',       range: 2.0,  dmg: 10, r: .42, score: 20, coins: [1, 2], pounce: true, ambush: true, tint: 0xa8c890, voice: 1.2},
+  bloater: {model: 'Zombie_Chubby',  hp: 6, speed: [.95, 1.15], move: 'Walk', attack: 'Punch',      range: 1.6,  dmg: 12, r: .75, score: 30, coins: [2, 3], acid: true, tint: 0xb0ff70, scale: 1.15, voice: .7},
+  riot:    {model: 'Zombie_Basic',   hp: 5, speed: [1.4, 1.7], move: 'Walk', attack: 'Punch',       range: 1.45, dmg: 14, r: .5,  score: 30, coins: [2, 3], shield: true, tint: 0x9aa8c8, voice: .9},
   screamer:{model: 'Zombie_Arm',     hp: 3, speed: [2.3, 2.7], move: 'Run',  attack: 'Wave',        range: 0,    dmg: 0, r: .45, score: 35, coins: [2, 4], scream: true, tint: 0xd8b0ff, voice: 1.5},
-  boss:    {model: 'Zombie_Chubby',  hp: 38, speed: [1.6, 1.6], move: 'Walk', attack: 'Punch',      range: 2.6,  dmg: 2, r: 1.4, score: 500, coins: [15, 20], boss: true, scale: 2.1, tint: 0xff9a8a, voice: .55},
+  boss:    {model: 'Zombie_Chubby',  hp: 38, speed: [1.6, 1.6], move: 'Walk', attack: 'Punch',      range: 2.6,  dmg: 25, r: 1.4, score: 500, coins: [15, 20], boss: true, scale: 2.1, tint: 0xff9a8a, voice: .55},
 };
 const AREA_MIX = [[], [['crawler', .2]], [['bloater', .16], ['crawler', .1]], [['riot', .2], ['bloater', .1], ['crawler', .08]], [['screamer', .1], ['riot', .14], ['bloater', .08], ['crawler', .08]]];
 const WAVE = {queue: [], spawnT: 0, alive: 0, total: 0, killed: 0, boss: null, active: false};
@@ -34,16 +34,17 @@ function makeWave(n) {
 // attack tokens: at most 2 zombies (3 from wave 6) swing at you at the same moment; the rest crowd and wait
 const attackersNow = () => G.zombies.filter(z => !z.dying && (z.state === 'attack' || z.state === 'windup' || z.state === 'lunge' || z.state === 'pounce')).length;
 const maxAttackers = () => G.wave >= 6 ? 3 : 2;
-const zDmg = zb => zb.type === 'tank' && G.wave < 7 ? 1 : zb.T.dmg;
+// damage in health points (the bar holds 100): later waves bite a little harder
+const zDmg = zb => Math.round((zb.type === 'tank' && G.wave < 7 ? 14 : zb.T.dmg) * (1 + Math.max(0, G.wave - 10) * .015));
 const bossN = () => Math.max(1, Math.floor(G.wave / 5));
-const bossDmg = () => bossN() === 1 ? 1 : 2;
+const bossDmg = () => bossN() === 1 ? 25 : 28 + bossN() * 3;
 const bossTele = () => bossN() === 1 ? 1.3 : .95;
 function startWave() {
   G.wave++; G.waveKills0 = G.kills; G.waveBest = 0; saveCheckpoint(); WAVE.queue = makeWave(G.wave); WAVE.total = WAVE.queue.length; WAVE.killed = 0; WAVE.spawnT = 1.2; WAVE.active = true; WAVE.boss = null;
   HUD.banner('WAVE ' + G.wave, G.wave % 5 === 0 ? 'BOSS INCOMING' : WAVE.total + ' zombies', G.wave % 5 === 0 ? '#ff4f4f' : '#ffcc33');
   if (G.wave % 5 === 0) { const P = G.player; P.hp = P.maxHp; popText(P.x, P.z, 'FULL HEAL', '#7dff8a', 34, 3); AU.play('heart', {vol: .8}); }
   POW.lastStand = false;
-  if (G.wave > 1 && G.wave % 5 !== 0) { const P = G.player; if (P.hp < P.maxHp) { P.hp++; popText(P.x, P.z, '+1 ♥', '#ff5a6a', 26, 2.8); } } // a heart back every wave
+  if (G.wave > 1 && G.wave % 5 !== 0) { const P = G.player; if (P.hp < P.maxHp) { P.hp = Math.min(P.maxHp, P.hp + 10); popText(P.x, P.z, '+10 HP', '#ff5a6a', 26, 2.8); } } // 10 health back every wave
   AU.play('waveStart', {vol: .8}); AU.musicTo(G.wave % 5 === 0 ? 'music_boss' : 'music_combat');
   if (!TUT.active) storyWaveStart();
   setTimeout(() => AU.play('zGroan', {vol: .7, rate: .9}), 600);
@@ -309,7 +310,7 @@ function killZombie(zb, dir, o) {
   if (zb.spreadFire && zb.burn > 0) for (const o of G.zombies) if (o !== zb && !o.dying && Math.hypot(o.x - zb.x, o.z - zb.z) < 2.5) { o.burn = 3; o.burnDmg = zb.burnDmg; o.spreadFire = true; burst(o.x, o.z, 6, ['#ff8a1a', '#ffcf3a'], 4, .1, .4, 1); }
   comboKill(zb);
   if (Math.random() < .025 + (T.boss ? 1 : 0)) dropPickup('rage', zb.x, zb.z);
-  if (UP.lifesteal) { P.killsForHeal++; if (P.killsForHeal >= 12) { P.killsForHeal = 0; P.hp = Math.min(P.maxHp, P.hp + 1); popText(P.x, P.z, '+1 ♥', '#ff5a6a', 26); AU.play('heart', {vol: .5}); } }
+  if (UP.lifesteal) { P.killsForHeal++; if (P.killsForHeal >= 12) { P.killsForHeal = 0; P.hp = Math.min(P.maxHp, P.hp + 6); popText(P.x, P.z, '+6 HP', '#ff5a6a', 26); AU.play('heart', {vol: .5}); } }
   if (UP.explosive && Math.random() < .15 && !T.explode) setTimeout(() => explodeAt(zb.x, zb.z, 2.6, 3, 0, 'kill'), 120);
   const d = zb.dying, rig = zb.rig;
   if (d.type !== 'gib') rig.play('Death', {loop: false, restart: true, fade: .05, speed: d.type === 'launch' ? 1.3 : 1});
@@ -358,11 +359,11 @@ function updateDying(zb, dt) {
     life = 2.4;
   } else if (d.type === 'swell') { // tank: swells and flashes, then explodes
     const k = clamp(d.t / .7, 0, 1); rig.body.scale.setScalar(1 + k * .35); rig.flash(Math.sin(d.t * 50) > 0 ? .9 : .2, 1, .6, .2);
-    if (d.t > .7 && !d.boomed) { d.boomed = true; rig.root.visible = false; explodeAt(zb.x, zb.z, 3.4, 3, 1, 'tank'); gibZombie(zb, rnd(0, 7)); }
+    if (d.t > .7 && !d.boomed) { d.boomed = true; rig.root.visible = false; explodeAt(zb.x, zb.z, 3.4, 3, 20, 'tank'); gibZombie(zb, rnd(0, 7)); }
     life = .8;
   } else if (d.type === 'acid') { // bloater: swells green, then bursts into an acid pool
     const k = clamp(d.t / .6, 0, 1); rig.body.scale.setScalar(1 + k * .45); rig.flash(Math.sin(d.t * 50) > 0 ? .8 : .2, .5, 1, .2);
-    if (d.t > .6 && !d.boomed) { d.boomed = true; rig.root.visible = false; acidPool(zb.x, zb.z, 2, 5); gibZombie(zb, rnd(0, 7)); const P = G.player; if (Math.hypot(P.x - zb.x, P.z - zb.z) < 1.5) hurtPlayer(1, zb.x, zb.z); }
+    if (d.t > .6 && !d.boomed) { d.boomed = true; rig.root.visible = false; acidPool(zb.x, zb.z, 2, 5); gibZombie(zb, rnd(0, 7)); const P = G.player; if (Math.hypot(P.x - zb.x, P.z - zb.z) < 1.5) hurtPlayer(18, zb.x, zb.z); }
     life = .7;
   } else if (d.type === 'boss') { if (d.t < 1.5 && Math.random() < .5) burst(zb.x, zb.z, 6, ['#3f9a35', '#7a1f1f'], 6, .2, .8, 2); life = 4; }
   // bodies that fell whole stay as corpses (see CORPSES); the rest sink into the street

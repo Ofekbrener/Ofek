@@ -22,8 +22,8 @@ function showcase(c, done, stat0, desc0) {
   else if (id === 'magnet') later(700, () => { for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; dropPickup('coin', P.x + Math.cos(a) * 5, P.z + Math.sin(a) * 5); } UP.magnetPulse = 1.4; });
   else if (id === 'rng') { later(700, () => { ring(P.x, P.z, wRange(), new THREE.Color(col).getHex(), .9); popText(P.x, P.z, 'REACH ' + wRange().toFixed(1) + ' m', '#9fdcff', 26, 3); }); autoSwing(3); }
   else if (id === 'move') later(600, () => { for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2; addPart({x: P.x + Math.cos(a) * .6, y: .4, z: P.z + Math.sin(a) * .6, vx: Math.cos(a) * 9, vz: Math.sin(a) * 9, vy: .5, g: 0, life: .4, max: .4, size: .1, col: '#9fdcff', drag: .9, rx: 0, ry: 0}); } popText(P.x, P.z, 'FASTER', '#9fdcff', 30, 3); });
-  else if (id === 'hp' || id === 'heal' || id === 'life') later(700, () => { ring(P.x, P.z, 2.2, 0xff4060, .5); popText(P.x, P.z, '♥ ' + P.hp + ' / ' + P.maxHp, '#ff5a6a', 32, 3); FLY.bump.hearts = G.time; });
-  else autoSwing(id.startsWith('el_') || id === 'wlvl' || id === 'dmg' || id === 'crit' || id === 'spd' ? 4 : 2);
+  else if (id === 'hp' || id === 'heal' || id === 'life') later(700, () => { ring(P.x, P.z, 2.2, 0xff4060, .5); popText(P.x, P.z, P.hp + ' / ' + P.maxHp + ' HP', '#ff5a6a', 32, 3); FLY.bump.hearts = G.time; });
+  else autoSwing(id.startsWith('el_') || id.startsWith('mod_') || id === 'wlvl' || id === 'dmg' || id === 'crit' || id === 'spd' ? 4 : 2);
   // a small label low on the screen keeps the fight in view: the pick's icon, its name and the skip button
   const el = document.getElementById('showcase'), cardArt = c.weaponCard ? `<img src="${WEAPON_ART[P.weapon] || ''}" alt="">` : emblem(c.icon, CAT_COL[c.cat] ? c.cat : 'epic');
   el.style.setProperty('--sc', col);

@@ -4,27 +4,31 @@
 // 3. elStrike: its own effect where the swing lands (flame crescent, ice shards, lightning forks, toxic puff,
 //    blood fan, sizzling drops, shock ring, implosion).
 'use strict';
-const ELFX_P = (hz, dt) => Math.random() < Math.min(1, hz * dt);
-const flame = (p, s = 1) => addPart({x: p.x + rnd(-.05, .05), y: p.y, z: p.z + rnd(-.05, .05), vx: rnd(-.3, .3), vz: rnd(-.3, .3), vy: rnd(1.2, 2.4) * s, g: -2, life: .35, max: .35, size: rnd(.07, .15) * s, col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10']), drag: .9, rx: 0, ry: 0, fade: 1});
-const drop = (p, col, g = 10) => addPart({x: p.x, y: p.y, z: p.z, vx: rnd(-.2, .2), vz: rnd(-.2, .2), vy: rnd(-.5, 0), g, life: .6, max: .6, size: rnd(.04, .07), col, drag: .98, rx: 0, ry: 0});
+const ELFX_P = (hz, dt) => Math.random() < Math.min(1, hz * dt * ELV.r);
+// the current element's level sets particle size (s) and spawn rate (r): Lv 1 small and sparse, Lv 3 big and dense
+const ELV = {s: 1, r: 1}, ELV_S = [1, .7, 1.1, 1.6], ELV_R = [1, .6, 1.1, 1.8];
+const setLv = lv => { ELV.s = ELV_S[lv] || 1; ELV.r = ELV_R[lv] || 1; };
+const lvPart = p => addPart(Object.assign(p, {size: p.size * ELV.s}));
+const flame = (p, s = 1) => lvPart({x: p.x + rnd(-.05, .05), y: p.y, z: p.z + rnd(-.05, .05), vx: rnd(-.3, .3), vz: rnd(-.3, .3), vy: rnd(1.2, 2.4) * s, g: -2, life: .35, max: .35, size: rnd(.07, .15) * s, col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10']), drag: .9, rx: 0, ry: 0, fade: 1});
+const drop = (p, col, g = 10) => lvPart({x: p.x, y: p.y, z: p.z, vx: rnd(-.2, .2), vz: rnd(-.2, .2), vy: rnd(-.5, 0), g, life: .6, max: .6, size: rnd(.04, .07), col, drag: .98, rx: 0, ry: 0});
 function elAura(dt) {
   const P = G.player; if (!P || P.dead || !P.wMesh || !P.wMesh.visible || G.state !== 'playing') return;
-  const els = elShown(); if (!els.length) return;
-  const s = trailSample(P.wMesh, weapon()), tip = s.tip, base = s.base;
+  const els = elShown(), s = trailSample(P.wMesh, weapon()), tip = s.tip, base = s.base; wlvlAura(dt, tip); if (!els.length) return;
   const along = (a = .4, b = 1) => { const k = rnd(a, b); return {x: lerp(base.x, tip.x, k), y: lerp(base.y, tip.y, k), z: lerp(base.z, tip.z, k)}; };
   for (const e of els) {
-    const lv = UP.el[e] || 1;
+    const lv = UP.el[e] || 1; setLv(lv);
+    if (lv >= 3) elMax(e, P, tip, dt);
     if (e === 'fire' && ELFX_P(18 + 8 * lv, dt)) flame(along(.5), .8);
-    if (e === 'frost' && ELFX_P(10 + 4 * lv, dt)) { const p = along(.3); addPart({x: p.x, y: p.y, z: p.z, vx: rnd(-.2, .2), vz: rnd(-.2, .2), vy: rnd(-.6, -.2), g: .6, life: .8, max: .8, size: rnd(.08, .16), col: pick(['#e8fbff', '#bff0ff']), drag: .95, rx: 0, ry: 0, fade: 1}); }
-    if (e === 'frost' && ELFX_P(3, dt)) { const p = along(.6); addPart({x: p.x, y: p.y, z: p.z, vx: 0, vz: 0, vy: 0, g: 0, life: .18, max: .18, size: .09, col: '#ffffff', drag: 1, rx: 0, ry: 0}); }
-    if (e === 'storm' && ELFX_P(5 + 2 * lv, dt)) { const p = along(.2); for (let i = 0; i < 3; i++) addPart({x: p.x, y: p.y, z: p.z, vx: rnd(-7, 7), vz: rnd(-7, 7), vy: rnd(-4, 4), g: 0, life: .07, max: .07, size: .03, col: '#e8f6ff', drag: .7, streak: 1}); flashLight(p.x, p.z, 0xbfe0ff, 1.2); }
+    if (e === 'frost' && ELFX_P(10 + 4 * lv, dt)) { const p = along(.3); lvPart({x: p.x, y: p.y, z: p.z, vx: rnd(-.2, .2), vz: rnd(-.2, .2), vy: rnd(-.6, -.2), g: .6, life: .8, max: .8, size: rnd(.08, .16), col: pick(['#e8fbff', '#bff0ff']), drag: .95, rx: 0, ry: 0, fade: 1}); }
+    if (e === 'frost' && ELFX_P(3, dt)) { const p = along(.6); lvPart({x: p.x, y: p.y, z: p.z, vx: 0, vz: 0, vy: 0, g: 0, life: .18, max: .18, size: .09, col: '#ffffff', drag: 1, rx: 0, ry: 0}); }
+    if (e === 'storm' && ELFX_P(5 + 2 * lv, dt)) { const p = along(.2); for (let i = 0; i < 3; i++) lvPart({x: p.x, y: p.y, z: p.z, vx: rnd(-7, 7), vz: rnd(-7, 7), vy: rnd(-4, 4), g: 0, life: .07, max: .07, size: .03, col: '#e8f6ff', drag: .7, streak: 1}); flashLight(p.x, p.z, 0xbfe0ff, 1.2); }
     if (e === 'poison' && ELFX_P(5, dt)) drop(tip, pick(['#8aff3a', '#4ad018']), 9);
-    if (e === 'poison' && ELFX_P(3, dt)) { const p = along(.5); addPart({x: p.x, y: p.y, z: p.z, vx: rnd(-.2, .2), vz: rnd(-.2, .2), vy: .5, g: -.3, life: .9, max: .9, size: rnd(.1, .18), col: '#5ad02a', drag: .96, rx: 0, ry: 0, fade: 1}); }
+    if (e === 'poison' && ELFX_P(3, dt)) { const p = along(.5); lvPart({x: p.x, y: p.y, z: p.z, vx: rnd(-.2, .2), vz: rnd(-.2, .2), vy: .5, g: -.3, life: .9, max: .9, size: rnd(.1, .18), col: '#5ad02a', drag: .96, rx: 0, ry: 0, fade: 1}); }
     if (e === 'bleed' && ELFX_P(6, dt)) drop(along(.7), pick(['#b01818', '#7a0e0e']), 12);
     if (e === 'acid' && ELFX_P(5, dt)) drop(tip, pick(['#d8ff2a', '#a8c400']), 8);
-    if (e === 'acid' && ELFX_P(4, dt)) { const p = along(.6); addPart({x: p.x, y: p.y, z: p.z, vx: rnd(-.15, .15), vz: rnd(-.15, .15), vy: .7, g: -.4, life: .7, max: .7, size: rnd(.06, .12), col: '#c8d8a0', drag: .96, rx: 0, ry: 0, fade: 1}); }
-    if (e === 'blast' && ELFX_P(9, dt)) addPart({x: tip.x, y: tip.y, z: tip.z, vx: rnd(-2, 2), vz: rnd(-2, 2), vy: rnd(1, 3), g: 6, life: .22, max: .22, size: .04, col: pick(['#ffcf3a', '#ff7a2a', '#ffffff']), drag: .9, streak: 1});
-    if (e === 'gravity' && ELFX_P(14, dt)) { const a = rnd(0, 7), R = .45; addPart({x: tip.x + Math.cos(a) * R, y: tip.y + rnd(-.25, .25), z: tip.z + Math.sin(a) * R, vx: -Math.cos(a) * R * 3 - Math.sin(a) * 1.5, vz: -Math.sin(a) * R * 3 + Math.cos(a) * 1.5, vy: 0, g: 0, life: .3, max: .3, size: rnd(.04, .07), col: pick(['#8a6cff', '#e2d4ff', '#4a2ab0']), drag: .9, rx: 0, ry: 0}); }
+    if (e === 'acid' && ELFX_P(4, dt)) { const p = along(.6); lvPart({x: p.x, y: p.y, z: p.z, vx: rnd(-.15, .15), vz: rnd(-.15, .15), vy: .7, g: -.4, life: .7, max: .7, size: rnd(.06, .12), col: '#c8d8a0', drag: .96, rx: 0, ry: 0, fade: 1}); }
+    if (e === 'blast' && ELFX_P(9, dt)) lvPart({x: tip.x, y: tip.y, z: tip.z, vx: rnd(-2, 2), vz: rnd(-2, 2), vy: rnd(1, 3), g: 6, life: .22, max: .22, size: .04, col: pick(['#ffcf3a', '#ff7a2a', '#ffffff']), drag: .9, streak: 1});
+    if (e === 'gravity' && ELFX_P(14, dt)) { const a = rnd(0, 7), R = .45; lvPart({x: tip.x + Math.cos(a) * R, y: tip.y + rnd(-.25, .25), z: tip.z + Math.sin(a) * R, vx: -Math.cos(a) * R * 3 - Math.sin(a) * 1.5, vz: -Math.sin(a) * R * 3 + Math.cos(a) * 1.5, vy: 0, g: 0, life: .3, max: .3, size: rnd(.04, .07), col: pick(['#8a6cff', '#e2d4ff', '#4a2ab0']), drag: .9, rx: 0, ry: 0}); }
   }
 }
 // behind the blade in the swing: every shown element adds its own particles (fire, frost and storm use the weapon trail styles)
@@ -36,13 +40,13 @@ function elTrail(tip, base) {
 }
 // where the swing lands: one effect per shown element, around the middle of the arc
 // strike effects read at game zoom: 1.5x the particle size
-const bigPart = p => addPart(Object.assign(p, {size: p.size * 1.5}));
+const bigPart = p => addPart(Object.assign(p, {size: p.size * 1.5 * ELV.s}));
 function elStrike(a) {
   const els = elShown(); if (!els.length) return;
   const P = G.player, d = a.dir, R = wRange() * .75, cx = P.x + Math.cos(d) * R, cz = P.z + Math.sin(d) * R;
   const arc = (n, f) => { for (let i = 0; i < n; i++) { const t = d + (i / (n - 1) - .5) * 1.8; f(P.x + Math.cos(t) * R, P.z + Math.sin(t) * R, t); } };
   for (const e of els) {
-    const lv = UP.el[e] || 1;
+    const lv = UP.el[e] || 1; setLv(lv);
     if (e === 'fire') { arc(6 + lv, (x, z) => { for (let i = 0; i < 3; i++) flame({x: x + rnd(-.15, .15), y: .15, z: z + rnd(-.15, .15)}, 1.6); }); flashLight(cx, cz, 0xff6a1a, 3); }
     if (e === 'frost') { arc(5 + lv, (x, z, t) => { for (let i = 0; i < 3; i++) bigPart({x, y: .3, z, vx: Math.cos(t) * rnd(1, 3), vz: Math.sin(t) * rnd(1, 3), vy: rnd(3, 6), g: 20, life: .5, max: .5, size: rnd(.06, .12), col: pick(['#ffffff', '#cff6ff', '#8fe8ff']), drag: .97, rx: rnd(0, 3), ry: rnd(0, 3)}); }); ring(cx, cz, 1.1, 0xbff4ff, .3); }
     if (e === 'storm') { for (let i = 0; i < 1 + Math.min(2, lv); i++) { const t = d + rnd(-.6, .6), L = wRange() * rnd(1.1, 1.5); bolt(P.x + Math.cos(d) * .6, P.z + Math.sin(d) * .6, P.x + Math.cos(t) * L, P.z + Math.sin(t) * L); } flashLight(cx, cz, 0xbfe0ff, 4); }
@@ -53,3 +57,26 @@ function elStrike(a) {
     if (e === 'gravity') { for (let i = 0; i < 14; i++) { const t = i / 14 * Math.PI * 2, r0 = 1.6; bigPart({x: cx + Math.cos(t) * r0, y: rnd(.4, 1.2), z: cz + Math.sin(t) * r0, vx: -Math.cos(t) * 5, vz: -Math.sin(t) * 5, vy: 0, g: 0, life: .3, max: .3, size: .07, col: pick(['#8a6cff', '#e2d4ff']), drag: .98, streak: 1}); } ring(cx, cz, .6, 0x8a6cff, .3); }
   }
 }
+
+// Lv 3: each element changes the survivor's look, beyond the weapon
+function elMax(e, P, tip, dt) {
+  const feet = (r = .6) => { const a = rnd(0, 7); return {x: P.x + Math.cos(a) * r, z: P.z + Math.sin(a) * r}; };
+  // fire: flames lick up around the feet
+  if (e === 'fire' && ELFX_P(14, dt)) { const f = feet(rnd(.3, .7)); flame({x: f.x, y: .1, z: f.z}, .9); }
+  // frost: a ring of frost on the ground and falling snow
+  if (e === 'frost' && ELFX_P(10, dt)) { const f = feet(rnd(.6, 1)); addPart({x: f.x, y: .05, z: f.z, vx: 0, vz: 0, vy: 0, g: 0, life: .6, max: .6, size: .1, col: '#e8fbff', drag: 1, rx: 0, ry: 0, fade: 1}); }
+  // storm: small bolts jump from the weapon to the ground
+  if (e === 'storm' && ELFX_P(1.4, dt)) { const f = feet(rnd(1, 1.8)); bolt(tip.x, tip.z, f.x, f.z); flashLight(f.x, f.z, 0xbfe0ff, 2); }
+  // poison: a green haze trails the survivor
+  if (e === 'poison' && ELFX_P(8, dt)) { const f = feet(.3); addPart({x: f.x, y: .3, z: f.z, vx: rnd(-.3, .3), vz: rnd(-.3, .3), vy: .25, g: 0, life: 1.1, max: 1.1, size: .3, col: '#3a9a1a', drag: .97, rx: 0, ry: 0, fade: 1}); }
+  // bleed: red mist circles the survivor
+  if (e === 'bleed' && ELFX_P(10, dt)) { const a = G.time * 3 + rnd(-.3, .3); addPart({x: P.x + Math.cos(a) * .8, y: rnd(.6, 1.4), z: P.z + Math.sin(a) * .8, vx: -Math.sin(a) * 2, vz: Math.cos(a) * 2, vy: 0, g: 0, life: .5, max: .5, size: .08, col: '#c01020', drag: .95, rx: 0, ry: 0, fade: 1}); }
+  // acid: drops hiss and smoke on the ground
+  if (e === 'acid' && ELFX_P(6, dt)) { const f = feet(rnd(.2, .8)); addPart({x: f.x, y: .05, z: f.z, vx: 0, vz: 0, vy: .9, g: -.3, life: .6, max: .6, size: .12, col: '#d8ff2a', drag: .95, rx: 0, ry: 0, fade: 1}); }
+  // blast: the weapon pulses with a small shock ring every second
+  if (e === 'blast' && (P.blastT = (P.blastT || 0) - dt) <= 0) { P.blastT = 1; ring(tip.x, tip.z, .7, 0xff8a2a, .2); sparks(tip.x, tip.z, rnd(0, 7), 4, '#ffcf3a'); }
+  // gravity: dark motes spiral in toward the survivor
+  if (e === 'gravity' && ELFX_P(12, dt)) { const a = rnd(0, 7), r = 1.8; addPart({x: P.x + Math.cos(a) * r, y: rnd(.3, 1.6), z: P.z + Math.sin(a) * r, vx: -Math.cos(a) * 4 - Math.sin(a) * 2, vz: -Math.sin(a) * 4 + Math.cos(a) * 2, vy: 0, g: 0, life: .4, max: .4, size: .06, col: pick(['#8a6cff', '#2a1a6a']), drag: .97, rx: 0, ry: 0}); }
+}
+// weapon level: gold glints on the weapon from Lv 3, more at Lv 5
+function wlvlAura(dt, tip) { if (UP.wlvl >= 3 && Math.random() < dt * (UP.wlvl - 2) * 6) addPart({x: tip.x + rnd(-.15, .15), y: tip.y + rnd(-.15, .15), z: tip.z + rnd(-.15, .15), vx: 0, vz: 0, vy: .4, g: 0, life: .3, max: .3, size: UP.wlvl >= 5 ? .09 : .06, col: '#ffe9a0', drag: 1, rx: 0, ry: 0}); }

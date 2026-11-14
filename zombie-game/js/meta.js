@@ -13,11 +13,11 @@ const addGems = n => { META.gems += n; saveMeta(); };
 
 // ---------- Safehouse: permanent perks, bought with coins ----------
 const SAFE = [
-  {id: 'jacket', name: 'Thick Jacket', desc: '+1 heart at the start of every run', icon: 'hp', max: 3, cost: [120, 300, 650]},
+  {id: 'jacket', name: 'Thick Jacket', desc: '+20 max health at the start of every run', icon: 'hp', max: 3, cost: [120, 300, 650]},
   {id: 'sharpen', name: 'Whetstone', desc: 'Your weapon starts 1 level higher', icon: 'dmg', max: 2, cost: [250, 700]},
   {id: 'locker', name: 'Gun Locker', desc: 'Start every run with a random gear piece', icon: 'drone', max: 1, cost: [450]},
   {id: 'charm', name: 'Lucky Charm', desc: '+5% critical hit chance', icon: 'crit', max: 3, cost: [150, 350, 700]},
-  {id: 'wind', name: 'Second Wind', desc: 'Once per run, get back up with 2 hearts', icon: 'heal', max: 1, cost: [600]},
+  {id: 'wind', name: 'Second Wind', desc: 'Once per run, get back up with 40 health', icon: 'heal', max: 1, cost: [600]},
   {id: 'scav', name: 'Scavenger', desc: '+25% coins from every zombie', icon: 'magnet', max: 2, cost: [200, 550]},
   {id: 'dice', name: 'Loaded Dice', desc: 'The first reroll after each wave is free', icon: 'spd', max: 1, cost: [350]},
 ];
@@ -29,7 +29,7 @@ function buySafe(id) {
 // called at the start of every run, after the survivor is made
 function applySafehouse() {
   const P = G.player;
-  P.maxHp += safeLv('jacket'); P.hp = P.maxHp;
+  P.maxHp += 20 * safeLv('jacket'); P.hp = P.maxHp;
   UP.wlvl += safeLv('sharpen'); UP.crit += .05 * safeLv('charm');
   P.revive = safeLv('wind');
   if (safeLv('locker')) { const g = pick(Object.keys(GEAR).filter(k => !UP.gear[k])); if (g) { UP.gear[g] = 1; buildGear(); } }
