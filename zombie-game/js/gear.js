@@ -46,8 +46,11 @@ function gearHit(zb, dir, dmg, kind) { damageZombie(zb, dir, dmg, {w: weapon(), 
 
 function updateGear(dt) {
   const P = G.player; if (!P || P.dead) return;
+  // during the demo after a pick, only the picked gear works
+  const gearLvl = id => SHOW.active && SHOW.only && SHOW.only !== 'gear_' + id ? 0 : (UP.gear[id] || 0);
   // orbit blades
   const lb = gearLvl('blades');
+  for (const g of GS.blades) g.visible = !!lb;
   if (lb) {
     GS.angle += dt * (3 + lb * .6); const R = 2;
     GS.blades.forEach((g, i) => {
@@ -66,6 +69,7 @@ function updateGear(dt) {
   // guard dogs
   const ld = gearLvl('dog');
   for (const d of GS.dogs) {
+    d.rig.root.visible = !!ld; if (!ld) continue;
     d.t -= dt; const r = d.rig;
     if (!d.target || d.target.dying || d.target.gone) { d.target = nearestTo(P.x, P.z, 12); if (d.target && Math.random() < .3) AU.play('bark', {vol: .5, x: d.x, z: d.z, max: 1}); }
     const T = d.target;
@@ -117,7 +121,8 @@ function updateGear(dt) {
   }
   // turret drone
   const lr = gearLvl('drone');
-  if (GS.drone) {
+  if (GS.drone) GS.drone.g.visible = !!lr;
+  if (GS.drone && lr) {
     const D = GS.drone; D.a += dt * 1.5; const x = P.x + Math.cos(D.a) * 1.1, z = P.z + Math.sin(D.a) * 1.1;
     D.g.position.set(x, 2.1 + Math.sin(G.time * 3) * .1, z); D.g.children.forEach(c => { if (c.name === 'rotor') c.rotation.y += dt * 40; });
     const t = nearestTo(x, z, 9); if (t) D.g.rotation.y = -Math.atan2(t.z - z, t.x - x);

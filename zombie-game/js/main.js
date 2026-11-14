@@ -196,8 +196,9 @@ function pauseGame() {
   el.innerHTML = `<div class="pbox"><span class="hzstrip"></span><h3>Paused</h3><p>Wave ${G.wave || 1}${G.endless ? ' · Endless' : ' · ' + AREAS[G.area].name}</p>
     <button id="pResume" class="btn-primary">${icon('play')}Resume</button>
     <button id="pQuit" class="ghost">${icon('home')}Quit to home</button>
+    <button id="pCheat" class="ghost">${icon('bolt')}Cheats</button>
     <small>${cp ? 'Your run is saved at wave ' + cp.wave + '. PLAY continues from there.' : 'Quitting ends this run. Coins you picked up are kept.'}</small></div>`;
-  el.hidden = false; document.getElementById('pResume').onclick = resumeGame; document.getElementById('pQuit').onclick = quitToHome;
+  el.hidden = false; document.getElementById('pResume').onclick = resumeGame; document.getElementById('pQuit').onclick = quitToHome; document.getElementById('pCheat').onclick = openCheats;
   try { if (AU.ctx && AU.ctx.state === 'running') AU.ctx.suspend(); } catch (e) {}
 }
 function resumeGame() {
@@ -228,7 +229,11 @@ let MENU_HTML = '';
 function showMenu() {
   G.state = 'menu'; ui.hidden = false; HOME.on = false; saveMeta(); hudCv.style.visibility = '';
   const P = G.player; if (P) { P.x = 0; P.z = 5; P.dead = false; P.rig.play('Idle', {fade: .2}); } G.cam.x = 0; G.cam.z = 5;
-  if (WORLD.built !== 0) buildLayout(0);
+  // leftover coins from the last fight are removed, so none fly to the survivor on the home screen
+  clearPickups(); clearZombies(); clearFX(); UP.magnetPulse = 0;
+  // the home screen stands in the area the saved run is in
+  const cpA = loadCheckpoint(), hA = cpA && !cpA.endless ? areaIndex(cpA.wave) : 0; G.area = hA;
+  if (WORLD.built !== hA) buildLayout(hA);
   // first launch goes straight to the story, the survivor creator and training; after that, the home screen
   if (!firstTime()) { ui.className = 'overlay homeui'; showHome(); return; }
   ui.className = 'overlay'; ui.innerHTML = MENU_HTML;
@@ -258,10 +263,10 @@ function frame(ts) {
   if (G.state === 'playing') TUT.update(dt);
   RADIO.update(raw);
   const pb = G.state !== 'playing' || SHOW.active; if (PAUSE_BTN.hidden !== pb) PAUSE_BTN.hidden = pb;
-  if (UP.magnetPulse > 0) { UP.magnetPulse -= raw; for (const k of G.pickups) { const P = G.player, dx = P.x - k.x, dz = P.z - k.z, d = Math.hypot(dx, dz) || 1; k.x += dx / d * 14 * raw; k.z += dz / d * 14 * raw; } }
+  if (UP.magnetPulse > 0 && G.state === 'playing') { UP.magnetPulse -= raw; for (const k of G.pickups) { const P = G.player, dx = P.x - k.x, dz = P.z - k.z, d = Math.hypot(dx, dz) || 1; k.x += dx / d * 14 * raw; k.z += dz / d * 14 * raw; } }
   updateFX(dt || raw * .02); updateRain(raw);
   G.trauma = Math.max(0, G.trauma - raw * 1.6); G.flash = Math.max(0, G.flash - raw * 2); G.hurtFlash = Math.max(0, G.hurtFlash - raw * 2);
-  if (G.player && G.state !== 'creator' && G.state !== 'intro' && G.state !== 'cutscene' && !MAP3D.on) updateCamera(raw);
+  if (G.player && G.state !== 'creator' && G.state !== 'intro' && G.state !== 'cutscene' && !MAP3D.on) { updateCamera(raw); if (!HOME.on) fadeOccluders(raw); }
   if (G.state === 'menu' && HOME.on && G.player) homeCamera(raw);
   renderFX(); renderer.render(scene, camera); drawHUD(raw);
 }

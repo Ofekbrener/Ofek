@@ -31,11 +31,13 @@ function block(x, z, w, d, h, {col = 0x55585e, tex = null, rep = 1, y = 0, solid
   const sideD = tex ? new THREE.MeshStandardMaterial({map: (() => { const t = tex(); t.repeat.set(Math.max(1, Math.round(d / 4 * rep)), Math.max(1, Math.round(h / 4 * rep))); return t; })(), roughness: .85}) : side;
   const top = new THREE.MeshStandardMaterial({color: roof ?? col, roughness: .9});
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [sideD, sideD, top, top, side, side]); m.position.set(x, y + h / 2, z); m.castShadow = cast; m.receiveShadow = true; addToLayer(m);
+  if (h + y > 2.5) occluder(m, Math.max(w, d) / 2, y + h);
   if (collide) G.colliders.push({x, z, hw: w / 2 + solidPad, hd: d / 2 + solidPad});
   return m;
 }
 function cylinder(x, z, r, h, col, {collide = true, y = 0} = {}) {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 16), new THREE.MeshStandardMaterial({color: col, roughness: .7})); m.position.set(x, y + h / 2, z); m.castShadow = true; addToLayer(m);
+  if (h + y > 2.5) occluder(m, r, y + h);
   if (collide) G.colliders.push({x, z, hw: r * .8, hd: r * .8}); return m;
 }
 function lampLight(x, z, col, i, h = 5.6, dist = 16) { const l = new THREE.PointLight(col, i, dist, 1.6); l.position.set(x, h, z); addToLayer(l); WORLD.lamps.push(l); return l; }

@@ -34,10 +34,11 @@ button:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .load{width:min(320px,80vw);height:6px;background:#2a2d3a;border-radius:4px;overflow:hidden;margin-top:12px}
 #loadbar{height:100%;width:0;background:var(--accent);transition:width .15s}
 .credits{font-size:12px;color:#7d8296;margin-top:14px;max-width:560px}
-#draft{background:radial-gradient(ellipse at 50% 40%,rgba(30,12,12,.78),rgba(4,5,9,.94));backdrop-filter:blur(4px);overflow-y:auto;justify-content:flex-start;padding-top:max(5vh,env(safe-area-inset-top))}
+#draft{background:radial-gradient(ellipse at 50% 40%,rgba(30,12,12,.78),rgba(4,5,9,.94));backdrop-filter:blur(4px);overflow:hidden;justify-content:flex-start;padding-top:max(5vh,env(safe-area-inset-top))}
 #draft .drays{position:fixed;left:50%;top:-40vmax;width:200vmax;height:200vmax;margin-left:-100vmax;pointer-events:none;z-index:-1;opacity:.35;
   background:repeating-conic-gradient(from 0deg,rgba(255,80,40,.18) 0 6deg,transparent 6deg 18deg);mask:radial-gradient(circle,#000 0,transparent 55%);-webkit-mask:radial-gradient(circle,#000 0,transparent 55%);animation:rays 40s linear infinite}
 @keyframes rays{to{transform:rotate(360deg)}}
+#draft .dfit{width:100%;display:flex;flex-direction:column;align-items:center;transform-origin:50% 0;flex:none}
 #draft .dhead{text-align:center;animation:dhead .6s cubic-bezier(.2,1.4,.4,1) both}@keyframes dhead{from{transform:scale(1.6);opacity:0}}
 #draft .dwave{font-size:15px;letter-spacing:8px;color:var(--gold)}
 #draft .dchips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:8px 0 6px}
@@ -549,6 +550,13 @@ button:focus:not(:focus-visible){outline:none}
 #showcase.on{transform:none;transition:opacity 200ms linear,transform var(--d-spring-sheet) var(--spring-sheet)}
 #showcase .sctag{border-radius:4px;font-size:12px}#showcase .sctitle{font-family:'Black Ops One',Oswald,sans-serif;font-weight:400;font-size:26px}
 #showcase .scdesc{font-family:Oswald,sans-serif;font-size:16px;font-weight:400}#showcase .scstat{font-size:16px}
+/* the demo label after a pick: one small pill low on the screen, the fight stays in view */
+#showcase{top:auto;bottom:calc(env(safe-area-inset-bottom) + 200px);left:50%;translate:-50% 0;width:auto;max-width:calc(100% - 24px);grid-template-columns:auto auto auto;gap:10px;padding:6px 8px 9px 6px;border-radius:999px;border-width:2px;position:fixed;transform:translateY(16px) scale(.92)}
+#showcase .scart{width:36px;height:36px;border-radius:50%}#showcase .scart svg,#showcase .scart img{width:28px;height:28px;animation:none}
+#showcase .sctitle{font-size:18px;margin:0;white-space:nowrap}#showcase .sctitle b{font-family:Oswald,sans-serif;font-size:15px;color:var(--toxic)}
+#showcase .scskip{grid-column:auto;justify-self:auto;font-size:13px;padding:5px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:4px}#showcase .scskip svg{width:14px;height:14px}
+#showcase .scbar{position:absolute;left:18px;right:18px;bottom:3px;height:3px;margin:0}
+@media (min-width:760px){#showcase{left:50%;translate:-50% 0;width:auto;bottom:28px}}
 
 /* ---------- GAME OVER ---------- */
 #menu.gameover{background:rgba(8,9,13,.9);justify-content:center;gap:16px}
@@ -692,6 +700,19 @@ button:focus:not(:focus-visible){outline:none}
 #pause button{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;font-size:20px}
 #pause button .ico{width:22px;height:22px}
 #pause small{font:400 13px/1.35 Oswald,sans-serif;color:rgba(242,237,228,.6)}
+/* test cheats panel (temporary) */
+#cheats{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:12px}
+#cheats[hidden]{display:none}
+#cheats .chbox{width:min(520px,100%);max-height:calc(100dvh - 24px);overflow:auto;background:#141824;border:2px solid #ff4fd8;border-radius:14px;padding:12px 14px;color:#fff;font-family:Oswald,sans-serif}
+#cheats h3{margin:0 0 8px;font-size:22px;color:#ff4fd8}#cheats h3 small{display:block;font-size:12px;color:#a8aec4;font-weight:400}
+#cheats h4{margin:10px 0 6px;font-size:13px;letter-spacing:2px;color:#ffcc33;text-transform:uppercase}
+#cheats .chrow{display:flex;flex-wrap:wrap;gap:6px}
+#cheats .chrow button,#cheats .chclose{font:inherit;font-size:14px;color:#fff;background:#232a3c;border:1px solid #3a4560;border-radius:8px;padding:6px 10px;cursor:pointer;line-height:1.1}
+#cheats .chrow button small{display:block;font-size:11px;color:#a8aec4}
+#cheats .chrow.cards button{font-size:12px;padding:5px 8px}
+#cheats button.done{background:#2e8a3a;border-color:#7dff8a}
+#cheats .chnote{font-size:13px;color:#a8aec4;margin:10px 0 0}
+#cheats .chclose{margin-top:12px;width:100%;display:flex;justify-content:center;align-items:center;gap:6px}#cheats .chclose svg{width:16px;height:16px}
 </style>
 </head>
 <body>
@@ -750,6 +771,7 @@ button:focus:not(:focus-visible){outline:none}
 <script src="js/previews.js"></script>
 <script src="js/upgrades.js"></script>
 <script src="js/combos.js"></script>
+<script src="js/elfx.js"></script>
 <script src="js/look.js"></script>
 <script src="js/tutorial.js"></script>
 <script src="js/voice.js"></script>
@@ -761,6 +783,7 @@ button:focus:not(:focus-visible){outline:none}
 <script src="js/flyers.js"></script>
 <script src="js/showcase.js"></script>
 <script src="js/home.js"></script>
+<script src="js/cheats.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

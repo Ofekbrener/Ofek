@@ -11,7 +11,7 @@ function showDummy(a, r = 3.2) {
 const later = (ms, f) => SHOW.timers.push(setTimeout(() => { if (SHOW.active) f(); }, ms));
 function autoSwing(n, gap = 420) { for (let i = 0; i < n; i++) later(900 + i * gap, () => { const P = G.player, t = nearestZombie(6); if (t) P.face = Math.atan2(t.z - P.z, t.x - P.x); startAttack(); }); }
 function showcase(c, done, stat0, desc0) {
-  SHOW.active = true; SHOW.dummies = []; SHOW.timers = []; SHOW.done = done;
+  SHOW.active = true; SHOW.only = c.id; SHOW.dummies = []; SHOW.timers = []; SHOW.done = done;
   const P = G.player, col = (CAT_COL[c.cat] || CAT_COL.epic)[1], st = (stat0 || [])[0] || [];
   for (let i = 0; i < 3; i++) showDummy(-Math.PI / 2 + (i - 1) * .9);
   const id = c.id;
@@ -24,17 +24,16 @@ function showcase(c, done, stat0, desc0) {
   else if (id === 'move') later(600, () => { for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2; addPart({x: P.x + Math.cos(a) * .6, y: .4, z: P.z + Math.sin(a) * .6, vx: Math.cos(a) * 9, vz: Math.sin(a) * 9, vy: .5, g: 0, life: .4, max: .4, size: .1, col: '#9fdcff', drag: .9, rx: 0, ry: 0}); } popText(P.x, P.z, 'FASTER', '#9fdcff', 30, 3); });
   else if (id === 'hp' || id === 'heal' || id === 'life') later(700, () => { ring(P.x, P.z, 2.2, 0xff4060, .5); popText(P.x, P.z, '♥ ' + P.hp + ' / ' + P.maxHp, '#ff5a6a', 32, 3); FLY.bump.hearts = G.time; });
   else autoSwing(id.startsWith('el_') || id === 'wlvl' || id === 'dmg' || id === 'crit' || id === 'spd' ? 4 : 2);
-  // the explainer card at the top
+  // a small label low on the screen keeps the fight in view: the pick's icon, its name and the skip button
   const el = document.getElementById('showcase'), cardArt = c.weaponCard ? `<img src="${WEAPON_ART[P.weapon] || ''}" alt="">` : emblem(c.icon, CAT_COL[c.cat] ? c.cat : 'epic');
   el.style.setProperty('--sc', col);
-  el.innerHTML = `<div class="scart">${cardArt}</div><div class="scbody"><div class="sctag">${st[1] && st[1] !== 'none' && st[1] !== 'new' ? 'UPGRADED' : 'NEW'}</div><div class="sctitle">${c.title}</div>
-    <div class="scdesc">${(desc0 || '').replace(/^Next: /, '')}</div>${st.length ? `<div class="scstat">${st[0]} <s>${st[1]}</s> → <b>${st[2]}</b></div>` : ''}<div class="scbar"><i></i></div></div><button class="scskip" id="scskip">Next wave${icon('play')}</button>`;
+  el.innerHTML = `<div class="scart">${cardArt}</div><div class="sctitle">${c.title}${st.length && st[2] ? ` <b>${st[2]}</b>` : ''}</div><button class="scskip" id="scskip">Next wave${icon('play')}</button><div class="scbar"><i></i></div>`;
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); el.hidden = false;
   document.getElementById('scskip').onclick = () => endShowcase();
   later(4200, endShowcase);
 }
 function endShowcase() {
-  if (!SHOW.active) return; SHOW.active = false; for (const t of SHOW.timers) clearTimeout(t); SHOW.timers = [];
+  if (!SHOW.active) return; SHOW.active = false; SHOW.only = null; for (const t of SHOW.timers) clearTimeout(t); SHOW.timers = [];
   for (const z of SHOW.dummies) if (!z.gone && !z.dying) { z.dummy = false; gibZombie(z, rnd(0, 7)); z.gone = true; }
   SHOW.dummies = []; for (const k of G.pickups) k.t = Math.max(k.t, 1); UP.magnetPulse = Math.max(UP.magnetPulse || 0, 1);
   const el = document.getElementById('showcase'); el.classList.remove('on'); setTimeout(() => { if (!SHOW.active) el.hidden = true; }, 300);

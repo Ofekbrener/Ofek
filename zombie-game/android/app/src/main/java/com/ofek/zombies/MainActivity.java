@@ -49,6 +49,8 @@ public class MainActivity extends Activity {
     hideBars();
     WebSettings s = web.getSettings();
     s.setJavaScriptEnabled(true);
+    // the phone's font size setting must not enlarge the game's text: the screens are laid out for 100%
+    s.setTextZoom(100);
     s.setDomStorageEnabled(true);
     s.setMediaPlaybackRequiresUserGesture(false);
     s.setAllowFileAccess(false);

@@ -14,8 +14,11 @@ function rollWallet(root) {
   HOME.shown.c = META.coins; HOME.shown.g = META.gems;
 }
 // clear the view: hide props and barrels between the camera and the survivor
+// every area: any wall, block or prop whose box reaches into the space between the camera and the survivor is hidden
 function homeStage(on) {
-  const P = G.player; for (const o of [...G.props, ...G.barrels.map(b => b.m)]) { const p = o.position, inFront = Math.abs(p.x - P.x) < 3.4 && p.z > P.z - 1 && p.z < P.z + 7; o.visible = on ? !inFront : true; }
+  const P = G.player, box = new THREE.Box3(), front = new THREE.Box3(new THREE.Vector3(P.x - 2.6, .3, P.z + .4), new THREE.Vector3(P.x + 2.6, 9, P.z + 6.5));
+  const objs = [...G.props, ...G.barrels.map(b => b.m), ...(WORLD.layer ? WORLD.layer.children.filter(o => o.isMesh) : [])];
+  for (const o of objs) { if (!on) { o.visible = true; continue; } box.setFromObject(o); o.visible = !box.intersectsBox(front); }
 }
 function showHome() {
   HOME.on = true; homeStage(true); const cp = loadCheckpoint(), s = SURVIVORS.find(x => x.id === LOOK.char) || SURVIVORS[0];
@@ -58,12 +61,14 @@ function settingsSheet() {
   const el = sheet(`<h3>Settings</h3><button class="row-btn" id="sVox"><span class="rico">${icon('radio')}</span><span class="rtx">Radio voices<small>Doc, the army and the narrator</small></span>${tog(VOICE.on)}</button>
     <button class="row-btn" id="sHap"><span class="rico">${icon('vibrate')}</span><span class="rtx">Vibration<small>on hits, kills and damage</small></span>${tog(HAPTIC.on)}</button>
     <button class="row-btn" id="sHow"><span class="rico">${icon('train')}</span><span class="rtx">How to play<small>replay the training run</small></span>${icon('play')}</button>
+    <button class="row-btn" id="sCheat"><span class="rico">${icon('bolt')}</span><span class="rtx">Cheats<small>test panel: coins, emeralds, start at any area</small></span></button>
     <button class="row-btn danger" id="sReset"><span class="rico">${icon('close')}</span><span class="rtx">Reset progress<small>coins, emeralds, perks, cosmetics, story, best score</small></span></button>
     <p class="hcred">Models: Quaternius (CC0) · Sound: Meta Oculus Audio Pack (CC BY 4.0) · Voices: Piper, LibriTTS (CC BY 4.0) · Fonts: SIL OFL</p>`);
   const setTog = (id, on) => { document.querySelector('#' + id + ' .tog').outerHTML = tog(on); };
   document.getElementById('sVox').onclick = () => { VOICE.toggle(); setTog('sVox', VOICE.on); };
   document.getElementById('sHap').onclick = () => { HAPTIC.toggle(); setTog('sHap', HAPTIC.on); };
   // two taps to erase: the first arms the button for 5 s
+  document.getElementById('sCheat').onclick = () => { document.getElementById('hsheet').hidden = true; openCheats(); };
   const rb = document.getElementById('sReset');
   rb.onclick = () => {
     if (!rb.classList.contains('armed')) { rb.classList.add('armed'); rb.querySelector('.rtx').innerHTML = 'Tap again to erase everything<small>this cannot be undone</small>'; UI.shake && UI.shake(rb, 6, 500); clearTimeout(rb.t); rb.t = setTimeout(() => { rb.classList.remove('armed'); rb.querySelector('.rtx').innerHTML = 'Reset progress<small>coins, emeralds, perks, cosmetics, story, best score</small>'; }, 5000); return; }

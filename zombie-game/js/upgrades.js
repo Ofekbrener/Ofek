@@ -76,6 +76,8 @@ const ELEMENTS = {
   poison: {name: 'POISON', icon: 'poison', col: 0x8aff3a, fx: 'poison', lv: ['Hits leave a toxic cloud: 1 damage per second for 3 s.', 'Clouds are much wider.', 'Clouds also slow zombies by 30%.']},
 };
 const elActive = () => Object.keys(UP.el).filter(k => UP.el[k] > 0);
+// the elements the weapon shows right now: all of them, or only the picked one during the demo after a pick
+const elShown = () => { const a = elActive(); if (typeof SHOW === 'undefined' || !SHOW.active || !SHOW.only) return a; return a.filter(k => SHOW.only === 'el_' + k); };
 
 // ---------- the card pool ----------
 const pct = v => Math.round(v * 100) + '%';
@@ -171,14 +173,15 @@ function renderDraft(deal) {
   const el = DRAFT.el = document.getElementById('draft'); el.hidden = false;
   const nx = G.wave + 1, nA = AREAS[areaIndex(nx)], boss = nx % 5 === 0, newArea = areaIndex(nx) !== G.area;
   const next = newArea ? `Next: travel to <b>${nA.name}</b>` : boss ? `Next: <b class="bossn">BOSS · ${BOSSES[nA.boss].name}</b>` : `Next: <b>wave ${nx}</b>`;
-  el.innerHTML = `<div class="drays"></div>
+  el.innerHTML = `<div class="drays"></div><div class="dfit">
     <div class="dhead"><div class="dwave">WAVE ${G.wave}</div><h2>${deal ? UI.letters('CLEARED') : 'CLEARED'}</h2>
       <div class="dchips"><span style="--i:0">${icon('skull')}${UI.odoHTML(G.kills - (G.waveKills0 || 0))} kills</span><span style="--i:1">${icon('bolt')}best combo x${UI.odoHTML(G.waveBest || 0)}</span><span style="--i:2"><i class="ccoin"></i>${UI.odoHTML(G.coins)}</span><span style="--i:3"><span class="cheart">${icon('heart')}</span>${G.player.hp}/${G.player.maxHp}</span></div>
       <div class="dnext">${next}</div></div>
     <p class="sub">Choose 1 upgrade</p>
     <div class="cards ${deal ? 'deal' : ''}">${DRAFT.cards.map(cardHTML).join('')}</div>
     <button class="reroll" id="reroll" ${G.coins < DRAFT.rerollCost && !DRAFT.free ? 'disabled' : ''}>${icon('dice')}Reroll ${DRAFT.free ? '<b class="free">FREE</b>' : `<span class="coin"></span>${DRAFT.rerollCost}`}</button>
-    ${buildBarHTML()}`;
+    ${buildBarHTML()}</div>`;
+  fitDraft();
   el.querySelectorAll('.card').forEach((b, i) => {
     b.onclick = () => pickCard(+b.dataset.i);
     b.onpointerenter = () => AU.play('cardHover', {vol: .25, max: 1});
@@ -190,6 +193,13 @@ function renderDraft(deal) {
   if (deal) { UI.rollAll(el.querySelector('.dchips'), 450); draftDeal(el); } else el.querySelectorAll('.card .cback').forEach(c => c.remove());
   setTimeout(() => { const f = document.getElementById('card0'); f && f.focus({preventScroll: true}); }, 500);
 }
+// the whole draft fits on one screen: when it is taller than the screen, it shrinks instead of scrolling
+function fitDraft() {
+  const el = DRAFT.el, f = el && el.querySelector('.dfit'); if (!f) return;
+  f.style.transform = ''; const pad = parseFloat(getComputedStyle(el).paddingTop) || 0, avail = el.clientHeight - pad - 10, h = f.offsetHeight;
+  f.style.transform = h > avail ? `scale(${(avail / h).toFixed(3)})` : '';
+}
+addEventListener('resize', () => { if (G.state === 'draft') fitDraft(); });
 function reroll() {
   if (DRAFT.free) DRAFT.free = 0; else { if (G.coins < DRAFT.rerollCost) return; G.coins -= DRAFT.rerollCost; DRAFT.rerollCost += 10; }
   DRAFT.cards = rollCards(); AU.play('coin', {vol: .7}); AU.play('cardOpen', {vol: .6}); renderDraft(true);

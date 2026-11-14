@@ -14,9 +14,12 @@ function place(name, x, z, rot = 0, s = 1) {
 }
 const addToLayer = o => { (WORLD.layer || scene).add(o); return o; };
 // axis-aligned box collider from a placed prop's bounds
+// the box follows the prop's turn, so a car parked at an angle blocks only where the car is
 function solid(m, pad = 0) {
-  m.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(m);
-  G.colliders.push({x: (b.min.x + b.max.x) / 2, z: (b.min.z + b.max.z) / 2, hw: (b.max.x - b.min.x) / 2 + pad, hd: (b.max.z - b.min.z) / 2 + pad});
+  const rot = m.rotation.y; m.rotation.y = 0; m.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(m); m.rotation.y = rot; m.updateMatrixWorld(true);
+  const lx = (b.min.x + b.max.x) / 2 - m.position.x, lz = (b.min.z + b.max.z) / 2 - m.position.z, c = Math.cos(rot), s = Math.sin(rot);
+  const hw = (b.max.x - b.min.x) / 2 + pad, hd = (b.max.z - b.min.z) / 2 + pad, rr = Math.min(.45, hw * .4, hd * .4);
+  G.colliders.push({x: m.position.x + lx * c + lz * s, z: m.position.z - lx * s + lz * c, hw, hd, rot, rr});
 }
 // The ground, moon and rain stay for the whole game. Each area swaps the layer of props, lamps and barrels on top.
 function buildArena() {
@@ -27,7 +30,7 @@ function buildArena() {
 }
 function clearLayout() {
   if (WORLD.layer) scene.remove(WORLD.layer);
-  WORLD.layer = null; G.props = []; G.colliders = []; G.barrels = []; WORLD.lamps = []; G.bounds = null; WORLD.water = null; WORLD.gate = null;
+  WORLD.layer = null; WORLD.occl = []; G.props = []; G.colliders = []; G.barrels = []; WORLD.lamps = []; G.bounds = null; WORLD.water = null; WORLD.gate = null;
   WORLD.spawnPoints = [[0, -23], [0, 23], [-23, 0], [23, 0]];
 }
 function buildLayout(i) {
@@ -85,18 +88,40 @@ function addBarrel(x, z) {
   const b = {m, x, z, r: .45, hp: 1, fuse: -1, dead: false};
   G.barrels.push(b);
 }
+// tall walls, buildings and columns between the camera and the player fade to see-through
+function occluder(m, r, top) { (WORLD.occl || (WORLD.occl = [])).push({m, r, top, a: 1}); }
+function fadeOccluders(dt) {
+  const P = G.player; if (!P || !WORLD.occl) return;
+  const cx = camera.position.x, cy = camera.position.y, cz = camera.position.z, L = cz - P.z;
+  for (const o of WORLD.occl) {
+    const p = o.m.position; let want = 1;
+    if (L > 1 && p.z + o.r > P.z - 6 && p.z - o.r < cz) {
+      // between the camera and the player, or up to 6 m past the player where it hides the zombies coming in;
+      // the band is 4 m wide around the sight line at the object's depth
+      const f = clamp((p.z - P.z) / L, 0, 1), lx = P.x + (cx - P.x) * f, ly = .9 + (cy - .9) * f;
+      if (Math.abs(p.x - lx) < o.r + 4 && (p.z < P.z + o.r || o.top > ly - 1)) want = .25;
+    }
+    if (Math.abs(o.a - want) < .01) continue;
+    o.a = lerp(o.a, want, Math.min(1, dt * 8));
+    const mats = Array.isArray(o.m.material) ? o.m.material : [o.m.material];
+    for (const mt of mats) { mt.transparent = o.a < .99; mt.opacity = o.a; mt.depthWrite = o.a > .99; }
+    o.m.castShadow = o.a > .5;
+  }
+}
 // circle vs AABB push-out, used by the player and zombies
+// boxes can be turned (rot) and have rounded corners (rr), so the player slides around a car's corner
 function collide(e, r) {
   for (const c of G.colliders) {
-    const px = clamp(e.x, c.x - c.hw, c.x + c.hw), pz = clamp(e.z, c.z - c.hd, c.z + c.hd);
-    const dx = e.x - px, dz = e.z - pz, d = Math.hypot(dx, dz);
-    if (d < r) {
-      if (d > 1e-4) { e.x = px + dx / d * r; e.z = pz + dz / d * r; }
-      else { // center inside the box: push out along the shallow axis
-        const ox = c.hw - Math.abs(e.x - c.x), oz = c.hd - Math.abs(e.z - c.z);
-        if (ox < oz) e.x = c.x + Math.sign(e.x - c.x || 1) * (c.hw + r); else e.z = c.z + Math.sign(e.z - c.z || 1) * (c.hd + r);
-      }
-    }
+    const rot = c.rot || 0, rr = c.rr || 0, co = Math.cos(rot), si = Math.sin(rot);
+    // into the box's own frame (three.js turns +x toward -z for a positive rotation.y)
+    const wx = e.x - c.x, wz = e.z - c.z, ex = wx * co - wz * si, ez = wx * si + wz * co;
+    const hw = c.hw - rr, hd = c.hd - rr, R = r + rr;
+    const px = clamp(ex, -hw, hw), pz = clamp(ez, -hd, hd);
+    let dx = ex - px, dz = ez - pz, d = Math.hypot(dx, dz), nx = ex, nz = ez;
+    if (d >= R) continue;
+    if (d > 1e-4) { nx = px + dx / d * R; nz = pz + dz / d * R; }
+    else { const ox = hw - Math.abs(ex), oz = hd - Math.abs(ez); if (ox < oz) nx = Math.sign(ex || 1) * (hw + R); else nz = Math.sign(ez || 1) * (hd + R); }
+    e.x = c.x + nx * co + nz * si; e.z = c.z - nx * si + nz * co;
   }
   for (const b of G.barrels) if (!b.dead) { const dx = e.x - b.x, dz = e.z - b.z, d = Math.hypot(dx, dz); if (d < r + b.r && d > 1e-4) { e.x = b.x + dx / d * (r + b.r); e.z = b.z + dz / d * (r + b.r); } }
 }

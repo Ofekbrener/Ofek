@@ -27,9 +27,9 @@ function tripStreets() {
   for (let x = -10; x < 80; x += 9) for (const z of [-11, 11]) block(x + rnd(-1, 1), z + (z < 0 ? -rnd(0, 2) : rnd(0, 2)), 8, 6, rnd(8, 16), {tex: () => TEX.windows(.15, '#2a2e36'), roof: 0x16181c, collide: false});
   for (let x = 0; x < 80; x += 14) { place('StreetLights', x, -6.5, 0); lampLight(x, -4.5, 0xffa25a, 2.4, 5.6, 14); }
   const car = place('Vehicle_Sports', 22, 3, .6); car.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.multiplyScalar(.35); } });
-  TRAVEL.fire = {x: 22, z: 3}; place('Vehicle_Pickup', 48, -3, 2.6); place('TrashBag_1', 10, 5, 0); place('TrafficCone_1', 35, 1, 0); place('Barrel', 60, 4, 0);
+  TRAVEL.fire = {x: 22, z: 3}; place('Vehicle_Pickup', 48, -4.5, 2.6); place('TrashBag_1', 10, 5, 0); place('TrafficCone_1', 35, 1, 0); place('Barrel', 60, 4, 0);
   for (let i = 0; i < 6; i++) extraZombie(pick(['Zombie_Basic', 'Zombie_Chubby', 'Zombie_Ribcage']), -6 - i * 2.2, rnd(-3, 3), 0, 'Walk', 1.2);
-  return {run: 7.5, cam: (t, P) => [P.x - 4 + t * .3, 3.2, P.z + 8, P.x + 3, 1, P.z]};
+  return {run: 7.5, end: 64, cam: (t, P) => [P.x - 4 + Math.min(t, 9) * .3, 3.2, P.z + 8, P.x + 3, 1, P.z]};
 }
 function tripTunnel() {
   const tube = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 140, 24, 1, true), new THREE.MeshStandardMaterial({color: 0x2a302c, side: THREE.BackSide, roughness: .9}));
@@ -40,7 +40,7 @@ function tripTunnel() {
   for (let x = 12; x < 70; x += 13) block(x, 4, 9, 2.6, 3, {col: 0x3a4a3e, collide: false});
   signPlane(['RIVER LINE'], 4, .8, {bg: '#0e3a1e', fg: '#9dffb4', x: 6, y: 3.2, z: -5.2, glow: 1});
   for (let i = 0; i < 4; i++) extraZombie('Zombie_Ribcage', 30 + i * 6, 3.4, Math.PI, 'Crawl', 1);
-  return {run: 7, cam: (t, P) => [P.x - 6, 2, P.z + 3, P.x + 4, 1.2, P.z]};
+  return {run: 7, end: 72, cam: (t, P) => [P.x - 6, 2, P.z + 3, P.x + 4, 1.2, P.z]};
 }
 function tripBoat() {
   const wt = TEX.water(); wt.repeat.set(30, 30); WORLD.water = wt;
@@ -52,17 +52,17 @@ function tripBoat() {
   for (let x = -20; x < 100; x += 16) { const c = block(x, -26, 3, 3, 24, {col: 0xe0a020, collide: false}); c.material = c.material; }
   for (let x = 0; x < 100; x += 11) block(x + 5, 24, 10, 6, rnd(6, 12), {col: 0x2a2420, collide: false});
   lampLight(60, -10, 0xff9a40, 4, 8, 40);
-  return {run: 0, boat: true, cam: (t, P) => [P.x - 7 + Math.sin(t * .3) * 2, 3.5, P.z + 7, P.x, 1, P.z]};
+  return {run: 0, boat: true, end: 95, cam: (t, P) => [P.x - 7 + Math.sin(t * .3) * 2, 3.5, P.z + 7, P.x, 1, P.z]};
 }
 function tripHighway() {
   floor(160, 16, TEX.road, 10, 1, 40, 0, .03); floor(200, 200, () => TEX.concrete('#2a2622'), 30, 30, 40, 0, .01);
   for (let x = -10; x < 110; x += 3.2) for (const z of [-8.3, 8.3]) block(x, z, 2.9, .6, 1, {col: 0x8a8680, collide: false});
-  for (const [n, x, z, r] of [['Vehicle_Sports', 14, -3, .5], ['Vehicle_Pickup', 30, 4, 2.7], ['Vehicle_Truck_Armored', 52, -2, 1.7], ['Vehicle_Sports', 70, 3, -.3]]) place(n, x, z, r);
+  for (const [n, x, z, r] of [['Vehicle_Sports', 14, -3, .5], ['Vehicle_Pickup', 30, 4, 2.7], ['Vehicle_Truck_Armored', 52, -5, 1.7], ['Vehicle_Sports', 70, 3, -.3]]) place(n, x, z, r);
   // the wall far ahead with its floodlights
   block(120, 0, 3, 60, 14, {tex: () => TEX.concrete('#7a7a7e'), collide: false});
   for (const z of [-14, 14]) { spot(115, z, 60, 0, 0xffffff, 3, 14); block(116, z, 1, 1, 14, {col: 0x5a5a5e, collide: false}); }
   for (let i = 0; i < 5; i++) extraZombie('Zombie_Basic', -5 - i * 2.5, rnd(-4, 4), 0, 'Run', 1);
-  return {run: 7.8, cam: (t, P) => [P.x - 7, 2.2 + t * .25, P.z - 4, P.x + 6, 1.4, P.z]};
+  return {run: 7.8, end: 100, cam: (t, P) => [P.x - 7, 2.2 + Math.min(t, 14) * .25, P.z - 4, P.x + 6, 1.4, P.z]};
 }
 // set the stage: swap the area layer for the trip layer
 TRAVEL.play = function (i, done) {
@@ -82,10 +82,12 @@ TRAVEL.play = function (i, done) {
 };
 TRAVEL.update = function (raw) {
   if (!TRAVEL.on) return; TRAVEL.t += raw; const P = G.player, S = TRAVEL.scene, t = TRAVEL.t;
-  if (S.run) { P.x += S.run * raw; P.face = 0; if (Math.random() < raw * 2.2) AU.play('step', {vol: .3}); }
-  if (TRAVEL.boat) { const b = TRAVEL.boat; b.position.set(P.x = t * 5, Math.sin(t * 2) * .12, P.z = 0); b.rotation.z = Math.sin(t * 1.6) * .04; P.y = .75 + b.position.y; if (Math.random() < .5) addPart({x: b.position.x - 2.6, y: 0, z: rnd(-1, 1), vx: -2, vz: rnd(-1, 1), vy: rnd(1, 2), g: 6, life: .6, max: .6, size: .12, col: '#cfe6ff', drag: .95, rx: 0, ry: 0}); }
+  // the run slows over the last 8 m of the set and stops before its end, so the survivor never enters the buildings past it
+  if (S.run) { const k = clamp((S.end - P.x) / 8, 0, 1), sp = S.run * k; P.x += sp * raw; P.face = 0;
+    if (sp < .8) { if (!S.stopped) { S.stopped = true; P.rig.play('Idle', {fade: .4}); } } else if (Math.random() < raw * 2.2) AU.play('step', {vol: .3}); }
+  if (TRAVEL.boat) { const b = TRAVEL.boat; b.position.set(P.x = S.end * (1 - Math.exp(-t * 5 / S.end)), Math.sin(t * 2) * .12, P.z = 0); b.rotation.z = Math.sin(t * 1.6) * .04; P.y = .75 + b.position.y; if (Math.random() < .5) addPart({x: b.position.x - 2.6, y: 0, z: rnd(-1, 1), vx: -2, vz: rnd(-1, 1), vy: rnd(1, 2), g: 6, life: .6, max: .6, size: .12, col: '#cfe6ff', drag: .95, rx: 0, ry: 0}); }
   if (TRAVEL.fire && Math.random() < .8) { const f = TRAVEL.fire; addPart({x: f.x + rnd(-.8, .8), y: rnd(.6, 1.4), z: f.z + rnd(-.5, .5), vx: 0, vz: 0, vy: rnd(2, 4), g: -2, life: .6, max: .6, size: rnd(.15, .3), col: pick(['#ff8a1a', '#ffcf3a', '#ff4a10']), drag: .9, rx: 0, ry: 0}); flashLight(f.x, f.z, 0xff6a1a, 3); }
-  for (const e of TRAVEL.extras) { const sp = e.r.curName === 'Run' ? 5.5 : e.r.curName === 'Crawl' ? 1.6 : 2.2; e.x += Math.cos(e.face) * sp * raw; e.z += Math.sin(e.face) * sp * raw; e.r.root.position.set(e.x, 0, e.z); e.r.root.rotation.y = yawFor(e.face); e.r.mixer.update(raw); }
+  for (const e of TRAVEL.extras) { const sp = (e.r.curName === 'Run' ? 5.5 : e.r.curName === 'Crawl' ? 1.6 : 2.2) * (Math.abs(e.face) < .1 && e.x > P.x - 4 ? 0 : 1); e.x += Math.cos(e.face) * sp * raw; e.z += Math.sin(e.face) * sp * raw; e.r.root.position.set(e.x, 0, e.z); e.r.root.rotation.y = yawFor(e.face); e.r.mixer.update(raw); }
   P.rig.mixer.update(raw); syncPlayer(); updateFX(raw); updateRain(raw);
   const [x, y, z, lx, ly, lz] = S.cam(t, P); camera.position.set(x, y, z); camera.lookAt(lx, ly, lz);
   // the clue card lands once the radio scene is over (or 4.5 s before the end)

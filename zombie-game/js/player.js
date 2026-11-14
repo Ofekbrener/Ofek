@@ -50,7 +50,8 @@ function equipWeapon(name) {
 const weapon = () => WEAPONS[G.player.weapon];
 const atkSpeed = () => UP.atkSpeed * POW.atkSpeed();
 // with elements active, the trail cycles through their colors and mixes their particles
-const trailStyle = () => { const els = elActive(); if (!els.length) { const tc = cosTrailCol(); return tc ? {col: tc, fx: weapon().trail.fx} : weapon().trail; } const e = ELEMENTS[els[Math.floor(G.time * 2.5) % els.length]]; return {col: e.col, fx: ELEMENTS[pick(els)].fx}; };
+// the trail keeps the weapon's own color (or the cosmetic trail); elements show through their own particles in elfx.js
+const trailStyle = () => { const tc = cosTrailCol(); return tc ? {col: tc, fx: weapon().trail.fx} : weapon().trail; };
 const wDmg = () => weapon().dmg + UP.dmg + (UP.wlvl - 1);
 const wRange = () => weapon().range * UP.range * (UP.wlvl >= 3 ? 1.15 : 1) * (POW.is('giant') ? 1.25 : 1);
 
@@ -154,7 +155,13 @@ function onWeaponHit(zb, w, dir) {
 }
 // stacking elements: each one adds its own effect, scaled by its level
 let lastCloud = 0;
+// during the demo after a pick, only the picked element acts (none for a gear or stat pick)
+function elMasked() { const o = SHOW.only || '', m = {}; for (const k in UP.el) m[k] = o === 'el_' + k ? UP.el[k] : 0; return m; }
 function applyElements(zb, w) {
+  if (SHOW.active && SHOW.only) { const keep = UP.el; UP.el = elMasked(); try { applyElementsAll(zb, w); } finally { UP.el = keep; } return; }
+  applyElementsAll(zb, w);
+}
+function applyElementsAll(zb, w) {
   const E = UP.el, P = G.player;
   if (E.fire) { zb.burn = 3; zb.burnDmg = E.fire >= 2 ? 2 : 1; zb.spreadFire = E.fire >= 3; }
   if (E.frost) { zb.slow = 2.2; zb.slowF = E.frost >= 2 ? .35 : .5; zb.shatter = E.frost >= 2; zb.shatterHurt = E.frost >= 3; burst(zb.x, zb.z, 6, ['#cff6ff', '#8fe8ff', '#ffffff'], 4, .1, .6, 1.2); }
@@ -246,7 +253,7 @@ function dash() {
   AU.play('swingWide', {vol: .8, rate: 1.2}); dust(P.x, P.z, 10);
 }
 function hurtPlayer(dmg, fx, fz) {
-  const P = G.player; if (P.inv > 0 || P.dead || G.state !== 'playing' || POW.safe()) return false;
+  const P = G.player; if (P.inv > 0 || P.dead || G.state !== 'playing' || POW.safe() || CHEAT.god) return false;
   P.hp -= dmg; POW.onHurt(); P.inv = 1.4; P.hurtT = .3; G.hurtFlash = .5; shake(.65); hitstop(.08); G.combo = 0;
   const d = Math.hypot(P.x - fx, P.z - fz) || 1; P.vx = (P.x - fx) / d * 12; P.vz = (P.z - fz) / d * 12;
   burst(P.x, P.z, 18, ['#c02020', '#ff3b3b'], 7, .12, .7); popText(P.x + (P.x >= G.cam.x ? .8 : -.8), P.z, 'OUCH!', '#ff5050', 32, 2.6);
@@ -305,7 +312,7 @@ function updatePlayer(dt) {
     P.face += angDiff(P.face, a.dir) * damp(.0001, dt);
     const M = MOVES[a.move];
     if (!a.swung && a.ct >= a.hitAt - .06 * a.clipDur) { a.swung = true; AU.play(a.fin && a.spin ? 'swingWide' : w.swing, {vol: .9, rate: (w.cls === 'heavy' ? .85 : 1) * (M.snd || 1), max: 4}); }
-    if (!a.hit && a.ct >= a.hitAt) { a.hit = true; strike(a); }
+    if (!a.hit && a.ct >= a.hitAt) { a.hit = true; strike(a); elStrike(a); }
     // grinding pushes hit again during the hold
     if (M.ticks && a.hit && a.extra < M.ticks - 1 && a.ct >= a.hitAt + (a.extra + 1) * .1 * a.clipDur) {
       a.extra++; hitArea(P.x, P.z, a.dir, wRange() * M.reach, M.arc, Math.max(1, wDmg() - 1), {kind: a.move, w, light: true}); AU.play('hitSaw', {vol: .5, rate: 1.2, dur: .25, max: 3}); sparks(P.x + Math.cos(a.dir) * 1.6, P.z + Math.sin(a.dir) * 1.6, a.dir, 8, '#ffe14a'); }
@@ -316,7 +323,7 @@ function updatePlayer(dt) {
     // blade trail during the active part of the swing
     const act = a.spin ? a.ct > a.hitAt * .4 : a.ct > a.hitAt - .07 * a.clipDur && a.ct < a.hitAt + .12 * a.clipDur;
     if (act && !a.spin) sqT = -1; // stretch tall through the strike
-    if (act && P.wMesh && P.wMesh.visible) { const s = trailSample(P.wMesh, w), st = trailStyle(); trailFX(st.fx, s.tip, s.base); }
+    if (act && P.wMesh && P.wMesh.visible) { const s = trailSample(P.wMesh, w), st = trailStyle(); trailFX(st.fx, s.tip, s.base); elTrail(s.tip, s.base); }
     // torso follow-through: turn away in the wind-up, whip through on the strike
     const amp = w.twist * (a.fin ? 1.25 : 1) * (M.twist != null ? M.twist : 1);
     if (pre) { const k = a.ct / a.hitAt; twistT = -amp * .55 * easeOutCubic(k); leanT = -.12 * k; }
@@ -339,7 +346,7 @@ function updatePlayer(dt) {
   P.twist = lerp(P.twist, twistT, damp(.00001, dt)); P.lean = lerp(P.lean, leanT, damp(.0001, dt));
   const b = rig.bones;
   if (b.Torso) b.Torso.rotateY(P.twist * .7); if (b.Hips) b.Hips.rotateY(P.twist * .3); if (b.Abdomen) b.Abdomen.rotateX(P.lean * .5);
-  updateArmPose(P, dt);
+  updateArmPose(P, dt); elAura(dt);
   syncPlayer();
 }
 function syncPlayer() {
@@ -349,7 +356,7 @@ function syncPlayer() {
   if (P.hurtT > 0) rig.flash(.6, 1, .1, .1); else if (POW.active) { const c = COL(POWERS[POW.active].col); rig.flash(.22 + .12 * Math.sin(G.time * 12), c.r, c.g, c.b); } else rig.flash(0);
   // weapon glow: the fire axe always burns; an infusion tints any weapon
   // weapon glow: fire axe always burns, elements cycle their colors, brighter per weapon level
-  const w = weapon(), els = elActive(), gc = els.length ? ELEMENTS[els[Math.floor(G.time * 2.5) % els.length]].col : w.glow || (UP.wlvl > 1 ? w.col : 0);
+  const w = weapon(), els = elShown(), gc = els.length ? ELEMENTS[els[Math.floor(G.time * 2.5) % els.length]].col : w.glow || (UP.wlvl > 1 ? w.col : 0);
   if (P.wMesh && gc) { const c = COL(gc), f = .7 + .3 * Math.sin(G.time * 23) * Math.sin(G.time * 7); const lv = .4 + .15 * UP.wlvl; P.wMesh.material.emissive.copy(c).multiplyScalar(lv * f); P.wLight.color.copy(c); P.wLight.intensity = (.8 + .4 * UP.wlvl) * f; }
   else P.wLight.intensity = 0;
 }
