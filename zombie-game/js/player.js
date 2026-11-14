@@ -140,6 +140,7 @@ function hitArea(x, z, dir, range, arc, dmg, o) {
     if (!o.light) { hitstop(Math.min(.14, (kills ? .07 + Math.min(kills, 4) * .015 : o.finisher ? .07 : .05) * (heavy ? 1.2 : 1))); shake((kills ? .4 : .2) + (heavy ? .15 : 0)); }
     AU.play(w.hit[0], {vol: o.light ? .6 : 1, rate: heavy ? .85 : 1, dur: .6, max: 4});
     if (!o.light) AU.play(w.hit[1], {vol: .7, dur: .6, delay: .02});
+    AU.hitLayers(heavy, kills);
     AU.duck(kills ? .45 : .7, .2);
     if (kills >= 2) { POW.add(kills * 3); slowmo(.3 + .1 * kills); popText(x, z, kills + 'x KILL!', '#ff4fd8', 38 + kills * 6, 3); AU.play('levelUp', {vol: .5}); }
   }

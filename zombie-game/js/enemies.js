@@ -299,7 +299,10 @@ function killZombie(zb, dir, o) {
   if (T.boss && !TUT.active) storyBossDown();
   popText(zb.x, zb.z, '+' + T.score, '#ffcc33', 26 + Math.min(G.combo, 20), 2.6 * (T.scale || 1));
   AU.play(T.boss ? 'bossDeath' : 'zDeath', {vol: .7, rate: T.voice * rnd(.9, 1.1), x: zb.x, z: zb.z, bus: 'voice', max: 2});
-  AU.play(pick(['bone', 'skull', 'gore']), {vol: .8, x: zb.x, z: zb.z, delay: .02});
+  // kill sound: one or two of bone, skull and gore at random pitches, a generated crunch, and the next note of the combo melody
+  const ks = ['bone', 'skull', 'gore'].sort(() => Math.random() - .5);
+  AU.play(ks[0], {vol: .8, x: zb.x, z: zb.z, delay: .02, rate: rnd(.85, 1.2), var: .1}); if (Math.random() < .45) AU.play(ks[1], {vol: .5, x: zb.x, z: zb.z, delay: rnd(.04, .1), rate: rnd(.8, 1.25)});
+  AU.synth(Math.random() < .5 ? 'crunch' : 'squish', {vol: .7}); AU.killNote(G.combo);
   blood(zb.x, zb.z, T.boss ? 3 : 1.1); burst(zb.x, zb.z, 14, ['#3f9a35', '#2a7a2a', '#7a1f1f'], 7, .14, .8, 1);
   // drops
   const nc = Math.round(Math.floor(rnd(T.coins[0], T.coins[1] + 1)) * (1 + .25 * safeLv('scav'))); for (let i = 0; i < nc; i++) dropPickup('coin', zb.x, zb.z);
